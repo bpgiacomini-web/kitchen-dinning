@@ -43,8 +43,7 @@
 
 /* Home restaurant spotlight */
 .restaurantSpotlight{margin:22px 0 30px}
-.restaurantSpotlightCard{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(260px,.85fr);gap:0;border:1px solid #315047;border-radius:22px;overflow:hidden;background:linear-gradient(145deg,#13231f,#0e1517);box-shadow:0 14px 36px #0004}
-.restaurantSpotlightMain{padding:24px}
+.restaurantSpotlightCard{border:1px solid #315047;border-radius:22px;overflow:hidden;background:linear-gradient(145deg,#13231f,#0e1517);box-shadow:0 14px 36px #0004;padding:24px}
 .restaurantSpotlightTitleRow{display:flex;justify-content:space-between;gap:16px;align-items:flex-start;margin-top:7px}
 .restaurantSpotlightTitleRow h3{font-size:clamp(27px,5vw,38px);letter-spacing:-.035em;margin:0 0 5px}
 .restaurantSpotlightScore{font-size:clamp(42px,8vw,64px);font-weight:900;line-height:.9;letter-spacing:-.06em;color:#8fb7a6;white-space:nowrap}
@@ -55,12 +54,4 @@
 .restaurantSpotlightDishes>b{width:100%;font-size:10px;text-transform:uppercase;letter-spacing:.12em;color:#8f9b96}
 .restaurantSpotlightDishes span{padding:7px 10px;border:1px solid #315047;border-radius:999px;background:#14201c;color:#d5eee3;font-size:12px}
 .restaurantSpotlightDishes span strong{color:#8fb7a6}
-.restaurantSpotlightPhoto{min-height:100%;position:relative;background:#0b1013}
-.restaurantSpotlightPhoto img{width:100%;height:100%;min-height:300px;display:block;object-fit:cover}
-.restaurantSpotlightPhoto span{position:absolute;left:12px;bottom:12px;padding:5px 8px;border-radius:999px;background:#080b0dcc;color:#e7ecea;font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase}
-@media(max-width:760px){
-  .restaurantSpotlightCard{grid-template-columns:1fr}
-  .restaurantSpotlightPhoto{order:-1;min-height:0}
-  .restaurantSpotlightPhoto img{height:230px;min-height:230px}
-  .restaurantSpotlightMain{padding:20px}
-}
+@media(max-width:760px){.restaurantSpotlightCard{padding:20px}}
