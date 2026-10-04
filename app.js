@@ -152,7 +152,7 @@ const newsFoodTerms=/\b(restaurant|restaurants|dining|food|drink|bar|bars|brewer
 const newsBadTerms=/\b(chicago|springfield|peoria|rockford|champaign|urbana|naperville|joliet|quad\s*cities|carbondale|decatur|indianapolis|kansas\s*city|nashville|new\s*york|los\s*angeles|miami|denver|seattle|portland|national|nationwide|travel|vacation|cruise|disney)\b/i;
 function isLocalNews(x){let t=String(x.title||'');return newsFoodTerms.test(t)&&!newsBadTerms.test(t)&&(newsLocalTerms.test(t)||/^(Sauce Magazine|St\. Louis Magazine|The Telegraph|Belleville News-Democrat|EdGlenToday|RiverBender|St\. Louis Business Journal)$/.test(x.source||''))}
 function dedupeNews(items){let s=new Set();return items.filter(x=>{let k=String(x.title||'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();if(!k||s.has(k))return false;s.add(k);return isLocalNews(x)}).sort((a,b)=>new Date(b.date||0)-new Date(a.date||0))}
-async function loadLocalNews(){let stampEl=document.getElementById('newsUpdated');if(stampEl)stampEl.textContent='Loading saved stories…';try{let r=await fetch('news.json?v='+Date.now(),{cache:'no-store'});if(!r.ok)throw Error();let data=await r.json(),items=dedupeNews(data.items||[]);renderLocalNews(items.length?items:fallbackNews,data.updated||'Saved')}catch{renderLocalNews(fallbackNews,'Saved stories')}}
+async function loadLocalNews(){renderLocalNews(fallbackNews,'Saved stories');try{let r=await fetch('news.json?v=20261005',{cache:'no-store'});if(!r.ok)throw Error();let data=await r.json(),items=dedupeNews(data.items||[]);renderLocalNews(items.length?items:fallbackNews,data.updated||'Saved stories')}catch{}}
 function renderLocalNews(items,updated){let box=document.getElementById('newsGrid'),stampEl=document.getElementById('newsUpdated');box.innerHTML=items.length?items.slice(0,10).map(x=>`<article class="newsCard"><div class="newsSource">${esc(x.source||'Local publication')}</div><h4><a href="${esc(x.url||'#')}" target="_blank" rel="noopener noreferrer">${esc(x.title||'Local story')}</a></h4><a class="newsMore" href="${esc(x.url||'#')}" target="_blank" rel="noopener noreferrer">Read Full Story →</a><div class="newsDate">${esc(x.date||'')}</div></article>`).join(''):'<div class="empty">No local stories are available right now.</div>';if(stampEl)stampEl.textContent=updated&&updated!=='Saved stories'?'Updated '+new Date(updated).toLocaleString():'Showing saved stories'}
 function registerSW(){if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{})}
 renderRecipes();renderRestaurants();updateStory();loadLocalNews();registerSW();
@@ -350,14 +350,15 @@ function meCriticFoodBlock(c,type){
 }
 
 /* Metro Eats Top Restaurant Spotlight — home page feature */
-function meSpotlightScore(r){return Number(r?.survey?.overall||r?.rating||0)}
+function meSpotlightReview(r){return r?.survey || (r?.reviewHistory||[]).slice().sort((a,b)=>new Date(b.createdAt||0)-new Date(a.createdAt||0))[0] || {}}
+function meSpotlightScore(r){let s=meSpotlightReview(r);return Number(s.overall||r?.rating||0)}
 function meSpotlightTopCategories(s){
   if(!s)return [];
   if(s.foodItems?.length)return s.foodItems.filter(x=>x.name&&Number(x.rating)>0).sort((a,b)=>Number(b.rating)-Number(a.rating)).slice(0,3).map(x=>({label:x.name,score:Number(x.rating),kind:'dish'}));
   return surveyQuestions.map((q,i)=>({label:q[0],score:Number(s.scores?.[i]||0)})).filter(x=>x.score>0).sort((a,b)=>b.score-a.score).slice(0,3);
 }
 function meSpotlightMarkup(r){
-  let s=r.survey||{},score=meSpotlightScore(r),top=meSpotlightTopCategories(s);
+  let s=meSpotlightReview(r),score=meSpotlightScore(r),top=meSpotlightTopCategories(s);
   let insight=top.length
     ? (s.foodItems?.length?'Your highest-rated dishes are ':'Your strongest areas are ')+top.map(x=>esc(x.label)+' ('+x.score+'/10)').join(', ')+'.'
     : 'Your critic review is the starting point for this restaurant.';
@@ -372,7 +373,7 @@ function meSpotlightMarkup(r){
 }
 function renderRestaurantSpotlight(){
   let box=document.getElementById('restaurantSpotlight');if(!box)return;
-  let ranked=[...(db.restaurants||[])].filter(r=>r.survey||r.rating).sort((a,b)=>meSpotlightScore(b)-meSpotlightScore(a));
+  let ranked=[...(db.restaurants||[])].filter(r=>meSpotlightScore(r)>0).sort((a,b)=>meSpotlightScore(b)-meSpotlightScore(a));
   if(!ranked.length){box.hidden=true;box.innerHTML='';return}
   box.hidden=false;box.innerHTML=meSpotlightMarkup(ranked[0]);
 }
