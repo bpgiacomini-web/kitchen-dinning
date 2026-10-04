@@ -321,13 +321,13 @@ function showRankings(){
 /* Metro Eats Food Critic item-card polish — independent of service-worker changes */
 function meCriticFoodCard(x){
   let ratingButtons=[1,2,3,4,5,6,7,8,9,10].map(function(n){
-    return '<button type="button" class="criticFoodScoreBtn '+(Number(x.rating)===n?'active':'')+'" aria-label="'+esc(x.name||'Food item')+' score '+n+'" onclick="meCriticRateFood(\\''+x.id+'\\','+n+')">'+n+'</button>';
+    return '<button type="button" class="criticFoodScoreBtn '+(Number(x.rating)===n?'active':'')+'" aria-label="'+esc(x.name||'Food item')+' score '+n+'" onclick="meCriticRateFood(\''+x.id+'\','+n+')">'+n+'</button>';
   }).join('');
   return '<article class="criticFoodCard">'+
     '<div class="criticFoodTop">'+
       '<div class="criticFoodNumber">🍽</div>'+
       '<div class="criticFoodNameWrap"><label class="criticFoodLabel" for="criticFood-'+x.id+'">What did I eat?</label><input id="criticFood-'+x.id+'" class="criticFoodName" value="'+esc(x.name)+'" placeholder="Enter the dish or drink"></div>'+
-      '<button type="button" class="criticRemoveBtn" aria-label="Remove '+esc(x.name||'food item')+'" onclick="meCriticRemoveFood(\\''+x.id+'\\')">Remove</button>'+
+      '<button type="button" class="criticRemoveBtn" aria-label="Remove '+esc(x.name||'food item')+'" onclick="meCriticRemoveFood(\''+x.id+'\')">Remove</button>'+
     '</div>'+
     '<div class="criticRatingBlock">'+
       '<div class="criticRatingHead"><b>Food Rating</b><span>'+(Number(x.rating)?Number(x.rating)+'/10':'Select 1–10')+'</span></div>'+
@@ -340,11 +340,11 @@ function meCriticFoodCard(x){
 function meCriticFoodBlock(c,type){
   meCriticEnsureState();
   let items=surveyState.foodItems.filter(function(x){return x.category===c}),open=!!surveyState.foodOpen[c],suggestions=meCriticSuggestions(type).filter(function(x){return meCriticCategory(x)===c});
-  let h='<section class="criticCategory '+(open?'isOpen':'')+'"><button type="button" class="criticCategoryHead" onclick="meCriticToggleCat(\\''+c+'\\')"><span><b>'+esc(c)+'</b><small>'+(items.length?(items.length+' item'+(items.length===1?'':'s')):'Add something you ate')+'</small></span><strong>'+(open?'−':'+')+'</strong></button>';
+  let h='<section class="criticCategory '+(open?'isOpen':'')+'"><button type="button" class="criticCategoryHead" onclick="meCriticToggleCat(\''+c+'\')"><span><b>'+esc(c)+'</b><small>'+(items.length?(items.length+' item'+(items.length===1?'':'s')):'Add something you ate')+'</small></span><strong>'+(open?'−':'+')+'</strong></button>';
   if(open){
-    if(suggestions.length) h+='<div class="criticSuggestions"><span class="criticSuggestionsLabel">Popular choices</span>'+suggestions.map(function(x){return '<button type="button" class="criticSuggestion" onclick="meCriticAddSuggested(\\''+c+'\\',\\''+x.replace(/'/g,'&#39;')+'\\')">'+esc(x)+'</button>';}).join('')+'</div>';
+    if(suggestions.length) h+='<div class="criticSuggestions"><span class="criticSuggestionsLabel">Popular choices</span>'+suggestions.map(function(x){return '<button type="button" class="criticSuggestion" onclick="meCriticAddSuggested(\''+c+'\',\''+x.replace(/'/g,'&#39;')+'\')">'+esc(x)+'</button>';}).join('')+'</div>';
     h+='<div class="criticFoodList">'+items.map(meCriticFoodCard).join('')+'</div>';
-    h+='<button type="button" class="criticAddItem" onclick="meCriticAddFood(\\''+c+'\\')"><span>＋</span> Add another item</button>';
+    h+='<button type="button" class="criticAddItem" onclick="meCriticAddFood(\''+c+'\')"><span>＋</span> Add another item</button>';
   }
   return h+'</section>';
 }
