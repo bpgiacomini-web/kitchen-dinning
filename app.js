@@ -316,3 +316,35 @@ function showRankings(){
   let ranked=[...db.restaurants].filter(r=>r.survey).sort((a,b)=>(b.survey.overall||0)-(a.survey.overall||0));modal.classList.add('show');
   modalBody.innerHTML='<div class="eyebrow">Food Critic</div><h2>My Restaurant Rankings</h2><p class="hint">Critic Score averages Overall Experience, Food Quality, Service and Value. Food Quality comes from the dishes and drinks you rated.</p>'+(ranked.length?'<div class="surveyGrid">'+ranked.map((r,i)=>'<div class="surveyItem"><span class="rankBadge">#'+(i+1)+'</span><div><b>'+esc(r.name)+'</b><div class="small">'+esc(r.location||'')+' • <strong>'+Number(r.survey.overall||0).toFixed(1)+'/10</strong></div>'+(r.survey.foodItems?.length?'<div class="small">Top: '+meCriticTopFoods(r.survey).map(x=>esc(x.name)+' '+Number(x.rating).toFixed(1)+'/10').join(' • ')+'</div>':'')+stamp('Latest review',r.survey.createdAt)+'</div><button class="btn" onclick="closeModal();startSurvey(\''+r.id+'\')">Review</button></div>').join('')+'</div>':'<div class="empty">Complete a food critic review to start your restaurant rankings.</div>')+'<div class="actions"><button class="btn danger" onclick="closeModal()">Close</button></div>';
 }
+
+
+/* Metro Eats Food Critic item-card polish — independent of service-worker changes */
+function meCriticFoodCard(x){
+  let ratingButtons=[1,2,3,4,5,6,7,8,9,10].map(function(n){
+    return '<button type="button" class="criticFoodScoreBtn '+(Number(x.rating)===n?'active':'')+'" aria-label="'+esc(x.name||'Food item')+' score '+n+'" onclick="meCriticRateFood(\\''+x.id+'\\','+n+')">'+n+'</button>';
+  }).join('');
+  return '<article class="criticFoodCard">'+
+    '<div class="criticFoodTop">'+
+      '<div class="criticFoodNumber">🍽</div>'+
+      '<div class="criticFoodNameWrap"><label class="criticFoodLabel" for="criticFood-'+x.id+'">What did I eat?</label><input id="criticFood-'+x.id+'" class="criticFoodName" value="'+esc(x.name)+'" placeholder="Enter the dish or drink"></div>'+
+      '<button type="button" class="criticRemoveBtn" aria-label="Remove '+esc(x.name||'food item')+'" onclick="meCriticRemoveFood(\\''+x.id+'\\')">Remove</button>'+
+    '</div>'+
+    '<div class="criticRatingBlock">'+
+      '<div class="criticRatingHead"><b>Food Rating</b><span>'+(Number(x.rating)?Number(x.rating)+'/10':'Select 1–10')+'</span></div>'+
+      '<div class="criticFoodScore">'+ratingButtons+'</div>'+
+      '<div class="surveyScale"><span>Poor</span><span>Average</span><span>Exceptional</span></div>'+
+    '</div>'+
+    '<div class="criticNotesBlock"><label class="criticFoodLabel" for="criticNote-'+x.id+'">Critic Notes</label><textarea id="criticNote-'+x.id+'" class="criticFoodNotes" rows="3" placeholder="Taste, texture, preparation, portion, presentation, and anything that stood out…">'+esc(x.notes||'')+'</textarea></div>'+
+  '</article>';
+}
+function meCriticFoodBlock(c,type){
+  meCriticEnsureState();
+  let items=surveyState.foodItems.filter(function(x){return x.category===c}),open=!!surveyState.foodOpen[c],suggestions=meCriticSuggestions(type).filter(function(x){return meCriticCategory(x)===c});
+  let h='<section class="criticCategory '+(open?'isOpen':'')+'"><button type="button" class="criticCategoryHead" onclick="meCriticToggleCat(\\''+c+'\\')"><span><b>'+esc(c)+'</b><small>'+(items.length?(items.length+' item'+(items.length===1?'':'s')):'Add something you ate')+'</small></span><strong>'+(open?'−':'+')+'</strong></button>';
+  if(open){
+    if(suggestions.length) h+='<div class="criticSuggestions"><span class="criticSuggestionsLabel">Popular choices</span>'+suggestions.map(function(x){return '<button type="button" class="criticSuggestion" onclick="meCriticAddSuggested(\\''+c+'\\',\\''+x.replace(/'/g,'&#39;')+'\\')">'+esc(x)+'</button>';}).join('')+'</div>';
+    h+='<div class="criticFoodList">'+items.map(meCriticFoodCard).join('')+'</div>';
+    h+='<button type="button" class="criticAddItem" onclick="meCriticAddFood(\\''+c+'\\')"><span>＋</span> Add another item</button>';
+  }
+  return h+'</section>';
+}
