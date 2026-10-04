@@ -20,7 +20,48 @@
 </header>
 <section id="home" class="section active">
   <div class="hero"><div class="heroIn"><div class="eyebrow">St. Louis • Metro East</div><h2>Metro Eats<br><span class="fl">⚜</span> Recipes & Dining</h2><p>Your personal recipe book and restaurant journal — built around the food you actually love.</p><div class="homeFeatureButtons"><button class="homeFeatureButton recipeButton" onclick="tab('recipes')"><span class="homeFeatureIcon">✦</span><span><strong>Recipes</strong><small>Your Kitchen</small></span><span class="homeFeatureArrow">→</span></button><button class="homeFeatureButton diningButton" onclick="tab('restaurants')"><span class="homeFeatureIcon">⚜</span><span><strong>Dining Experience</strong><small>Your Restaurants & Reviews</small></span><span class="homeFeatureArrow">→</span></button></div>
-<div id="restaurantSpotlight" class="restaurantSpotlight" hidden></div></div></div>
+<div id="restaurantSpotlight" class="restaurantSpotlight" hidden></div>
+<script>
+(function(){
+  function inlineSpotlight(){
+    var box=document.getElementById('restaurantSpotlight'); if(!box)return;
+    try{
+      var raw=localStorage.getItem('metro_eats_v2')||localStorage.getItem('metro_eats_v1'); if(!raw)return;
+      var db=JSON.parse(raw)||{}, rows=Array.isArray(db.restaurants)?db.restaurants:[];
+      function review(r){return r.survey||(Array.isArray(r.reviewHistory)?r.reviewHistory.slice().sort(function(a,b){return new Date(b.createdAt||0)-new Date(a.createdAt||0)})[0]||{}:{});}
+      function score(r){var s=review(r);return Number(s.overall||r.rating||0);}
+      rows=rows.filter(function(r){return score(r)>0;}).sort(function(a,b){return score(b)-score(a);});
+      if(!rows.length)return;
+      var r=rows[0],s=review(r),scoreValue=score(r);
+      box.hidden=false;
+      var card=document.createElement('article');card.className='restaurantSpotlightCard';
+      var kicker=document.createElement('div');kicker.className='sectionKicker';kicker.textContent='Your Top Restaurant';card.appendChild(kicker);
+      var row=document.createElement('div');row.className='restaurantSpotlightTitleRow';
+      var left=document.createElement('div'),title=document.createElement('h3');title.textContent=r.name||'Unnamed restaurant';left.appendChild(title);
+      var meta=document.createElement('div');meta.className='meta';meta.textContent=(r.location||'')+(r.type?' • '+r.type:'');left.appendChild(meta);
+      var scoreEl=document.createElement('div');scoreEl.className='restaurantSpotlightScore';scoreEl.textContent=scoreValue.toFixed(1);
+      var small=document.createElement('small');small.textContent='/10';scoreEl.appendChild(small);row.appendChild(left);row.appendChild(scoreEl);card.appendChild(row);
+      var insight=document.createElement('p');insight.className='restaurantSpotlightInsight';
+      var strong=document.createElement('strong');strong.textContent='Critic insight: ';insight.appendChild(strong);
+      var foods=Array.isArray(s.foodItems)?s.foodItems.filter(function(x){return x.name&&Number(x.rating)>0;}).sort(function(a,b){return Number(b.rating)-Number(a.rating);}).slice(0,3):[];
+      insight.appendChild(document.createTextNode(foods.length?'Your highest-rated dishes are '+foods.map(function(x){return x.name+' ('+Number(x.rating).toFixed(1)+'/10)';}).join(', ')+'.':'Your critic review is the starting point for this restaurant.'));
+      if(s.orderAgain)insight.appendChild(document.createTextNode(' You said you would '+(s.orderAgain==='Yes'?'order it again.':'not order it again.')));
+      card.appendChild(insight);
+      if(foods.length){
+        var dishes=document.createElement('div');dishes.className='restaurantSpotlightDishes';
+        var label=document.createElement('b');label.textContent='Top dishes';dishes.appendChild(label);
+        foods.forEach(function(x){var span=document.createElement('span');span.textContent=x.name+' '+Number(x.rating).toFixed(1)+'/10';dishes.appendChild(span);});
+        card.appendChild(dishes);
+      }
+      var actions=document.createElement('div');actions.className='actions';
+      var rankings=document.createElement('button');rankings.className='btn primary';rankings.textContent='View Rankings';rankings.onclick=function(){if(typeof showRankings==='function')showRankings();};actions.appendChild(rankings);
+      if(r.website){var link=document.createElement('a');link.className='btn';link.href=r.website;link.target='_blank';link.rel='noopener noreferrer';link.textContent='Official Website';actions.appendChild(link);}
+      card.appendChild(actions);box.replaceChildren(card);
+    }catch(e){}
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',inlineSpotlight);else inlineSpotlight();
+})();
+</script></div></div>
   <div class="newsSection"><div class="sectionTitle"><div><div class="sectionKicker">Around the Metro</div><h3>What’s happening in St. Louis & Metro East</h3><div class="hint">Local food, drink, restaurant and dining stories.</div></div><div id="newsUpdated" class="small"></div></div><div id="newsGrid" class="newsGrid"><div class="empty">Loading local stories…</div></div></div>
   <div class="homeColumns">
     <article class="featureCard"><div><div class="sectionKicker">Your Kitchen</div><h3>Recipes worth keeping</h3><p>Build your personal cookbook, import recipes and keep the dishes you actually make easy to find.</p></div><div class="actions"><button class="btn primary" onclick="tab('recipes')">Open Recipes →</button><button class="btn" onclick="openRecipeChooser()">＋ Add Recipe</button></div></article>
@@ -59,6 +100,6 @@ document.addEventListener('DOMContentLoaded',function(){
   });
 });
 </script>
-<script src="app.js?v=20261005-25" defer></script>
+<script src="app.js?v=20261005-26" defer></script>
 </body>
 </html>
