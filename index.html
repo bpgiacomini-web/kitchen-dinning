@@ -205,6 +205,57 @@ body{background:radial-gradient(900px 420px at 15% -120px,rgba(214,168,91,.16),t
  .editTile{min-height:132px}
  .pageMast{padding:16px}.pageMast .mastIcon{width:38px;height:38px}
 }
+
+/* Metro Eats News Studio — editorial food photography, glass overlays and St. Louis atmosphere */
+.newsSection{margin:24px 0 30px}
+.newsMast{position:relative;min-height:250px;border-radius:26px;overflow:hidden;border:1px solid rgba(255,255,255,.10);box-shadow:0 20px 60px rgba(0,0,0,.30);margin-bottom:14px;background:#111}
+.newsMast img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;filter:saturate(1.08) contrast(1.04)}
+.newsMastShade{position:absolute;inset:0;background:linear-gradient(105deg,rgba(8,10,13,.94) 0%,rgba(8,10,13,.66) 42%,rgba(8,10,13,.18) 100%),linear-gradient(0deg,rgba(214,168,91,.22),transparent 45%)}
+.newsMastContent{position:relative;z-index:1;min-height:250px;display:flex;flex-direction:column;justify-content:flex-end;padding:24px}
+.newsMastContent h3{font-size:clamp(30px,6vw,54px);line-height:.98;max-width:650px;margin:6px 0 10px;letter-spacing:-.04em}
+.newsMastContent p{margin:0;color:#d8dde2;font-size:15px;max-width:500px}
+.newsHeaderRow{display:flex;justify-content:space-between;align-items:end;gap:16px;margin:16px 2px 12px}
+.newsGrid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+.newsCard{position:relative;overflow:hidden;min-height:330px;border-radius:22px;border:1px solid rgba(255,255,255,.12);background:#101419;box-shadow:0 14px 36px rgba(0,0,0,.24);isolation:isolate;transition:transform .22s ease,border-color .22s ease,box-shadow .22s ease}
+.newsCard:hover{transform:translateY(-3px);border-color:rgba(214,168,91,.55);box-shadow:0 20px 50px rgba(0,0,0,.36)}
+.newsCard::after{content:"";position:absolute;inset:0;z-index:-1;background:radial-gradient(circle at 85% 20%,rgba(214,168,91,.20),transparent 34%)}
+.newsThumb{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;z-index:-2;transform:scale(1.015);transition:transform .5s ease,filter .5s ease;filter:saturate(1.08) contrast(1.06)}
+.newsCard:hover .newsThumb{transform:scale(1.06);filter:saturate(1.18) contrast(1.08)}
+.newsShade{position:absolute;inset:0;z-index:-1;background:linear-gradient(180deg,rgba(8,10,13,.30) 0%,rgba(8,10,13,.38) 28%,rgba(8,10,13,.88) 72%,rgba(8,10,13,.97) 100%),linear-gradient(110deg,rgba(8,10,13,.72),transparent 58%)}
+.newsInner{height:100%;min-height:330px;padding:18px;display:flex;flex-direction:column;justify-content:flex-end}
+.newsMeta{display:flex;flex-wrap:wrap;gap:7px;align-items:center;margin-bottom:auto}
+.newsCategory,.newsSource{display:inline-flex;align-items:center;min-height:26px;padding:5px 9px;border-radius:999px;background:rgba(8,10,13,.50);border:1px solid rgba(255,255,255,.12);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px)}
+.newsCategory{color:#e7bc68;font-size:10px;font-weight:900;letter-spacing:.12em;text-transform:uppercase}
+.newsSource{color:#e7ebee;font-size:10px;font-weight:750}
+.newsCard h4{margin:12px 0 14px;font-size:21px;line-height:1.08;letter-spacing:-.025em;text-shadow:0 2px 18px rgba(0,0,0,.35)}
+.newsCard h4 a{text-decoration:none!important}
+.newsBottom{display:flex;justify-content:space-between;align-items:end;gap:10px}
+.newsDate{color:#c8cfd5;font-size:11px;padding:0}
+.newsMore{display:inline-flex;align-items:center;gap:8px;padding:9px 11px;border-radius:999px!important;background:rgba(10,12,15,.56);border:1px solid rgba(255,255,255,.16);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);color:#fff!important;font-weight:800;font-size:11px;white-space:nowrap;text-decoration:none!important}
+.newsMore span{color:#e7bc68;font-size:16px;line-height:.7}
+.newsLead{grid-column:span 2;min-height:390px}
+.newsLead .newsInner{min-height:390px;padding:24px}
+.newsLead h4{font-size:clamp(28px,4vw,43px);max-width:760px}
+.newsLead .newsMore{font-size:12px;padding:10px 14px}
+.newsEmpty{padding:28px;border:1px dashed rgba(255,255,255,.18);border-radius:18px;color:var(--muted);background:rgba(255,255,255,.025)}
+@media(max-width:760px){
+ .newsGrid{grid-template-columns:1fr}
+ .newsLead{grid-column:auto;min-height:390px}
+ .newsCard{min-height:345px}
+ .newsInner{min-height:345px}
+ .newsHeaderRow{align-items:flex-start;flex-direction:column}
+ .newsMast,.newsMastContent{min-height:230px}
+ .newsMastContent{padding:20px}
+ .newsMastContent h3{font-size:36px}
+}
+@media(max-width:460px){
+ .newsSection{margin-top:18px}
+ .newsCard,.newsLead{min-height:360px}
+ .newsInner,.newsLead .newsInner{min-height:360px;padding:16px}
+ .newsLead h4{font-size:29px}
+ .newsBottom{align-items:flex-start;flex-direction:column}
+ .newsMore{width:max-content}
+}
 </style>
 </head>
 <body>
@@ -218,7 +269,20 @@ body{background:radial-gradient(900px 420px at 15% -120px,rgba(214,168,91,.16),t
  <article class="photoCard"><img src="https://static.riverbender.com/media/12182030648-Carvers.JPG" alt="Carver's BBQ in Godfrey, Illinois" loading="lazy"><div class="photoText"><div class="photoKicker">Godfrey · BBQ</div><h4>Carver's BBQ</h4><small>A Metro East barbecue favorite.</small><div class="photoCredit">Photo source: RiverBender</div></div></article>
  <article class="photoCard"><img src="https://images.squarespace-cdn.com/content/v1/53e42697e4b02331b2e5e285/1713988229968-3P9O5KPSZPBGGWGLDI1N/image-asset.jpeg" alt="Old Bakery Beer Company pizza in Alton, Illinois" loading="lazy"><div class="photoText"><div class="photoKicker">Alton · Beer & Food</div><h4>Old Bakery Beer Co.</h4><small>Local beer and pub-style pizza.</small><div class="photoCredit">Photo source: Old Bakery Beer Company</div></div></article>
 </div>
-<div class="newsSection"><div class="sectionTitle"><div><div class="sectionKicker">Around the Metro</div><h3>What’s happening in St. Louis & Metro East</h3><div class="hint">Food leads the edit, with daily updates on restaurants, bars, comedy and live music.</div><div class="visualRule"></div></div><div id="newsUpdated" class="small"></div></div><div id="newsFilters" class="newsFilters"><button class="active" data-cat="all" onclick="setNewsCategory('all')">All</button><button data-cat="food" onclick="setNewsCategory('food')">Food</button><button data-cat="bars" onclick="setNewsCategory('bars')">Bars</button><button data-cat="comedy" onclick="setNewsCategory('comedy')">Comedy</button><button data-cat="music" onclick="setNewsCategory('music')">Music</button></div><div id="newsGrid" class="newsGrid"><div class="newsEmpty">Loading local stories…</div></div></div>
+<div class="newsSection">
+  <div class="newsMast">
+    <img src="https://www.fourseasons.com/alt/img-opt/~75.701.94%2C5564-0%2C0000-1000%2C5000-2001%2C0000/publish/content/dam/fourseasons/images/web/STL/STL_949_original.jpg" alt="St. Louis Gateway Arch with rooftop dining atmosphere" loading="lazy">
+    <div class="newsMastShade"></div>
+    <div class="newsMastContent">
+      <div class="sectionKicker">Around the Metro</div>
+      <h3>St. Louis, served beautifully.</h3>
+      <p>Food, drinks, places and the local stories worth knowing.</p>
+    </div>
+  </div>
+  <div class="newsHeaderRow"><div><div class="sectionKicker">The Local Edit</div><div class="hint">A visual-first look at what’s happening across St. Louis & Metro East.</div></div><div id="newsUpdated" class="small"></div></div>
+  <div id="newsFilters" class="newsFilters"><button class="active" data-cat="all" onclick="setNewsCategory('all')">All</button><button data-cat="food" onclick="setNewsCategory('food')">Food</button><button data-cat="bars" onclick="setNewsCategory('bars')">Bars</button><button data-cat="comedy" onclick="setNewsCategory('comedy')">Comedy</button><button data-cat="music" onclick="setNewsCategory('music')">Music</button></div>
+  <div id="newsGrid" class="newsGrid"><div class="newsEmpty">Loading local stories…</div></div>
+</div>
 <div class="homeColumns">
   <article class="featureCard"><div><div class="sectionKicker">Your Kitchen</div><h3>Recipes worth keeping</h3><p>Build your personal cookbook, import recipes and keep the dishes you actually make easy to find.</p></div><div class="actions"><button class="btn primary" onclick="tab('recipes')">Open Recipes →</button><button class="btn" onclick="openRecipe('new')">＋ Add Recipe</button></div></article>
   <article class="featureCard"><div><div class="sectionKicker">Your Dining</div><h3>Eat somewhere good</h3><p>Log meals, find restaurants around you, save official menus and rate the experience.</p></div><div class="actions"><button class="btn primary" onclick="tab('restaurants')">Open Dining →</button><button class="btn" onclick="findRestaurantAroundMe()">📍 Around Me</button></div></article>
@@ -483,8 +547,30 @@ const fallbackNews=[
 ];
 let currentNewsCategory='all';let cachedNewsItems=[];async function loadLocalNews(){const box=document.getElementById('newsGrid');const stamp=document.getElementById('newsUpdated');if(!box)return;try{const r=await fetch('news.json?'+Date.now(),{cache:'no-store'});if(!r.ok)throw new Error('news unavailable');const data=await r.json();cachedNewsItems=data.items||fallbackNews;renderLocalNews(cachedNewsItems,data.updated)}catch(e){cachedNewsItems=fallbackNews;renderLocalNews(cachedNewsItems,'Fallback stories')}}
 function setNewsCategory(cat){currentNewsCategory=cat;document.querySelectorAll('#newsFilters button').forEach(b=>b.classList.toggle('active',b.dataset.cat===cat));renderLocalNews(cachedNewsItems,document.getElementById('newsUpdated')?.dataset?.updatedValue||'')}
-function newsThumb(category){const imgs={food:'https://d2s742iet3d3t1.cloudfront.net/restaurants/restaurant-63449000000000000/menu/items/8/item-100000007767938028_1675954912.jpg?size=medium',bars:'https://s.hdnux.com/photos/01/43/23/20/26031104/10/rawImage.jpg',comedy:'https://static.riverbender.com/media/5082420337-DelmarPublicHouseBuilding.png',music:'https://images.squarespace-cdn.com/content/v1/53e42697e4b02331b2e5e285/1713988229968-3P9O5KPSZPBGGWGLDI1N/image-asset.jpeg'};return imgs[category]||imgs.food}
-function renderLocalNews(items,updated){const box=document.getElementById('newsGrid');const stamp=document.getElementById('newsUpdated');if(!box)return;let filtered=currentNewsCategory==='all'?items:items.filter(x=>(x.category||'food')===currentNewsCategory);if(!filtered.length){box.innerHTML='<div class="newsEmpty">No stories in this category today. Try All for the full local edit.</div>';return}box.innerHTML=filtered.slice(0,9).map(x=>{let cat=x.category||'food';return `<article class="newsCard"><img class="newsThumb" src="${newsThumb(cat)}" alt="${esc(cat)} local feature" loading="lazy"><div class="newsInner"><div class="newsCategory">${esc(cat.replace(/^./,c=>c.toUpperCase()))}</div><div class="newsSource">${esc(x.source||'Local publication')}</div><h4><a href="${esc(x.url||'#')}" target="_blank" rel="noopener noreferrer">${esc(x.title||'Local story')}</a></h4><a class="newsMore" href="${esc(x.url||'#')}" target="_blank" rel="noopener noreferrer">Read the original story →</a><div class="newsDate">${esc(x.date||'')}</div></div></article>`}).join('');if(updated&&stamp){stamp.dataset.updatedValue=updated;stamp.textContent=updated==='Fallback stories'?'Showing saved stories':'Updated '+new Date(updated).toLocaleDateString()}}
+function newsThumb(category){return ''}
+
+function renderLocalNews(items,updated){
+  const box=document.getElementById('newsGrid'),stamp=document.getElementById('newsUpdated');
+  if(!box)return;
+  let filtered=currentNewsCategory==='all'?items:items.filter(x=>(x.category||'food')===currentNewsCategory);
+  if(!filtered.length){box.innerHTML='<div class="newsEmpty">No stories in this category today. Try All for the full local edit.</div>';return}
+  box.innerHTML=filtered.slice(0,9).map((x,index)=>{
+    let cat=x.category||'food', image=x.image||'';
+    return `<article class="newsCard ${index===0?'newsLead':''}" style="--news-image:url("${esc(image)}")">
+      <img class="newsThumb" src="${esc(image)}" alt="${esc(x.title||cat+' local feature')}" loading="lazy" onerror="this.style.display='none'">
+      <div class="newsShade"></div>
+      <div class="newsInner">
+        <div class="newsMeta"><span class="newsCategory">${esc(cat.replace(/^./,c=>c.toUpperCase()))}</span><span class="newsSource">${esc(x.source||'Local publication')}</span></div>
+        <h4><a href="${esc(x.url||'#')}" target="_blank" rel="noopener noreferrer">${esc(x.title||'Local story')}</a></h4>
+        <div class="newsBottom"><div class="newsDate">${esc(x.date||'')}</div><a class="newsMore" href="${esc(x.url||'#')}" target="_blank" rel="noopener noreferrer">Read original story <span>→</span></a></div>
+      </div>
+    </article>`
+  }).join('');
+  if(updated&&stamp){
+    stamp.dataset.updatedValue=updated;
+    stamp.textContent=updated==='Fallback stories'?'Showing saved stories':'Updated '+new Date(updated).toLocaleDateString();
+  }
+}
 
 renderRecipes();renderRestaurants();loadLocalNews();
 </script>
