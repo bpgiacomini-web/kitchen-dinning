@@ -63,7 +63,6 @@ try{
 let resp=await fetch('https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat='+encodeURIComponent(lat)+'&lon='+encodeURIComponent(lon)+'&zoom=18&addressdetails=1',{headers:{'Accept':'application/json'}});
 if(!resp.ok)throw new Error('reverse geocode failed');
 let data=await resp.json();
-let display=data.display_name||'';
 let a=data.address||{};
 let street=[a.house_number,a.road||a.pedestrian||a.street].filter(Boolean).join(' ');
 let city=a.city||a.town||a.village||a.municipality||'';
