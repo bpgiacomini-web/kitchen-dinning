@@ -1,14 +1,65 @@
 {
-  "updated": "2026-10-04T00:00:00+00:00",
+  "updated": "2026-10-04T12:00:00-05:00",
   "items": [
-    {"title":"10 St. Louis restaurants with great burgers","source":"Sauce Magazine","date":"October 1, 2026","url":"https://www.saucemagazine.com/"},
-    {"title":"St. Louis coffee shops roll out fall menus","source":"Sauce Magazine","date":"September 30, 2026","url":"https://www.saucemagazine.com/"},
-    {"title":"Heaterz is taking over Flock’s Downtown Alton property","source":"Sauce Magazine","date":"September 29, 2026","url":"https://www.saucemagazine.com/places-2/"},
-    {"title":"Oh London in Creve Coeur lands at No. 13 on Yelp’s Best New Restaurants of 2026 list","source":"St. Louis Magazine","date":"October 1, 2026","url":"https://www.stlmag.com/dining/"},
-    {"title":"The Fountain on Locust team to open Conefection at Wash Ave Food Hall","source":"St. Louis Magazine","date":"September 28, 2026","url":"https://www.stlmag.com/dining/"},
-    {"title":"Coffeestamp opens location in downtown St. Louis","source":"St. Louis Magazine","date":"September 25, 2026","url":"https://www.stlmag.com/dining/"},
-    {"title":"Heaterz Hot Chicken plans riverfront venue at Flock Food Truck site in Alton","source":"The Telegraph","date":"October 1, 2026","url":"https://www.thetelegraph.com/"},
-    {"title":"Alton restaurant owner serves free steaks to striking public works union members","source":"The Telegraph","date":"October 2, 2026","url":"https://www.thetelegraph.com/"},
-    {"title":"Vote now for your favorite local metro-east breakfast restaurant: Round 1","source":"Belleville News-Democrat","date":"September 29, 2026","url":"https://www.bnd.com/news/local/"}
+    {
+      "title": "Alton restaurant owner serves free steaks to striking public works union members",
+      "source": "The Telegraph",
+      "date": "October 2, 2026",
+      "url": "https://www.thetelegraph.com/news/article/alton-teamsters-strike-free-steaks-macs-downtown-22457126.php"
+    },
+    {
+      "title": "Heaterz Hot Chicken plans riverfront venue at Flock Food Truck site in Alton",
+      "source": "The Telegraph",
+      "date": "October 1, 2026",
+      "url": "https://www.thetelegraph.com/news/article/heaterz-hot-chicken-riverfront-alton-flock-truck-22454535.php"
+    },
+    {
+      "title": "St. Louis beer blends to try at home",
+      "source": "St. Louis Magazine",
+      "date": "October 2, 2026",
+      "url": "https://www.stlmag.com/dining/"
+    },
+    {
+      "title": "Oh London in Creve Coeur lands at No. 13 on Yelp’s Best New Restaurants of 2026 list",
+      "source": "St. Louis Magazine",
+      "date": "October 1, 2026",
+      "url": "https://www.stlmag.com/dining/"
+    },
+    {
+      "title": "Danny Meyer on hospitality, optimism, and building a restaurant culture that lasts",
+      "source": "St. Louis Magazine",
+      "date": "October 1, 2026",
+      "url": "https://www.stlmag.com/dining/"
+    },
+    {
+      "title": "10 St. Louis restaurants with great burgers",
+      "source": "Sauce Magazine",
+      "date": "October 1, 2026",
+      "url": "https://www.saucemagazine.com/"
+    },
+    {
+      "title": "St. Louis coffee shops roll out fall menus",
+      "source": "Sauce Magazine",
+      "date": "September 30, 2026",
+      "url": "https://www.saucemagazine.com/"
+    },
+    {
+      "title": "3rd Annual Riverbend Patriots Bloody Mary Contest",
+      "source": "EdGlenToday",
+      "date": "October 4, 2026",
+      "url": "https://www.edglentoday.com/articles/details/history-fall-festivals-and-petfriendly-events-across-the-riverbend-oct-24-97141.cfm"
+    },
+    {
+      "title": "3rd Annual Riverbend Patriots Bloody Mary Contest",
+      "source": "RiverBender",
+      "date": "October 4, 2026",
+      "url": "https://secondary-mobile.riverbender.com/events/index.cfm?date=10%2F04%2F2026"
+    },
+    {
+      "title": "The Fountain on Locust team to open Conefection at Wash Ave Food Hall",
+      "source": "St. Louis Magazine",
+      "date": "September 28, 2026",
+      "url": "https://www.stlmag.com/dining/"
+    }
   ]
 }
