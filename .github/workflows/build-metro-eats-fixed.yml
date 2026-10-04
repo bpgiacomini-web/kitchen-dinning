@@ -1,0 +1,30 @@
+name: Build Metro Eats ZIP
+on:
+  push:
+    branches:
+      - metro-eats-fixes-20261004
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check JavaScript syntax
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re
+          html=Path("index.html").read_text(encoding="utf-8")
+          scripts=re.findall(r"<script>(.*?)</script>",html,re.S)
+          Path("/tmp/app.js").write_text("\n".join(scripts),encoding="utf-8")
+          PY
+          node --check /tmp/app.js
+      - name: Package complete app
+        run: |
+          rm -f Metro_Eats_Complete_Fixed.zip
+          zip -r Metro_Eats_Complete_Fixed.zip . -x ".git/*" ".github/*" "*.zip"
+      - name: Upload complete ZIP
+        uses: actions/upload-artifact@v4
+        with:
+          name: Metro_Eats_Complete_Fixed
+          path: Metro_Eats_Complete_Fixed.zip
+          if-no-files-found: error
