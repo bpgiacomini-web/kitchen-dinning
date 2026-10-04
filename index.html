@@ -10,310 +10,40 @@
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="icon-180.png">
 <title>Metro Eats</title>
-<style>
-:root{--bg:#090b0e;--panel:#11151a;--panel2:#171c22;--text:#f4f1ea;--muted:#9aa3ad;--line:#29313a;--accent:#d6a85b;--good:#7fc89a;--danger:#e27979;--max:1120px}
-*{box-sizing:border-box}html{background:var(--bg)}body{margin:0;background:radial-gradient(900px 420px at 85% -80px,#242b33 0%,var(--bg) 62%);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI",sans-serif;letter-spacing:-.01em}button,input,textarea,select{font:inherit}button{cursor:pointer}
-.app{max-width:var(--max);margin:auto;padding:calc(10px + env(safe-area-inset-top)) 18px calc(64px + env(safe-area-inset-bottom))}
-.top{position:sticky;left:0;right:0;top:0;z-index:100;display:flex;align-items:center;justify-content:space-between;gap:14px;padding:calc(8px + env(safe-area-inset-top)) max(18px,calc((100vw - var(--max))/2 + 18px)) 10px;margin:calc(-10px - env(safe-area-inset-top)) 0 18px;background:rgba(9,11,14,.94);backdrop-filter:blur(14px);border-bottom:1px solid #29313a;box-shadow:0 8px 24px #0005}
-.brandLogo{width:min(255px,55vw);height:auto;display:block;border-radius:12px}.nav{display:flex;gap:6px;flex-wrap:wrap}.nav button{border:0;background:transparent;color:#aeb5bc;padding:9px 10px;border-radius:10px;font-weight:700}.nav button.active{background:#1a1f24;color:var(--text);box-shadow:inset 0 0 0 1px #313941}
-.hero{border:1px solid var(--line);border-radius:28px;overflow:hidden;background:linear-gradient(135deg,#19140e,#0f1418 58%,#151b20);box-shadow:0 22px 70px #0007;margin-bottom:28px}.heroIn{padding:clamp(28px,6vw,52px);max-width:780px}.eyebrow,.sectionKicker{text-transform:uppercase;letter-spacing:.15em;color:var(--accent);font-size:11px;font-weight:850}.hero h2{font-size:clamp(40px,8vw,76px);line-height:.95;letter-spacing:-.055em;margin:12px 0 14px}.hero p{font-size:18px;line-height:1.55;color:#c9ced3;max-width:650px}.fl{color:var(--accent);font-size:22px}
-.section{display:none}.section.active{display:block}.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}.btn{border:1px solid var(--line);background:var(--panel);color:var(--text);border-radius:11px;padding:10px 13px;transition:.15s}.btn:hover{transform:translateY(-1px);border-color:#46515b}.btn.primary{background:var(--accent);color:#15120c;border-color:#d8ad62;font-weight:750;box-shadow:0 8px 22px #d6a85b24}.btn.danger{color:#ffd0d0;border-color:#6a3535}
-.sectionTitle{display:flex;justify-content:space-between;align-items:end;gap:16px;margin:30px 0 14px}.sectionTitle h3{font-size:24px;margin:4px 0 0}.hint,.small{color:var(--muted);font-size:12px;line-height:1.45}.newsSection{margin:26px 0 34px}.newsGrid{display:grid;grid-template-columns:repeat(12,1fr);gap:12px}.newsCard{grid-column:span 4;min-height:190px;padding:18px;border-radius:18px;position:relative;overflow:hidden;background:linear-gradient(145deg,#151a1f,#0e1216);border:1px solid var(--line);display:flex;flex-direction:column}.newsCard:first-child{grid-column:span 8;min-height:255px;padding:24px;background:linear-gradient(145deg,#211a11,#11161b)}.newsCard h4{font-size:18px;letter-spacing:-.02em;margin:8px 0 10px;line-height:1.25}.newsCard:first-child h4{font-size:28px;max-width:680px}.newsCard a{color:inherit;text-decoration:none}.newsSource{color:var(--accent);font-size:12px;font-weight:800;letter-spacing:.06em;text-transform:uppercase}.newsDate{color:var(--muted);font-size:11px;margin-top:auto;padding-top:10px}.newsMore{color:var(--accent)!important;font-weight:750;font-size:13px;margin-top:8px}
-.homeColumns{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:18px}.featureCard{border:1px solid var(--line);background:var(--panel);border-radius:20px;padding:20px;min-height:170px;display:flex;flex-direction:column;justify-content:space-between}.featureCard h3{font-size:22px;margin:5px 0 8px}.featureCard p{line-height:1.5;color:#b8c0c7;margin:0}
-.toolbar{display:flex;gap:10px;flex-wrap:wrap;margin:18px 0 14px;align-items:center}.toolbar input,.toolbar select,.field input,.field textarea,.field select{width:100%;background:#0d1115;border:1px solid var(--line);color:var(--text);border-radius:12px;padding:12px;outline:none}.toolbar .grow{flex:1;min-width:180px}.toolbar .filter{width:auto;min-width:190px}
-.list{display:grid;gap:12px}.recipe,.restaurant{border:1px solid var(--line);border-radius:20px;padding:20px;background:linear-gradient(145deg,#12171c,#0f1317);box-shadow:0 10px 32px #0003}.recipeHead{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}.recipeHead{cursor:pointer}.recipe h3,.restaurant h3{font-size:22px;letter-spacing:-.02em;margin:0 0 5px}.meta{color:var(--muted);font-size:13px}.pill{display:inline-block;border:1px solid #4a3c26;color:#e4bd78;border-radius:999px;padding:5px 9px;font-size:12px}.recipeBody{display:none;grid-template-columns:1fr 1.3fr;gap:30px;margin-top:14px}.recipe.expanded .recipeBody{display:grid}.recipeBody h4{font-size:13px;text-transform:uppercase;letter-spacing:.1em;color:var(--accent);margin-bottom:8px}.recipe ul{padding-left:21px}.recipe ol{padding-left:22px}.recipe li{margin:7px 0;line-height:1.45}.photos{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:12px}.photos img{width:100%;aspect-ratio:1;object-fit:cover;border-radius:12px;border:1px solid var(--line)}
-.empty{padding:30px;text-align:center;color:var(--muted);border:1px dashed var(--line);border-radius:18px;background:#0f1317}.field{margin-bottom:12px}.field.full{grid-column:1/-1}.field label{display:block;color:#c6ccd2;font-size:13px;margin:0 0 6px}.fields{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-.modal{position:fixed;inset:0;background:#000b;display:none;align-items:flex-end;justify-content:center;z-index:200;padding:12px 12px calc(12px + env(safe-area-inset-bottom))}.modal.show{display:flex}.sheet{width:min(760px,100%);max-height:92vh;overflow:auto;background:#11151a;border:1px solid var(--line);border-radius:22px;padding:20px}.close{float:right;background:transparent;border:0;color:#aab1b8;font-size:28px}.notice{padding:12px;border:1px solid #3d3426;background:#17140f;color:#e3c58d;border-radius:12px;font-size:13px}
-.locCard,.surveyCard{border:1px solid var(--line);border-radius:20px;padding:18px;background:linear-gradient(145deg,#151a1f,#101318);margin:14px 0}.restaurantLinks{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}.status{padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:var(--panel2);color:var(--muted);margin:8px 0}
-.surveyGrid{display:grid;gap:10px}.surveyItem{display:grid;grid-template-columns:38px 1fr auto;gap:10px;align-items:center;background:#0d1115;border:1px solid var(--line);border-radius:14px;padding:12px}.scoreRow{display:grid;grid-template-columns:repeat(10,minmax(0,1fr));gap:5px}.scoreRow button{padding:10px 3px;min-height:44px;border:1px solid var(--line);background:#11161b;color:var(--text);border-radius:9px}.scoreRow button.active{background:var(--accent);color:#15120c;border-color:var(--accent);font-weight:800}.surveyScale{display:flex;justify-content:space-between;color:var(--muted);font-size:11px;margin-top:6px}.surveyActions{display:flex;justify-content:flex-end;gap:8px;margin-top:18px}.surveyNote{min-height:90px}.rankBadge{display:inline-block;min-width:34px;text-align:center;padding:5px 8px;border-radius:999px;background:#201b13;color:var(--accent);font-weight:800}.reviewForm{display:grid;gap:10px}.reviewQuestion{padding:13px 0;border-bottom:1px solid #20262c}.reviewQuestion:last-child{border-bottom:0}.reviewQuestionHead{display:flex;justify-content:space-between;gap:12px;align-items:baseline;margin-bottom:9px}.reviewQuestionHead b{font-size:15px}.reviewQuestionHead span{color:var(--muted);font-size:11px}.reviewScore{display:grid;grid-template-columns:repeat(10,minmax(0,1fr));gap:5px}.reviewScore button{min-height:42px;padding:7px 2px;border:1px solid var(--line);background:#0d1115;color:var(--text);border-radius:9px}.reviewScore button.active{background:var(--accent);border-color:var(--accent);color:#15120c;font-weight:850}.reviewExtras{margin-top:12px;padding-top:12px;border-top:1px solid var(--line)}.restaurantScoreCard{margin:14px 0;padding:16px;border:1px solid var(--line);border-radius:18px;background:linear-gradient(145deg,#17130d,#0d1115);display:grid;grid-template-columns:minmax(120px,180px) 1fr;gap:16px;align-items:center}.restaurantScore{font-size:clamp(42px,10vw,62px);line-height:.88;font-weight:900;letter-spacing:-.06em;color:var(--accent)}.restaurantScoreLabel{margin-top:7px;color:#c7ccd1;font-size:12px;font-weight:750;text-transform:uppercase;letter-spacing:.08em}.topRated{color:#cbd0d5;font-size:13px;line-height:1.45}.topRated strong{color:#f0eee8}.scoreHero{padding:14px 16px;border-radius:16px;background:#0c1014;border:1px solid var(--line);margin-bottom:12px}.scoreHero .restaurantScore{font-size:58px}.scoreHero .restaurantScoreLabel{font-size:11px}@media(max-width:520px){.restaurantScoreCard{grid-template-columns:1fr;gap:8px}.restaurantScore{font-size:52px}.reviewScore{gap:4px}.reviewScore button{min-height:40px;font-size:13px}}
-.timestamp{display:block;color:#7f8993;font-size:11px;margin-top:7px}.timestamp strong{color:#aab2ba;font-weight:650}.createdLine{display:flex;gap:10px;flex-wrap:wrap;align-items:center}.importRow{border:1px solid var(--line);background:#0d1115;border-radius:14px;padding:12px;margin:14px 0}.importRowTitle{font-size:13px;color:#cbd1d6;font-weight:700}.importRow .actions{margin-top:10px}
-@media(max-width:760px){.brandLogo{width:185px}.nav{max-width:none}.nav button{padding:8px 7px;font-size:12px}.newsGrid{grid-template-columns:1fr}.newsCard,.newsCard:first-child{grid-column:auto;min-height:170px}.newsCard:first-child h4{font-size:24px}.homeColumns{grid-template-columns:1fr}.recipeBody{grid-template-columns:1fr}.fields{grid-template-columns:1fr}.toolbar .filter{width:100%}}
-@media(max-width:460px){.app{padding-left:12px;padding-right:12px}.brandLogo{width:165px}.nav button{font-size:11px}.hero{border-radius:22px}.hero .actions,.actions.stack{display:grid;grid-template-columns:1fr}.hero .actions .btn,.actions.stack .btn{width:100%}.toolbar{display:grid;grid-template-columns:1fr 1fr}.toolbar .grow{grid-column:1/-1;min-width:0}.toolbar .filter{grid-column:1/-1}.toolbar .btn{width:100%}.scoreRow{gap:3px}.scoreRow button{padding:9px 2px}}
-</style>
+<link rel="stylesheet" href="styles.css">
 </head>
 <body>
 <div class="app">
 <header class="top">
   <div class="brand"><img class="brandLogo" src="metro-eats-logo.png" alt="Metro Eats — Recipes, Restaurants, Good Food, Local Flavor"></div>
-  <div class="nav"><button class="active" data-tab="home">Home</button><button data-tab="recipes">Recipes</button><button data-tab="restaurants">Dining</button></div>
+  <div class="nav" id="desktopNav"><button class="active" data-tab="home">Home</button><button data-tab="recipes">Recipes</button><button data-tab="restaurants">Dining</button></div>
 </header>
-
 <section id="home" class="section active">
-  <div class="hero"><div class="heroIn"><div class="eyebrow">St. Louis • Metro East</div><h2>Metro Eats<br><span class="fl">⚜</span> Recipes & Dining</h2><p>Your personal recipe book and restaurant journal — built around the food you actually love.</p><div class="actions"><button class="btn primary" onclick="openRecipe('new')">＋ Add Recipe</button><button class="btn" onclick="openRestaurant('new')">＋ Log a Meal</button></div></div></div>
-  <div class="newsSection"><div class="sectionTitle"><div><div class="sectionKicker">Around the Metro</div><h3>What’s happening in St. Louis & Metro East</h3><div class="hint">A daily edit of local food, drink, restaurant and dining stories.</div></div><div id="newsUpdated" class="small"></div></div><div id="newsGrid" class="newsGrid"><div class="empty">Loading local stories…</div></div></div>
+  <div class="hero"><div class="heroIn"><div class="eyebrow">St. Louis • Metro East</div><h2>Metro Eats<br><span class="fl">⚜</span> Recipes & Dining</h2><p>Your personal recipe book and restaurant journal — built around the food you actually love.</p><div class="actions"><button class="btn primary" onclick="openRecipeChooser()">＋ Add Recipe</button><button class="btn secondary" onclick="openRestaurant('new')">＋ Log a Meal</button></div></div></div>
+  <div class="newsSection"><div class="sectionTitle"><div><div class="sectionKicker">Around the Metro</div><h3>What’s happening in St. Louis & Metro East</h3><div class="hint">Local food, drink, restaurant and dining stories.</div></div><div id="newsUpdated" class="small"></div></div><div id="newsGrid" class="newsGrid"><div class="empty">Loading local stories…</div></div></div>
   <div class="homeColumns">
-    <article class="featureCard"><div><div class="sectionKicker">Your Kitchen</div><h3>Recipes worth keeping</h3><p>Build your personal cookbook, import recipes and keep the dishes you actually make easy to find.</p></div><div class="actions"><button class="btn primary" onclick="tab('recipes')">Open Recipes →</button><button class="btn" onclick="openRecipe('new')">＋ Add Recipe</button></div></article>
-    <article class="featureCard"><div><div class="sectionKicker">Your Dining</div><h3>Eat somewhere good</h3><p>Log meals, find restaurants around you, save official menus and rate the experience.</p></div><div class="actions"><button class="btn primary" onclick="tab('restaurants')">Open Dining →</button><button class="btn" onclick="findRestaurantAroundMe()">📍 Around Me</button></div></article>
+    <article class="featureCard"><div><div class="sectionKicker">Your Kitchen</div><h3>Recipes worth keeping</h3><p>Build your personal cookbook, import recipes and keep the dishes you actually make easy to find.</p></div><div class="actions"><button class="btn primary" onclick="tab('recipes')">Open Recipes →</button><button class="btn" onclick="openRecipeChooser()">＋ Add Recipe</button></div></article>
+    <article class="featureCard accent"><div><div class="sectionKicker">Your Dining</div><h3>Remember every meal</h3><p>Log restaurants, rate each visit, keep your order history and build a personal dining record.</p></div><div class="actions"><button class="btn primary" onclick="tab('restaurants')">Open Dining →</button><button class="btn" onclick="findRestaurantAroundMe()">⌖ Around Me</button></div></article>
   </div>
-  <div class="featureCard" style="margin-top:14px"><div><div class="sectionKicker">Personal Guide</div><h3>Find a great place to eat</h3><p>Use your Metro Eats journal and preferences to build a current restaurant recommendation prompt.</p></div><div class="actions"><button class="btn primary" onclick="aiGuide()">✨ Build AI Recommendation</button></div></div>
+  <div class="editorialStrip">
+    <article class="storyCard"><div class="sectionKicker">Personal Guide</div><h3>Know what fits your taste.</h3><p class="hint">Metro Eats can turn your favorites and dining history into a personalized restaurant brief you can send directly to ChatGPT for current recommendations.</p><div class="actions"><button class="btn primary" onclick="aiGuide()">✦ Build My Guide</button><button class="btn" onclick="openBackup()">Backup My Data</button></div></article>
+    <article class="featureCard"><div><div class="sectionKicker">Your Dining Story</div><h3 id="storyHeadline">A record of where you eat.</h3><p id="storyCopy">As your journal grows, Metro Eats turns your visits, scores, orders and photos into your own local dining history.</p><div class="storyStats"><div class="storyStat"><strong id="storyVisits">0</strong><span>Visits</span></div><div class="storyStat"><strong id="storyFavorites">0</strong><span>Favorite recipes</span></div></div></div><div class="actions"><button class="btn" onclick="tab('restaurants')">View Dining Story →</button></div></article>
+  </div>
 </section>
-
 <section id="recipes" class="section">
-  <div class="toolbar">
-    <input class="grow" id="recipeSearch" placeholder="Search recipes…" oninput="renderRecipes()">
-    <select id="recipeCategoryFilter" class="filter" onchange="filterRecipeCategory(this.value)" aria-label="Recipe category">
-      <option value="">All Categories</option>
-    </select>
-    <button class="btn primary" onclick="openRecipe('new')">＋ Create Recipe</button>
-  </div>
+  <div class="toolbar"><input class="grow" id="recipeSearch" aria-label="Search recipes" placeholder="Search recipes…" oninput="renderRecipes()"><select id="recipeCategoryFilter" class="filter" aria-label="Recipe category" onchange="filterRecipeCategory(this.value)"><option value="">All Categories</option></select><button class="btn primary" onclick="openRecipeChooser()">＋ Create Recipe</button><button class="btn" onclick="openBackup()">Backup</button></div>
   <div id="recipeList" class="list"></div>
 </section>
-
 <section id="restaurants" class="section">
-  <div class="toolbar"><input class="grow" id="restaurantSearch" placeholder="Search restaurants…" oninput="renderRestaurants()"><button class="btn primary" onclick="findRestaurantAroundMe()">📍 Restaurants Around Me</button><button class="btn" onclick="openRestaurant('new')">＋ Add Restaurant & Review</button></div>
+  <div class="toolbar"><input class="grow" id="restaurantSearch" aria-label="Search saved restaurants" placeholder="Search saved restaurants…" oninput="renderRestaurants()"><button class="btn primary" onclick="findRestaurantAroundMe()">⌖ Restaurants Around Me</button><button class="btn" onclick="openRestaurant('new')">＋ Add Restaurant & Review</button></div>
   <div id="locationStatus" class="status">Use <b>Restaurants Around Me</b> to identify the restaurant nearest your current location.</div>
-  <div class="surveyCard"><div class="eyebrow">Dining Experience</div><h3>Restaurant Review</h3><p class="hint">Rate the 10 parts of the dining experience, then record what you ate and whether you would order it again. Each visit is saved separately with its date and time.</p><div class="actions"><button class="btn primary" onclick="openRestaurant('new')">★ Create Restaurant & Review</button><button class="btn" onclick="showRankings()">View My Rankings</button></div></div>
+  <div class="surveyCard"><div class="eyebrow">Dining Experience</div><h3>Restaurant Review</h3><p class="hint">Rate 10 dining categories, then record what you ate and whether you would order it again. Every visit is saved separately.</p><div class="actions"><button class="btn primary" onclick="openRestaurant('new')">★ Create Restaurant & Review</button><button class="btn" onclick="showRankings()">View My Rankings</button></div></div>
   <div id="nearbyResults"></div><div id="restaurantList" class="list"></div>
 </section>
 </div>
-
-<div id="modal" class="modal"><div class="sheet"><button class="close" onclick="closeModal()">×</button><div id="modalBody"></div></div></div>
-
-<script>
-const KEY='metro_eats_v1';
-const starter={recipes:[{id:uid(),title:'Velveeta Broccoli Cheese Rice Casserole',category:'Vegetables & Sides',subcategory:'Casseroles',servings:'10-12',time:'55 min',ingredients:['4 cups cooked long-grain white rice','1½ lbs broccoli florets','12 oz Velveeta, cubed','1 cup sharp cheddar, shredded','1 can (10.5 oz) cream of chicken soup','½ cup milk','½ medium onion, diced','4 tbsp butter','½ tsp garlic powder','½ tsp black pepper','¼ tsp cayenne','1 cup crispy fried onions'],steps:['Steam broccoli until just tender.','Sauté onion in butter until soft. Add soup and milk; stir smooth.','Add Velveeta and melt, then season.','Fold sauce with rice and broccoli. Transfer to a 9×13-inch baking dish.','Top with cheddar. Bake at 350°F for 25–30 minutes.','Add crispy fried onions during the final 5–7 minutes.'],favorite:false,createdAt:new Date().toISOString(),updatedAt:null}],restaurants:[],cats:{'Beef':['Chili','Steaks','Burgers'],'Chicken':['Grilled','Casseroles','Fried Chicken'],'Pork':['BBQ','Chops'],'Seafood':['Fish','Shrimp'],'Vegetables & Sides':['Casseroles','Potatoes'],'Desserts':['Cakes','Pies'],'Breakfast':['Eggs','Pancakes']}};
-let db=JSON.parse(localStorage.getItem(KEY)||'null')||starter;
-function save(){localStorage.setItem(KEY,JSON.stringify(db))}
-const modal=document.getElementById('modal');
-const modalBody=document.getElementById('modalBody');
-function uid(){return 'me-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,10)}
-let pendingRestaurant=null;
-function restaurantTypes(){return ['American','Bar & Grill','BBQ','Burgers','Breakfast & Brunch','Cafés & Coffee','Chinese','Deli','Fast Food','Fine Dining','French','Indian','Italian','Japanese','Korean','Mediterranean','Mexican','Middle Eastern','Pizza','Seafood','Southern / Soul Food','Steakhouse','Thai','Vietnamese','Vegetarian / Vegan','Food Truck','Bakery','Dessert / Ice Cream','Brewery / Brewpub','Gastropub','Sports Bar','Other']}
-function el(id){return document.getElementById(id)}
-function fieldValue(id){let node=el(id);return node?node.value.trim():''}
-function esc(s){return String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))}
-function fmtDateTime(v){if(!v)return '';let d=new Date(v);if(Number.isNaN(d.getTime()))return '';return d.toLocaleString([], {year:'numeric',month:'short',day:'numeric',hour:'numeric',minute:'2-digit'})}
-function stamp(label,v){return v?`<span class="timestamp"><strong>${esc(label)}:</strong> ${esc(fmtDateTime(v))}</span>`:''}
-function ensureLegacyData(){db.recipes=(db.recipes||[]).map(r=>({...r,updatedAt:r.updatedAt||null}));db.restaurants=(db.restaurants||[]).map(r=>({...r,updatedAt:r.updatedAt||null,reviewHistory:r.reviewHistory||[]}));if(!db.cats)db.cats=starter.cats;save()}
-ensureLegacyData();
-
-function tab(t){document.querySelectorAll('.nav button').forEach(b=>b.classList.toggle('active',b.dataset.tab===t));document.querySelectorAll('.section').forEach(s=>s.classList.toggle('active',s.id===t));if(t==='recipes')renderRecipes();if(t==='restaurants')renderRestaurants()}
-document.querySelectorAll('.nav button').forEach(b=>b.onclick=()=>tab(b.dataset.tab));
-
-let activeCat='';
-function renderCategoryFilter(){let el=document.getElementById('recipeCategoryFilter');if(!el)return;let current=el.value;el.innerHTML='<option value="">All Categories</option>'+Object.keys(db.cats).map(c=>`<option value="${esc(c)}">${esc(c)}</option>`).join('');el.value=Object.keys(db.cats).includes(current)?current:''}
-function filterRecipeCategory(c){activeCat=c;renderRecipes()}
-function renderRecipes(){renderCategoryFilter();let q=(document.getElementById('recipeSearch')?.value||'').toLowerCase();let arr=db.recipes.filter(r=>(!activeCat||r.category===activeCat)&&(!q||JSON.stringify(r).toLowerCase().includes(q)));document.getElementById('recipeList').innerHTML=arr.length?arr.map(r=>`<article class="recipe" id="recipe-${r.id}"><div class="recipeHead" onclick="toggleRecipe('${r.id}',event)"><div><h3>${esc(r.title)} ${r.favorite?'⭐':''}</h3><div class="meta">${esc(r.category||'Uncategorized')} ${r.subcategory?'• '+esc(r.subcategory):''} ${r.servings?'• '+esc(r.servings)+' servings':''} ${r.time?'• '+esc(r.time):''}</div>${stamp('Added',r.createdAt)}${r.updatedAt?stamp('Last updated',r.updatedAt):''}</div><div class="actions"><button class="btn" onclick="event.stopPropagation();openRecipe('${r.id}')">Edit</button><button class="btn" onclick="event.stopPropagation();toggleFav('${r.id}')">${r.favorite?'Unfavorite':'Favorite'}</button></div></div><div class="recipeBody"><div><h4>Ingredients</h4><ul>${(r.ingredients||[]).map(x=>`<li>${esc(x)}</li>`).join('')}</ul></div><div><h4>Directions</h4><ol>${(r.steps||[]).map(x=>`<li>${esc(x)}</li>`).join('')}</ol></div></div></article>`).join(''):'<div class="empty">No recipes found.</div>'}
-function toggleRecipe(id,e){if(e&&e.target.closest('button'))return;document.getElementById('recipe-'+id)?.classList.toggle('expanded')}
-function toggleFav(id){let r=db.recipes.find(x=>x.id===id);r.favorite=!r.favorite;r.updatedAt=new Date().toISOString();save();renderRecipes()}
-
-function openRecipe(id, imported=null){
- let r=id==='new'?{id:'new',title:'',category:'Beef',subcategory:'Chili',servings:'',time:'',ingredients:[],steps:[],favorite:false,createdAt:null,updatedAt:null}:db.recipes.find(x=>x.id===id);
- modal.classList.add('show');
- modalBody.innerHTML=`<div class="eyebrow">Recipe editor</div><h2>${id==='new'?'Create Recipe':'Edit Recipe'}</h2>
- <div class="fields">
-  <div class="field full"><label>Recipe name</label><input id="fTitle" value="${esc(imported?.title??r.title)}"></div>
-  <div class="field"><label>Category</label><select id="fCat" onchange="fillSubcats()">${Object.keys(db.cats).map(c=>`<option ${c===(imported?.category||r.category)?'selected':''}>${esc(c)}</option>`).join('')}</select></div>
-  <div class="field"><label>Subcategory</label><select id="fSub"></select></div>
-  <div class="field"><label>Servings</label><input id="fServ" value="${esc(imported?.servings??r.servings)}"></div>
-  <div class="field"><label>Prep + cook time</label><input id="fTime" value="${esc(imported?.time??r.time)}"></div>
-  <div class="field full"><label>Ingredients — one per line</label><textarea id="fIng" rows="9">${esc((imported?.ingredients||r.ingredients||[]).join('\n'))}</textarea></div>
-  <div class="field full"><label>Directions — one step per line</label><textarea id="fSteps" rows="9">${esc((imported?.steps||r.steps||[]).join('\n'))}</textarea></div>
- </div>
- <div class="importRow"><div class="importRowTitle">Import a recipe from a website</div><div class="hint">Paste a public recipe URL and Metro Eats will extract the recipe portion for you to review before saving.</div><div class="actions"><button class="btn" onclick="importWebsiteIntoCreateRecipe()">Import Website</button><button class="btn" onclick="pasteIntoCreateRecipe()">Paste Recipe Text</button></div></div>
- ${r.createdAt?stamp('Added',r.createdAt):''}${r.updatedAt?stamp('Last updated',r.updatedAt):''}
- <div class="actions"><button class="btn primary" onclick="saveRecipe('${id}')">Save Recipe</button><button class="btn danger" onclick="closeModal()">Cancel</button></div>`;
- fillSubcats(imported?.subcategory||r.subcategory||'');
-}
-
-function fillSubcats(selected=''){let c=document.getElementById('fCat')?.value;let el=document.getElementById('fSub');if(!el)return;let opts=db.cats[c]||[];el.innerHTML=opts.map(s=>`<option ${s===selected?'selected':''}>${esc(s)}</option>`).join('')}
-function saveRecipe(id){let old=id==='new'?null:db.recipes.find(x=>x.id===id);let now=new Date().toISOString();let r={id:id==='new'?uid():id,title:fTitle.value.trim()||'Untitled Recipe',category:fCat.value,subcategory:fSub.value,servings:fServ.value.trim(),time:fTime.value.trim(),ingredients:fIng.value.split('\n').map(x=>x.trim()).filter(Boolean),steps:fSteps.value.split('\n').map(x=>x.trim()).filter(Boolean),favorite:id==='new'?false:(old?.favorite||false),createdAt:old?.createdAt||now,updatedAt:old?now:null};if(id==='new')db.recipes.unshift(r);else db.recipes=db.recipes.map(x=>x.id===id?r:x);save();closeModal();renderRecipes()}
-
-function importWebsiteIntoCreateRecipe(){modalBody.innerHTML=`<div class="eyebrow">Recipe importer</div><h2>Import into Create Recipe</h2><p class="hint">Enter a public recipe URL. Metro Eats extracts the recipe itself and places it directly into the standard editor.</p><div class="field"><label>Recipe URL</label><input id="recipeUrl" type="url" placeholder="https://example.com/recipe…"></div><div class="actions"><button class="btn primary" onclick="fetchWebsiteForCreateRecipe()">Import Recipe</button><button class="btn" onclick="openRecipe('new')">← Back to Create Recipe</button></div><div class="notice">Only recipe-specific ingredients, directions, title and recipe metadata are imported. Surrounding article content is ignored.</div>`}
-function cleanImportedLine(s){return String(s??'').replace(/<[^>]+>/g,' ').replace(/\[([^\]]+)\]\([^)]+\)/g,'$1').replace(/<https?:\/\/[^>]+>/gi,'').replace(/https?:\/\/\S+/gi,'').replace(/^\s*[-*•]\s*/,'').replace(/^\s*\d+[.)]\s*/,'').replace(/\s+/g,' ').trim()}
-function isRecipeMetaLine(s){return /^(serves?|yield|yields|prep(?:aration)?\s*time|cook(?:ing)?\s*time|total\s*time|active\s*time|calories?|nutrition|author|by|jump to recipe|print recipe|save recipe|pin recipe|course|cuisine|keywords?)\b/i.test(String(s||'').trim())}
-function isRecipeStopHeading(s){return /^(notes?|nutrition|nutritional information|calories?|more recipes|related recipes|you may also like|recommended|about the author|comments?|leave a reply|video|watch|equipment|tools|storage|variations?|tips?|substitutions?)\b/i.test(String(s||'').replace(/^#+\s*/,'').trim())}
-function isBulletLine(s){return /^\s*(?:[-*•]|(?:\d+[.)]))\s+/.test(s)}
-function normalizeRecipeInstruction(x){if(x==null)return '';if(typeof x==='string')return cleanImportedLine(x);if(typeof x==='object')return cleanImportedLine(x.text||x.name||'');return cleanImportedLine(x)}
-function findRecipeJsonLd(html){let found=[];const re=/<script[^>]+type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi;let m;while((m=re.exec(html))){try{const raw=m[1].replace(/<!--|-->/g,'').trim();if(!raw)continue;const data=JSON.parse(raw);const walk=v=>{if(Array.isArray(v)){v.forEach(walk);return}if(v&&typeof v==='object'){const t=v['@type'];if((Array.isArray(t)?t:[t]).some(x=>String(x).toLowerCase()==='recipe'))found.push(v);if(v['@graph'])walk(v['@graph']);}};walk(data)}catch(e){}}return found[0]||null}
-function structuredRecipeFromHtml(html,url){const r=findRecipeJsonLd(html);if(!r)return null;let ingredients=(r.recipeIngredient||[]).map(cleanImportedLine).filter(Boolean);let instructions=[];const walkInstr=v=>{if(Array.isArray(v)){v.forEach(walkInstr);return}if(typeof v==='string'){const x=cleanImportedLine(v);if(x)instructions.push(x);return}if(v&&typeof v==='object'){if(v.itemListElement)walkInstr(v.itemListElement);else if(v.text)walkInstr(v.text);else if(v.name&&/howto(step|section)/i.test(String(v['@type']||'')))walkInstr(v.name)}};walkInstr(r.recipeInstructions);instructions=instructions.filter(x=>x.length<700);const title=cleanImportedLine(r.name||'');if(!ingredients.length||!instructions.length)return null;const timeParts=[];if(r.prepTime)timeParts.push('Prep '+cleanImportedLine(r.prepTime));if(r.cookTime)timeParts.push('Cook '+cleanImportedLine(r.cookTime));if(!timeParts.length&&r.totalTime)timeParts.push('Total '+cleanImportedLine(r.totalTime));let servings='';if(Array.isArray(r.recipeYield))servings=cleanImportedLine(r.recipeYield.join(', '));else servings=cleanImportedLine(r.recipeYield||'');return {title:title||cleanImportedLine(url.split('/').filter(Boolean).pop()?.replace(/[-_]/g,' ')||'Imported Recipe'),ingredients:ingredients.slice(0,60),steps:instructions.slice(0,60),servings,time:timeParts.join(' • ')} }
-function collectRecipeItems(lines,start,end){const items=[];let current='';for(let i=start;i<end;i++){const raw=lines[i].trim();if(!raw)continue;if(/^#+\s*/.test(raw)&&isRecipeStopHeading(raw))break;if(isBulletLine(raw)){if(current)items.push(current);current=cleanImportedLine(raw)}else if(current){const cleaned=cleanImportedLine(raw);if(cleaned&&!/^https?:\/\//i.test(cleaned))current+=' '+cleaned}}if(current)items.push(current);return items.map(x=>x.trim()).filter(x=>x&&!isRecipeMetaLine(x)&&x.length<700).slice(0,60)}
-function collectFallbackRecipeItems(lines,start,end){return lines.slice(start,end).map(cleanImportedLine).filter(x=>x&&!isRecipeMetaLine(x)&&!/^https?:\/\//i.test(x)&&x.length<700).slice(0,60)}
-function extractRecipeCore(source,url){const lines=source.split(/\r?\n/).map(x=>x.trim()).filter(Boolean);const norm=x=>x.replace(/^#+\s*/,'').trim();let ingredientIndex=lines.findIndex(x=>/^ingredients?\s*$/i.test(norm(x))||/^ingredients?\b/i.test(norm(x)));let directionIndex=lines.findIndex((x,i)=>i>Math.max(-1,ingredientIndex)&&/^(directions?|instructions?|method|steps?)\s*$/i.test(norm(x)));if(ingredientIndex<0)ingredientIndex=lines.findIndex(x=>/^ingredients?\b/i.test(norm(x)));if(directionIndex<0)directionIndex=lines.findIndex((x,i)=>i>ingredientIndex&&/^(directions?|instructions?|method|steps?)\b/i.test(norm(x)));const titleLine=lines.find(x=>/^#\s+/.test(x))||lines.find(x=>/^title\s*:/i.test(x))||lines[0]||'';const title=cleanImportedLine(titleLine.replace(/^#+\s*/,'').replace(/^title\s*:\s*/i,'')).replace(/^recipe\s*[:\-]\s*/i,'').trim();let ingredients=[],steps=[];if(ingredientIndex>=0){const ingredientEnd=directionIndex>ingredientIndex?directionIndex:Math.min(lines.length,ingredientIndex+100);ingredients=collectRecipeItems(lines,ingredientIndex+1,ingredientEnd);if(!ingredients.length)ingredients=collectFallbackRecipeItems(lines,ingredientIndex+1,ingredientEnd)}if(directionIndex>=0){let stop=lines.length;for(let i=directionIndex+1;i<lines.length;i++){const line=norm(lines[i]);if(/^#/.test(lines[i])||isRecipeStopHeading(line)){stop=i;break}}steps=collectRecipeItems(lines,directionIndex+1,stop);if(!steps.length)steps=collectFallbackRecipeItems(lines,directionIndex+1,Math.min(stop,directionIndex+80))}const full=lines.join('\n');const serves=(full.match(/(?:serves?|yield|yields)\s*[:\-]?\s*([^\n]+)/i)||[])[1]?.trim()||'';const prep=(full.match(/prep(?:aration)?\s*time\s*[:\-]?\s*([^\n]+)/i)||[])[1]?.trim()||'';const cook=(full.match(/cook(?:ing)?\s*time\s*[:\-]?\s*([^\n]+)/i)||[])[1]?.trim()||'';const total=(full.match(/total\s*time\s*[:\-]?\s*([^\n]+)/i)||[])[1]?.trim()||'';const time=[prep&&('Prep '+prep),cook&&('Cook '+cook),!prep&&!cook&&total&&('Total '+total)].filter(Boolean).join(' • ');if(!ingredients.length||!steps.length)throw Error('No clear recipe sections found');return {title:title||cleanImportedLine(url.split('/').filter(Boolean).pop()?.replace(/[-_]/g,' ')||'Imported Recipe'),ingredients,steps,servings:cleanImportedLine(serves),time:cleanImportedLine(time)}}
-async function fetchWebsiteForCreateRecipe(){const u=document.getElementById('recipeUrl').value.trim();if(!u)return;const old=document.getElementById('load');if(old)old.remove();modalBody.insertAdjacentHTML('beforeend','<p class="hint" id="load">Fetching the recipe…</p>');try{let html='';try{const direct=await fetch(u,{credentials:'omit'});if(direct.ok)html=await direct.text()}catch(e){}if(html){const structured=structuredRecipeFromHtml(html,u);if(structured){openRecipe('new',{...structured,category:'Beef',subcategory:'Chili'});return}}const res=await fetch('https://r.jina.ai/'+u);const source=await res.text();if(!res.ok)throw Error('Fetch failed');const parsed=extractRecipeCore(source,u);openRecipe('new',{...parsed,category:'Beef',subcategory:'Chili'})}catch(e){const load=document.getElementById('load');if(load)load.textContent='Metro Eats could not find a clean recipe on this site. Try Paste Recipe Text instead.'}}
-function pasteIntoCreateRecipe(){modalBody.innerHTML=`<div class="eyebrow">Recipe parser</div><h2>Paste Recipe Text</h2><p class="hint">Paste the recipe text. We’ll place the parsed content directly into the Create Recipe form for your review.</p><div class="field"><label>Recipe text</label><textarea id="rawRecipe" rows="16" placeholder="Paste the entire recipe here…"></textarea></div><div class="actions"><button class="btn primary" onclick="parseIntoCreateRecipe()">Parse into Recipe</button><button class="btn" onclick="openRecipe('new')">← Back to Create Recipe</button></div>`}
-function parseIntoCreateRecipe(){let t=rawRecipe.value.trim();if(!t)return;let lines=t.split(/\r?\n/).map(x=>x.trim()).filter(Boolean);let ingStart=lines.findIndex(x=>/^(ingredients?|what you need)\b/i.test(x));let dirStart=lines.findIndex(x=>/^(directions?|instructions?|method|steps?)\b/i.test(x));let title=lines[0].replace(/^#+\s*/,'');let ingredients=ingStart>=0?lines.slice(ingStart+1,dirStart>ingStart?dirStart:lines.length):[];let steps=dirStart>=0?lines.slice(dirStart+1):[];if(!ingredients.length){let split=Math.max(1,Math.floor(lines.length*.45));ingredients=lines.slice(1,split)}if(!steps.length)steps=lines.slice(Math.max(1,Math.floor(lines.length*.45)));openRecipe('new',{title,ingredients,steps,category:'Beef',subcategory:'Chili',servings:'',time:''})}
-
-function officialMenuSearch(name,address){return 'https://www.google.com/search?q='+encodeURIComponent(name+' '+address+' official menu')}
-function topRatedSummary(s){if(!s?.scores)return '';const areas=[['Food Quality',1],['Menu & Selection',2],['Service',3],['Atmosphere',4],['Cleanliness',5],['Value for Money',6],['Drinks & Bar',7],['Location & Accessibility',8]].map(([label,i])=>({label,score:Number(s.scores[i]||0)})).filter(x=>x.score>0);let top=areas.filter(x=>x.score>=8).sort((a,b)=>b.score-a.score||a.label.localeCompare(b.label)).slice(0,3);if(!top.length)top=areas.sort((a,b)=>b.score-a.score||a.label.localeCompare(b.label)).slice(0,3);return top.map(x=>`${esc(x.label)} ${x.score}/10`).join(' • ')}
-function renderRestaurants(){let q=(document.getElementById('restaurantSearch')?.value||'').toLowerCase();let arr=db.restaurants.filter(r=>JSON.stringify(r).toLowerCase().includes(q));document.getElementById('restaurantList').innerHTML=arr.length?arr.map(r=>{let s=r.survey;return `<article class="restaurant"><div class="recipeHead"><div><h3>${esc(r.name)}</h3><div class="meta">${esc(r.location||'')} ${r.rating?`• ${'⭐'.repeat(Math.max(0,Math.min(5,Math.round(+r.rating))))}`:''}</div>${stamp('Added',r.createdAt)}${r.updatedAt?stamp('Last written/updated',r.updatedAt):''}</div><button class="btn" onclick="event.stopPropagation();openRestaurant('${r.id}')">Edit</button></div>${s?`<div class="restaurantScoreCard"><div><div class="restaurantScore">${Number(s.overall||0).toFixed(1)}<span style="font-size:.45em;letter-spacing:0"> / 10</span></div><div class="restaurantScoreLabel">Overall Experience</div></div><div><div class="topRated"><strong>Top Rated:</strong> ${topRatedSummary(s)}</div><div class="small" style="margin-top:7px">${stamp('Reviewed',s.createdAt)}</div><button class="btn" style="margin-top:10px" onclick="startSurvey('${r.id}')">Review Again</button></div></div>`:`<div class="actions"><button class="btn primary" onclick="startSurvey('${r.id}')">★ Rate This Restaurant</button></div>`}${r.notes?`<p>${esc(r.notes)}</p>`:''}<div class="restaurantLinks">${r.website?`<a class="btn" href="${esc(r.website)}" target="_blank" rel="noopener">Official Website</a>`:''}${r.menuUrl?`<a class="btn" href="${esc(r.menuUrl)}" target="_blank" rel="noopener">Official Menu</a>`:''}<a class="btn" href="${officialMenuSearch(r.name,r.location||'')}" target="_blank" rel="noopener">Find Official Menu</a></div>${(r.photos||[]).length?`<div class="photos">${r.photos.map(p=>`<img src="${p}" alt="Meal photo">`).join('')}</div>`:''}</article>`}).join(''):'<div class="empty">No restaurant entries yet.</div>'}
-function openRestaurant(id, prefilling=null){
- let isNew=id==='new';
- let r=isNew?(prefilling||{id:'new',name:'',location:'',type:'Other',rating:5,notes:'',photos:[],website:'',menuUrl:'',survey:null,reviewHistory:[],createdAt:null,updatedAt:null}):db.restaurants.find(x=>x.id===id);
- if(!r)return;
- if(isNew)pendingRestaurant={...r}; else pendingRestaurant=null;
- modal.classList.add('show');
- let types=restaurantTypes();
- modalBody.innerHTML=`<div class="eyebrow">Dining journal</div><h2>${isNew?'Create Restaurant & Review':'Edit Restaurant'}</h2>
- <p class="hint">${isNew?'Enter the restaurant details first. Then Metro Eats will take you directly into the streamlined dining review. The restaurant and review are saved together when you finish.':'Update the restaurant information below. Existing reviews are kept separately.'}</p>
- <div class="field"><label>Restaurant name</label><input id="rName" value="${esc(r.name)}"></div>
- <div class="field"><label>Restaurant type</label><select id="rType">${types.map(t=>`<option ${t===(r.type||'Other')?'selected':''}>${esc(t)}</option>`).join('')}</select></div>
- <div class="field"><label>Street address</label><div style="display:flex;gap:8px;align-items:stretch;flex-wrap:wrap"><input id="rLoc" value="${esc(r.location)}" placeholder="Address, city, state" style="flex:1;min-width:220px"><button type="button" class="btn" onclick="useCurrentLocationForAddress()">📍 Use My Current Location</button></div><div id="addressStatus" class="hint">Only the street address, city and state are stored for display.</div></div>
- <div class="field"><label>Official website</label><input id="rWebsite" type="url" value="${esc(r.website||'')}" placeholder="https://restaurant.com"></div>
- <div class="field"><label>Official menu URL</label><input id="rMenuUrl" type="url" value="${esc(r.menuUrl||'')}" placeholder="https://restaurant.com/menu"></div>
- ${!isNew?`<div class="field"><label>Overall personal rating</label><select id="rRating">${[1,2,3,4,5].map(n=>`<option ${n==r.rating?'selected':''}>${n}</option>`).join('')}</select></div><div class="field"><label>General restaurant notes</label><textarea id="rNotes" rows="5">${esc(r.notes||'')}</textarea></div>`:''}
- <div class="field"><label>Meal photos</label><input id="rPhotos" type="file" accept="image/*" multiple onchange="previewPhotos()"><div id="photoPreview" class="photos"></div><div class="hint">Photos are resized and stored on this device.</div></div>
- ${r.createdAt?stamp('Added',r.createdAt):''}${r.updatedAt?stamp('Last written/updated',r.updatedAt):''}
- <div class="actions">${isNew?`<button class="btn primary" onclick="continueNewRestaurantReview()">Continue to Review →</button>`:`<button class="btn primary" onclick="saveRestaurant('${id}')">Save Restaurant</button><button class="btn" onclick="startSurvey('${id}')">Review Again</button>`}<button class="btn" onclick="findWebsiteForCurrentRestaurant()">Find Official Website</button><button class="btn danger" onclick="closeRestaurantWorkflow()">Cancel</button></div>`;
- document.getElementById('photoPreview').innerHTML=(r.photos||[]).map(p=>`<img src="${p}">`).join('');
- window._editingPhotos=r.photos||[];
-}
-function continueNewRestaurantReview(){
- let name=fieldValue('rName');
- if(!name){alert('Please enter the restaurant name first.');return}
- pendingRestaurant={id:uid(),name:name,type:fieldValue('rType')||'Other',location:fieldValue('rLoc'),website:fieldValue('rWebsite'),menuUrl:fieldValue('rMenuUrl'),rating:5,notes:'',photos:window._editingPhotos||[],survey:null,reviewHistory:[],createdAt:new Date().toISOString(),updatedAt:null};
- surveyState={restaurantId:pendingRestaurant.id,scores:{},ordered:'',orderAgain:''};
- renderSurvey();
-}
-function closeRestaurantWorkflow(){pendingRestaurant=null;closeModal()}
-async function useCurrentLocationForAddress(){let status=document.getElementById('addressStatus');if(!navigator.geolocation){status.textContent='Location services are not available in this browser.';return}status.textContent='Getting your current location…';navigator.geolocation.getCurrentPosition(async pos=>{let lat=pos.coords.latitude,lon=pos.coords.longitude;status.textContent='Looking up the address…';try{let resp=await fetch('https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat='+encodeURIComponent(lat)+'&lon='+encodeURIComponent(lon)+'&zoom=18&addressdetails=1',{headers:{'Accept':'application/json'}});if(!resp.ok)throw new Error();let a=(await resp.json()).address||{};let street=[a.house_number,a.road||a.pedestrian||a.street].filter(Boolean).join(' '),city=a.city||a.town||a.village||a.municipality||'',state=a.state||'',display=[street,city,state].filter(Boolean).join(', ');if(display){rLoc.value=display;status.textContent='Current location added as the restaurant address. Verify it before saving.'}else{status.textContent='A street address could not be determined.'}}catch(e){status.textContent='Could not retrieve a street address. Enter it manually.'}},()=>{status.textContent='Location permission was denied or unavailable.'},{enableHighAccuracy:true,timeout:12000,maximumAge:30000})}
-
-function findWebsiteForCurrentRestaurant(){let name=fieldValue('rName'),loc=fieldValue('rLoc');if(!name)return alert('Enter the restaurant name first.');window.open('https://www.google.com/search?q='+encodeURIComponent(name+' '+loc+' official website'),'_blank','noopener')}
-function saveRestaurant(id){let old=db.restaurants.find(x=>x.id===id),now=new Date().toISOString(),r={id,name:fieldValue('rName')||'Unnamed restaurant',type:fieldValue('rType'),location:fieldValue('rLoc'),website:fieldValue('rWebsite'),menuUrl:fieldValue('rMenuUrl'),rating:+(fieldValue('rRating')||5),notes:fieldValue('rNotes'),photos:window._editingPhotos||[],survey:old?.survey||null,reviewHistory:old?.reviewHistory||[],createdAt:old?.createdAt||now,updatedAt:now};db.restaurants=db.restaurants.map(x=>x.id===id?r:x);save();closeModal();renderRestaurants()}
-function previewPhotos(){let input=el('rPhotos');let files=input?[...input.files]:[];if(!files.length)return;Promise.all(files.map(file=>new Promise(resolve=>{let reader=new FileReader();reader.onload=()=>{let img=new Image();img.onload=()=>{let c=document.createElement('canvas'),max=1200,scale=Math.min(1,max/img.width);c.width=img.width*scale;c.height=img.height*scale;c.getContext('2d').drawImage(img,0,0,c.width,c.height);resolve(c.toDataURL('image/jpeg',.78))};img.src=reader.result};reader.readAsDataURL(file)}))).then(newPhotos=>{window._editingPhotos=[...(window._editingPhotos||[]),...newPhotos];document.getElementById('photoPreview').innerHTML=window._editingPhotos.map(p=>`<img src="${p}">`).join('')})}
-async function findRestaurantAroundMe(){let status=document.getElementById('locationStatus');status.textContent='Requesting your location…';if(!navigator.geolocation){status.textContent='Location services are not available in this browser.';return}navigator.geolocation.getCurrentPosition(async pos=>{let lat=pos.coords.latitude,lon=pos.coords.longitude;status.textContent='Looking for restaurants near your location…';try{let q=`[out:json][timeout:12];(nwr[amenity=restaurant](around:150,${lat},${lon});nwr[amenity=fast_food](around:100,${lat},${lon}););out center tags;`;let resp=await fetch('https://overpass-api.de/api/interpreter',{method:'POST',body:q});let data=await resp.json();let places=(data.elements||[]).map(x=>{let t=x.tags||{},la=x.lat??x.center?.lat,lo=x.lon??x.center?.lon;return{name:t.name||'',website:t.website||t['contact:website']||'',address:[t['addr:housenumber'],t['addr:street'],t['addr:city'],t['addr:state']].filter(Boolean).join(' '),lat:la,lon:lo,dist:Math.round(distanceMeters(lat,lon,la,lo))}}).filter(x=>x.name).sort((a,b)=>a.dist-b.dist).slice(0,8);renderNearby(places);status.textContent=places.length?'Select the restaurant that matches where you are.':'No named restaurants were found nearby. Try moving closer or add it manually.'}catch(e){status.textContent='Could not query nearby restaurants. You can still add the restaurant manually.'}},()=>{status.textContent='Location permission was denied or unavailable.'},{enableHighAccuracy:true,timeout:12000,maximumAge:30000})}
-function distanceMeters(a,b,c,d){if(c==null||d==null)return 999999;let R=6371000,rad=Math.PI/180,x=(c-a)*rad,y=(d-b)*rad,z=Math.sin(x/2)**2+Math.cos(a*rad)*Math.cos(c*rad)*Math.sin(y/2)**2;return 2*R*Math.asin(Math.sqrt(z))}
-function renderNearby(places){let box=document.getElementById('nearbyResults');box.innerHTML=places.length?`<div class="locCard"><strong>Nearby restaurants</strong><div class="small">Choose the correct one rather than relying on name alone.</div>${places.map(x=>`<div class="restaurantLinks"><button class="btn primary" onclick='useNearby(${JSON.stringify(x)})'>${esc(x.name)} — ${x.dist} m away</button>${x.website?`<a class="btn" href="${esc(x.website)}" target="_blank" rel="noopener">Official Site</a>`:''}</div>`).join('')}</div>`:''}
-function useNearby(x){let now=new Date().toISOString(),r={id:uid(),name:x.name,location:x.address,website:x.website||'',menuUrl:'',rating:5,notes:'Identified from my current location. Verify the restaurant before saving.',photos:[],survey:null,reviewHistory:[],createdAt:now,updatedAt:null};db.restaurants.unshift(r);save();renderRestaurants();openRestaurant(r.id)}
-
-const surveyQuestions=[['Overall Experience','Your overall impression of the visit.'],['Food Quality','Taste, freshness, preparation and consistency.'],['Menu & Selection','Variety, creativity and choices.'],['Service','Attentiveness, friendliness, professionalism and timing.'],['Atmosphere','Ambiance, comfort, noise level and vibe.'],['Cleanliness','Dining area, tables, restrooms and overall cleanliness.'],['Value for Money','Pricing, portions, quality and whether it felt worth it.'],['Drinks & Bar','Drink quality, selection, presentation and service.'],['Location & Accessibility','Parking, access, seating and convenience.'],['Would You Return?','How likely you are to return to this restaurant.']];
-let surveyState={restaurantId:null,scores:{},ordered:'',orderAgain:''};
-function currentSurveyRestaurant(){return surveyState.restaurantId===pendingRestaurant?.id?pendingRestaurant:db.restaurants.find(x=>x.id===surveyState.restaurantId)}
-function startSurvey(id){let r=db.restaurants.find(x=>x.id===id);if(!r)return;pendingRestaurant=null;surveyState={restaurantId:id,scores:{},ordered:r?.survey?.ordered||'',orderAgain:r?.survey?.orderAgain||''};surveyQuestions.forEach((q,i)=>surveyState.scores[i]=Number(r?.survey?.scores?.[i]||0));renderSurvey()}
-function renderSurvey(){let r=currentSurveyRestaurant(),name=r?.name||'Restaurant Review';modal.classList.add('show');modalBody.innerHTML=`<div class="eyebrow">${pendingRestaurant?'Create Restaurant & Dining Experience':'Dining Experience'}</div><h2>${pendingRestaurant?'Create Restaurant & Review':'Rate Your Visit'}</h2><div class="scoreHero"><div class="restaurantScore">${surveyAverage()||'—'}<span style="font-size:.45em;letter-spacing:0"> / 10</span></div><div class="restaurantScoreLabel">Overall Score — based on 10 ratings</div></div><div class="meta">${esc(name)}${r?.location?' • '+esc(r.location):''}</div><div class="reviewForm">${surveyQuestions.map((q,i)=>`<div class="reviewQuestion"><div class="reviewQuestionHead"><b>${i+1}. ${q[0]}</b><span>${surveyState.scores[i]?surveyState.scores[i]+'/10':'Select 1–10'}</span></div><div class="reviewScore">${[1,2,3,4,5,6,7,8,9,10].map(n=>`<button class="${surveyState.scores[i]===n?'active':''}" onclick="setSurveyScore(${i},${n})">${n}</button>`).join('')}</div><div class="surveyScale"><span>Poor</span><span>Average</span><span>Exceptional</span></div></div>`).join('')}</div><div class="reviewExtras"><div class="field"><label>What did I eat?</label><textarea id="surveyOrdered" class="surveyNote" rows="3" placeholder="What did you order?">${esc(surveyState.ordered)}</textarea></div><div class="field"><label>Would I order it again?</label><div class="actions"><button class="btn ${surveyState.orderAgain==='Yes'?'primary':''}" onclick="setOrderAgain('Yes')">Yes</button><button class="btn ${surveyState.orderAgain==='No'?'primary':''}" onclick="setOrderAgain('No')">No</button></div></div></div><div class="surveyActions"><button class="btn danger" onclick="${pendingRestaurant?'openRestaurant(\'new\',pendingRestaurant)':'closeModal()'}">Cancel</button><button class="btn primary" onclick="saveSurvey()">${pendingRestaurant?'Save Restaurant & Review':'Save Review'}</button></div>`}
-function surveyAverage(){const vals=surveyQuestions.map((q,i)=>Number(surveyState.scores[i]||0)).filter(v=>v>0);if(!vals.length)return '';return (Math.round(vals.reduce((a,b)=>a+b,0)/vals.length*10)/10).toFixed(1)}
-function setSurveyScore(i,n){captureSurveyExtras();surveyState.scores[i]=n;renderSurvey()}
-function setOrderAgain(v){captureSurveyExtras();surveyState.orderAgain=v;renderSurvey()}
-function captureSurveyExtras(){let node=el('surveyOrdered');if(node)surveyState.ordered=node.value.trim()}
-function saveSurvey(){captureSurveyExtras();const missing=surveyQuestions.findIndex((q,i)=>!surveyState.scores[i]);if(missing>=0){alert('Please choose a score from 1 to 10 for Question '+(missing+1)+'.');return}if(!surveyState.ordered.trim())return alert('Please tell us what you ate.');if(!surveyState.orderAgain)return alert('Please choose Yes or No for whether you would order it again.');let r=currentSurveyRestaurant();if(!r){closeModal();return}const avg=Number(surveyAverage()),now=new Date().toISOString(),review={scores:{...surveyState.scores},ordered:surveyState.ordered.trim(),orderAgain:surveyState.orderAgain,overall:avg,createdAt:now};r.reviewHistory=[...(r.reviewHistory||[]),review];r.survey=review;r.rating=Math.max(1,Math.min(5,Math.round(avg/2*10)/10));r.updatedAt=now;if(pendingRestaurant){r.createdAt=r.createdAt||now;db.restaurants.unshift(r);pendingRestaurant=null}save();closeModal();renderRestaurants();showRankings()}
-function showRankings(){let ranked=[...db.restaurants].filter(r=>r.survey).sort((a,b)=>(b.survey.overall||0)-(a.survey.overall||0));modal.classList.add('show');modalBody.innerHTML=`<div class="eyebrow">Dining Experience</div><h2>My Restaurant Rankings</h2><p class="hint">Restaurants are ranked by the average of the 10 rated dining categories.</p>${ranked.length?`<div class="surveyGrid">${ranked.map((r,i)=>`<div class="surveyItem"><span class="rankBadge">#${i+1}</span><div><b>${esc(r.name)}</b><div class="small">${esc(r.location||'')} • <strong>${Number(r.survey.overall||0).toFixed(1)}/10</strong></div>${topRatedSummary(r.survey)?`<div class="small">Top Rated: ${topRatedSummary(r.survey)}</div>`:''}${stamp('Latest review',r.survey.createdAt)}</div><button class="btn" onclick="closeModal();startSurvey('${r.id}')">Review</button></div>`).join('')}</div>`:'<div class="empty">Complete a 10-question review to start your restaurant rankings.</div>'}<div class="actions"><button class="btn danger" onclick="closeModal()">Close</button></div>`}
-function aiGuide(){let fav=db.recipes.filter(r=>r.favorite).map(r=>r.title).slice(0,8).join(', '),visited=db.restaurants.map(r=>`${r.name} (${r.rating}/5)`).slice(0,10).join(', '),prompt=`Recommend 5 highly rated restaurants in the St. Louis / Metro East Illinois area. Consider these preferences from my Metro Eats journal. Favorite recipes: ${fav||'none yet'}. Restaurants I have logged: ${visited||'none yet'}. Give current ratings, cuisine, approximate price, why each fits, and a link to the official site. Prefer places I have not logged unless there is a strong reason.`;navigator.clipboard?.writeText(prompt).catch(()=>{});modal.classList.add('show');modalBody.innerHTML=`<div class="eyebrow">AI Dining Guide</div><h2>Your recommendation prompt is ready</h2><p class="hint">It has been copied to your clipboard. Paste it into ChatGPT to get current restaurant recommendations.</p><textarea rows="10" style="width:100%;background:#0d1115;color:white;border:1px solid var(--line);border-radius:12px;padding:12px">${esc(prompt)}</textarea>`}
-function closeModal(){modal.classList.remove('show');modalBody.innerHTML=''}
-
-const fallbackNews=[
-  {"title":"10 St. Louis restaurants with great burgers","source":"Sauce Magazine","date":"October 1, 2026","url":"https://www.saucemagazine.com/"},
-  {"title":"St. Louis coffee shops roll out fall menus","source":"Sauce Magazine","date":"September 30, 2026","url":"https://www.saucemagazine.com/"},
-  {"title":"Heaterz is taking over Flock’s Downtown Alton property","source":"Sauce Magazine","date":"September 29, 2026","url":"https://www.saucemagazine.com/places-2/"},
-  {"title":"Oh London in Creve Coeur lands at No. 13 on Yelp’s Best New Restaurants of 2026 list","source":"St. Louis Magazine","date":"October 1, 2026","url":"https://www.stlmag.com/dining/"},
-  {"title":"The Fountain on Locust team to open Conefection at Wash Ave Food Hall","source":"St. Louis Magazine","date":"September 28, 2026","url":"https://www.stlmag.com/dining/"},
-  {"title":"Coffeestamp opens location in downtown St. Louis","source":"St. Louis Magazine","date":"September 25, 2026","url":"https://www.stlmag.com/dining/"},
-  {"title":"Kye Pietoso shares the vision for Napoli’s next chapter","source":"St. Louis Magazine","date":"September 30, 2026","url":"https://www.stlmag.com/dining/"},
-  {"title":"New craft brew options across St. Louis","source":"St. Louis Magazine","date":"September 29, 2026","url":"https://www.stlmag.com/dining/"},
-  {"title":"Halloween pop-up parties and bars across St. Louis","source":"St. Louis Magazine","date":"September 28, 2026","url":"https://www.stlmag.com/dining/"},
-  {"title":"Heaterz Hot Chicken plans riverfront venue at Flock Food Truck site in Alton","source":"The Telegraph","date":"October 1, 2026","url":"https://www.thetelegraph.com/news/article/heaterz-hot-chicken-riverfront-alton-flock-truck-22454535.php"},
-  {"title":"Alton restaurant owner serves free steaks to striking public works union members","source":"The Telegraph","date":"October 2, 2026","url":"https://www.thetelegraph.com/news/article/alton-teamsters-strike-free-steaks-macs-downtown-22457126.php"},
-  {"title":"Vote now for your favorite local metro-east breakfast restaurant: Round 1","source":"Belleville News-Democrat","date":"September 29, 2026","url":"https://www.bnd.com/news/local/"}
-];
-
-const liveNewsQueries=[
-  {q:'site:saucemagazine.com "St. Louis" (restaurant OR dining OR food OR bar OR brewery)',source:'Sauce Magazine',scope:'stl'},
-  {q:'site:stlmag.com/dining "St. Louis" (restaurant OR dining OR food OR bar OR brewery)',source:'St. Louis Magazine',scope:'stl'},
-  {q:'site:thetelegraph.com (Alton OR Godfrey OR "East Alton" OR "Wood River" OR Bethalto OR Edwardsville OR "Glen Carbon" OR Grafton) (restaurant OR dining OR food OR bar OR brewery)',source:'The Telegraph',scope:'metroEast'},
-  {q:'site:bnd.com (Belleville OR Collinsville OR "Fairview Heights" OR "O\'Fallon" OR Shiloh OR Edwardsville OR "Metro East") (restaurant OR dining OR food OR breakfast OR bar OR brewery)',source:'Belleville News-Democrat',scope:'metroEast'},
-  {q:'("St. Louis" OR "Metro East" OR Alton OR Belleville OR Edwardsville OR Collinsville) (restaurant OR dining OR food OR brewery OR bar)',source:'Local & Regional',scope:'regional'}
-];
-
-const newsLocalTerms=/\b(st\.?\s*louis|saint\s*louis|metro\s*east|alton|godfrey|east\s*alton|wood\s*river|bethalto|grafton|edwardsville|glen\s*carbon|granite\s*city|collinsville|belleville|fairview\s*heights|shiloh|o'?fallon|ofallon|maryville|pontoon\s*beach|roxana|highland|millstadt|waterloo|columbia|creve\s*coeur|university\s*city|maplewood|kirkwood|brentwood|central\s*west\s*end|soulard|cherokee\s*street|the\s*hill)\b/i;
-const newsFoodTerms=/\b(restaurant|restaurants|dining|food|drink|bar|bars|brewery|breweries|brewpub|cafe|caf[eé]|coffee|chef|menu|menus|pizza|burger|burgers|breakfast|brunch|chicken|bbq|barbecue|dessert|ice\s*cream|taco|tacos|steak|seafood|bakery|bak(e|ing)|culinary|eatery|eateries|opens|opening|closes|closing|reopens|reopen|food\s*truck|hospitality|wine|cocktail|cocktails)\b/i;
-const newsBadTerms=/\b(chicago|springfield|peoria|rockford|champaign|urbana|naperville|joliet|quad\s*cities|carbondale|decatur|indianapolis|kansas\s*city|nashville|new\s*york|los\s*angeles|miami|denver|seattle|portland|national|nationwide|across\s*the\s*country|food\s*network|taste\s*of\s*the\s*world|travel|vacation|cruise|disney)\b/i;
-
-function isLocalMetroStory(item,scope){
-  const text=String(item.title||'').toLowerCase();
-  if(!newsFoodTerms.test(text)||newsBadTerms.test(text))return false;
-  if(newsLocalTerms.test(text))return true;
-  if(scope==='stl'&&(item.source==='Sauce Magazine'||item.source==='St. Louis Magazine'))return true;
-  if(scope==='metroEast'&&(item.source==='The Telegraph'||item.source==='Belleville News-Democrat'))return true;
-  return false;
-}
-
-function dedupeNews(items){
-  const seen=new Set();
-  return items.filter(x=>{
-    const key=String(x.title||'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();
-    if(!key||seen.has(key))return false;
-    seen.add(key);return true;
-  }).sort((a,b)=>(b.ts||0)-(a.ts||0));
-}
-
-function parseNewsDate(v){
-  const t=Date.parse(v||'');
-  return Number.isFinite(t)?t:0;
-}
-
-function cleanNewsText(v){
-  return String(v||'').replace(/<[^>]*>/g,'').replace(/&amp;/g,'&').replace(/&#39;/g,"'").replace(/&quot;/g,'"').trim();
-}
-
-async function fetchLiveFeed(query){
-  const rss='https://news.google.com/rss/search?'+new URLSearchParams({q:query.q,hl:'en-US',gl:'US',ceid:'US:en'}).toString();
-  const endpoints=[
-    'https://api.rss2json.com/v1/api.json?rss_url='+encodeURIComponent(rss),
-    'https://api.allorigins.win/raw?url='+encodeURIComponent(rss)
-  ];
-  for(const endpoint of endpoints){
-    try{
-      const r=await fetch(endpoint,{cache:'no-store'});
-      if(!r.ok)continue;
-      const text=await r.text();
-      let items=[];
-      if(endpoint.includes('rss2json')){
-        const data=JSON.parse(text);
-        items=(data.items||[]).map(x=>{
-          const ts=parseNewsDate(x.pubDate);
-          return {title:cleanNewsText(x.title),source:query.source,date:ts?new Date(ts).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}):'',url:x.link||'',ts,scope:query.scope};
-        });
-      }else{
-        const xml=new DOMParser().parseFromString(text,'text/xml');
-        items=[...xml.querySelectorAll('item')].map(x=>{
-          const pub=x.querySelector('pubDate')?.textContent||'';
-          const ts=parseNewsDate(pub);
-          return {title:cleanNewsText(x.querySelector('title')?.textContent),source:query.source,date:ts?new Date(ts).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}):'',url:x.querySelector('link')?.textContent||'',ts,scope:query.scope};
-        });
-      }
-      return items.filter(x=>x.title&&x.url&&x.ts&&x.ts<=Date.now()+86400000&&x.ts>=Date.now()-30*86400000&&isLocalMetroStory(x,x.scope));
-    }catch(e){}
-  }
-  return [];
-}
-
-async function loadSavedNews(){
-  try{
-    const r=await fetch('news.json?v='+Date.now(),{cache:'no-store',headers:{'Cache-Control':'no-cache'}});
-    if(!r.ok)throw Error();
-    const data=await r.json();
-    return (data.items||[]).map(x=>({...x,ts:parseNewsDate(x.date),scope:x.source==='The Telegraph'||x.source==='Belleville News-Democrat'?'metroEast':'stl'})).filter(x=>isLocalMetroStory(x,x.scope));
-  }catch(e){return []}
-}
-
-async function loadLocalNews(){
-  const stampEl=document.getElementById('newsUpdated');
-  if(stampEl)stampEl.textContent='Refreshing live…';
-  try{
-    const batches=await Promise.all(liveNewsQueries.map(fetchLiveFeed));
-    const live=dedupeNews(batches.flat());
-    const saved=await loadSavedNews();
-    const combined=dedupeNews([...live,...saved,...fallbackNews.map(x=>({...x,ts:parseNewsDate(x.date),scope:x.source==='The Telegraph'||x.source==='Belleville News-Democrat'?'metroEast':'stl'})).filter(x=>isLocalMetroStory(x,x.scope))]);
-    if(combined.length){
-      renderLocalNews(combined.slice(0,10),live.length?'live':'saved');
-      return;
-    }
-    throw new Error('No qualifying local stories returned');
-  }catch(e){
-    renderLocalNews(fallbackNews.slice(0,10),'saved');
-  }
-}
-
-function renderLocalNews(items,updated){
-  const box=document.getElementById('newsGrid'),stampEl=document.getElementById('newsUpdated');
-  box.innerHTML=items.length?items.slice(0,10).map(x=>`<article class="newsCard"><div class="newsSource">${esc(x.source||'Local publication')}</div><h4><a href="${esc(x.url||'#')}" target="_blank" rel="noopener noreferrer">${esc(x.title||'Local story')}</a></h4><a class="newsMore" href="${esc(x.url||'#')}" target="_blank" rel="noopener noreferrer">Read the original story →</a><div class="newsDate">${esc(x.date||'')}</div></article>`).join(''):'<div class="empty">No local stories are available right now.</div>';
-  if(stampEl){
-    if(updated==='live')stampEl.textContent='Live • Updated '+new Date().toLocaleString('en-US',{month:'numeric',day:'numeric',year:'numeric',hour:'numeric',minute:'2-digit'});
-    else if(updated==='saved')stampEl.textContent='Live feed unavailable • Showing saved stories';
-    else stampEl.textContent='Updated '+new Date(updated).toLocaleDateString();
-  }
-}
-
-renderRecipes();renderRestaurants();loadLocalNews();setInterval(loadLocalNews,60*60*1000);
-</script>
+<nav class="bottomNav" id="bottomNav" aria-label="Primary navigation"><button class="active" data-tab="home">⌂<br>Home</button><button data-tab="recipes">▱<br>Recipes</button><button data-tab="restaurants">◉<br>Dining</button></nav>
+<div id="modal" class="modal"><div class="sheet"><button class="close" aria-label="Close" onclick="closeModal()">×</button><div id="modalBody"></div></div></div>
+<input id="restoreFile" type="file" accept="application/json" hidden>
+<script src="app.js" defer></script>
 </body>
 </html>

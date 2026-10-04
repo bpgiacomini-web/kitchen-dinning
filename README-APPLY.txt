@@ -1,6 +1,38 @@
-Metro Eats — Updated Restaurant Review Build
+METRO EATS — APPROVED ENHANCEMENT PACKAGE
 
-This ZIP contains the updated index.html for Metro Eats.
-Changes include the streamlined restaurant capture/review flow, 10 scored questions, the What Did I Eat?/Would I Order Again? visit details, prominent restaurant scores, Top Rated highlights, and the approved recipe/import improvements.
+Approved scope implemented except:
+#2 Real Restaurant Name Search — intentionally excluded
+#13 Local News Improvements — intentionally excluded
 
-GitHub baseline verified: commit 1af1e2c222fc17a0c5d17dbe476053e8debcd1fd.
+Replace/add these files in the existing Metro Eats repository:
+- index.html
+- styles.css
+- app.js
+- manifest.json
+- sw.js
+- README-APPLY.txt
+
+Keep the existing Metro Eats logo and icon image assets already in the repository.
+
+Implemented:
+1. Restaurant selection/save reliability
+3. Full recipe taxonomy
+4. Recipe photos
+5. Unified Add Recipe chooser
+6. Recipe import review/safety
+7. Restaurant visit history
+8. Improved restaurant cards
+9. Editorial Home redesign
+10. Stronger color/visual treatment
+11. Consistent lightweight icon treatment
+12. Your Dining Story
+14. news.json as the primary news source
+15. Personalized ChatGPT dining-guide handoff
+16. Data export/import backup
+17. Service-worker/PWA offline caching
+18. Accessibility/touch improvements
+19. iPhone bottom navigation refinement
+20. Split CSS/JavaScript out of the HTML for maintainability
+21. QA-oriented safeguards for the critical flows
+
+This package does not modify GitHub or GitHub Pages. It is a replacement package for manual deployment when you explicitly choose to deploy it.
