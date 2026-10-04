@@ -376,73 +376,43 @@ async function searchRestaurantsAsTyped(term,token,initial=false){
  let box=document.getElementById('restaurantNameResults');if(!box)return;
  let key=normalizeRestaurantName(term);if(key.length<2)return;
  if(restaurantSearchCache.has(key)){const cached=restaurantSearchCache.get(key);if(cached&&cached.length){renderRestaurantMatches(cached);return}restaurantSearchCache.delete(key)}
- box.innerHTML='<div class="autocompleteLoading">Searching nearby restaurants…</div>';
- const endpoints=['https://overpass-api.de/api/interpreter','https://overpass.kumi.systems/api/interpreter','https://overpass.private.coffee/api/interpreter'];
- const escapeQ=s=>String(s||'').replace(/\\/g,'\\\\').replace(/"/g,'\\\"');
- async function fetchJson(url){let r=await fetch(url,{headers:{'Accept':'application/json'}});if(!r.ok)throw new Error('HTTP '+r.status);return await r.json()}
- async function overpass(q){let last;for(const ep of endpoints){try{return await fetchJson(ep+'?data='+encodeURIComponent(q))}catch(e){last=e}}throw last||new Error('search')}
- function mapPlaces(data,pos){return (data.elements||[]).map(x=>{let t=x.tags||{},la=x.lat??x.center?.lat,lo=x.lon??x.center?.lon;let name=(t.name||t.official_name||t.brand||t.alt_name||t.short_name||'').trim();return {name,address:[t['addr:housenumber'],t['addr:street'],t['addr:city'],t['addr:state']].filter(Boolean).join(', '),website:t.website||t['contact:website']||'',type:restaurantTypeFromTags(t),dist:(pos&&Number.isFinite(la)&&Number.isFinite(lo))?Math.round(distanceMeters(pos.lat,pos.lon,la,lo)/1609.34*10)/10:9999,searchName:normalizeRestaurantName(name),lat:la,lon:lo}}).filter(x=>x.name&&x.searchName&&x.type)}
- function dedupeAndRank(items){
-   let unique=[],seen=new Set();
-   for(const x of items.filter(x=>nameMatches(x.searchName,key)).sort((a,b)=>nameMatchScore(b.searchName,key)-nameMatchScore(a.searchName,key)||a.dist-b.dist)){
-     let k=(normalizeRestaurantName(x.name)+'|'+(x.address||'')).toLowerCase();
-     if(!seen.has(k)){seen.add(k);unique.push(x)}
-   }
-   return unique.slice(0,12)
- }
+ box.innerHTML='<div class="autocompleteLoading">Searching restaurants…</div>';
+ const foodTypes=new Set(['restaurant','fast_food','cafe','pub','bar','food_court','ice_cream','bakery','brewery']);
+ const isCurrent=()=>token===window._restaurantSearchToken;
+ const mapNominatim=(data,pos)=>(data||[]).map(x=>{let a=x.address||{},extra=String(x.type||'').toLowerCase(),klass=String(x.class||'').toLowerCase(),isFood=foodTypes.has(extra)||(klass==='amenity'&&foodTypes.has(extra))||(klass==='shop'&&extra==='bakery');if(!isFood)return null;let name=x.name||x.namedetails?.name||x.display_name?.split(',')[0]||'',la=parseFloat(x.lat),lo=parseFloat(x.lon);return {name,address:[a.house_number,a.road,a.city||a.town||a.village||a.hamlet,a.state].filter(Boolean).join(', '),website:x.extratags?.website||'',type:restaurantTypeFromTags({amenity:extra,name}),dist:(pos&&Number.isFinite(la)&&Number.isFinite(lo))?Math.round(distanceMeters(pos.lat,pos.lon,la,lo)/1609.34*10)/10:9999,searchName:normalizeRestaurantName(name),lat:la,lon:lo}}).filter(x=>x&&x.name&&x.searchName&&x.type);
+ const rank=items=>{let unique=[],seen=new Set();for(const x of items.filter(x=>nameMatches(x.searchName,key)).sort((a,b)=>nameMatchScore(b.searchName,key)-nameMatchScore(a.searchName,key)||a.dist-b.dist)){let k=(normalizeRestaurantName(x.name)+'|'+(x.address||'')).toLowerCase();if(!seen.has(k)){seen.add(k);unique.push(x)}}return unique.slice(0,12)};
+ async function fetchJson(url,timeoutMs=7000){const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),timeoutMs);try{let r=await fetch(url,{headers:{'Accept':'application/json'},signal:controller.signal});if(!r.ok)throw new Error('HTTP '+r.status);return await r.json()}finally{clearTimeout(timer)}}
  try{
-  let pos=null;try{pos=await getBrowserPosition()}catch(e){}
-  let all=[];
-  const tokens=nameTokens(key);
-  const broadToken=(tokens.sort((a,b)=>b.length-a.length)[0]||key).slice(0,8);
-  const regex=escapeQ(broadToken);
-
-  // Search only actual restaurant/food-service POIs. Do not use generic name
-  // searches here because Nominatim/Overpass can return lakes, peaks, roads, etc.
-  if(pos){
-   for(const radius of [2,5,15,30]){
-    if(token!==window._restaurantSearchToken)return;
-    const meters=Math.round(radius*1609.34);
-    const q=`[out:json][timeout:45];(
-      nwr["amenity"~"restaurant|fast_food|cafe|pub|bar|food_court|ice_cream"]["name"~"${regex}",i](around:${meters},${pos.lat},${pos.lon});
-      nwr["shop"="bakery"]["name"~"${regex}",i](around:${meters},${pos.lat},${pos.lon});
-      nwr["craft"="brewery"]["name"~"${regex}",i](around:${meters},${pos.lat},${pos.lon});
-      nwr["amenity"~"restaurant|fast_food|cafe|pub|bar|food_court|ice_cream"]["official_name"~"${regex}",i](around:${meters},${pos.lat},${pos.lon});
-      nwr["amenity"~"restaurant|fast_food|cafe|pub|bar|food_court|ice_cream"]["brand"~"${regex}",i](around:${meters},${pos.lat},${pos.lon});
-    );out center tags;`;
-    try{all.push(...mapPlaces(await overpass(q),pos))}catch(e){}
-    let matches=dedupeAndRank(all);if(matches.length)break;
+   let pos=null;try{pos=await getBrowserPosition()}catch(e){}
+   let all=[];
+   // Fast path: typed-name lookup through Nominatim. This avoids the previous
+   // multi-server Overpass wait that left the UI stuck on "Searching".
+   const p=new URLSearchParams({q:term,format:'jsonv2',addressdetails:'1',limit:'30',dedupe:'1',namedetails:'1'});
+   if(pos){const d=.45;p.set('viewbox',`${pos.lon-d},${pos.lat+d},${pos.lon+d},${pos.lat-d}`);p.set('bounded','0')}
+   try{all.push(...mapNominatim(await fetchJson('https://nominatim.openstreetmap.org/search?'+p.toString(),7000),pos))}catch(e){}
+   let matches=rank(all);
+   if(!matches.length){
+     const p2=new URLSearchParams({q:`${term} restaurant`,format:'jsonv2',addressdetails:'1',limit:'30',dedupe:'1',namedetails:'1'});
+     if(pos){const d=.45;p2.set('viewbox',`${pos.lon-d},${pos.lat+d},${pos.lon+d},${pos.lat-d}`);p2.set('bounded','0')}
+     try{all.push(...mapNominatim(await fetchJson('https://nominatim.openstreetmap.org/search?'+p2.toString(),7000),pos))}catch(e){}
+     matches=rank(all);
    }
-  }
+   if(matches.length){if(isCurrent()){restaurantSearchCache.set(key,matches);renderRestaurantMatches(matches)}return}
+   if(!isCurrent())return;
 
-  // Location-aware Nominatim fallback, but only retain records explicitly
-  // identified as food/restaurant businesses. Never show geographic features.
-  if(!dedupeAndRank(all).length){
-   const queries=[term,`${term} restaurant`];
-   for(const nomQuery of queries){
-    if(dedupeAndRank(all).length)break;
-    const params=new URLSearchParams({q:nomQuery,format:'jsonv2',addressdetails:'1',limit:'50',dedupe:'1',namedetails:'1'});
-    if(pos){const d=0.45;params.set('viewbox',`${pos.lon-d},${pos.lat+d},${pos.lon+d},${pos.lat-d}`);params.set('bounded','0')}
-    try{
-      const data=await fetchJson('https://nominatim.openstreetmap.org/search?'+params.toString());
-      const nom=(data||[]).map(x=>{
-        let a=x.address||{},extra=String(x.type||'').toLowerCase(),klass=String(x.class||'').toLowerCase();
-        const foodTypes=new Set(['restaurant','fast_food','cafe','pub','bar','food_court','ice_cream','bakery','brewery']);
-        const isFood=foodTypes.has(extra)||(klass==='amenity'&&foodTypes.has(extra))||(klass==='shop'&&extra==='bakery');
-        if(!isFood)return null;
-        let name=x.name||x.namedetails?.name||x.display_name?.split(',')[0]||'',la=parseFloat(x.lat),lo=parseFloat(x.lon);
-        return {name,address:[a.house_number,a.road,a.city||a.town||a.village||a.hamlet,a.state].filter(Boolean).join(', '),website:x.extratags?.website||'',type:restaurantTypeFromTags({amenity:extra,name}),dist:(pos&&Number.isFinite(la)&&Number.isFinite(lo))?Math.round(distanceMeters(pos.lat,pos.lon,la,lo)/1609.34*10)/10:9999,searchName:normalizeRestaurantName(name),lat:la,lon:lo};
-      }).filter(x=>x&&x.name&&x.searchName&&x.type);
-      all.push(...nom);
-    }catch(e){}
+   // Short-timeout Overpass fallback for businesses missing from Nominatim.
+   const endpoints=['https://overpass-api.de/api/interpreter','https://overpass.kumi.systems/api/interpreter'];
+   const esc=s=>String(s||'').replace(/\\/g,'\\\\').replace(/"/g,'\\\"');
+   const tokens=nameTokens(key),broad=(tokens.sort((a,b)=>b.length-a.length)[0]||key).slice(0,8),regex=esc(broad);
+   if(pos)for(const radius of [5,15,30]){
+     if(!isCurrent())return;
+     const meters=Math.round(radius*1609.34),q=`[out:json][timeout:15];(nwr["amenity"~"restaurant|fast_food|cafe|pub|bar|food_court|ice_cream"]["name"~"${regex}",i](around:${meters},${pos.lat},${pos.lon});nwr["shop"="bakery"]["name"~"${regex}",i](around:${meters},${pos.lat},${pos.lon});nwr["craft"="brewery"]["name"~"${regex}",i](around:${meters},${pos.lat},${pos.lon}););out center tags;`;
+     try{let data=await fetchJson(endpoints[0]+'?data='+encodeURIComponent(q),8000);all.push(...(data.elements||[]).map(x=>{let t=x.tags||{},la=x.lat??x.center?.lat,lo=x.lon??x.center?.lon,name=(t.name||t.official_name||t.brand||t.alt_name||'').trim();return {name,address:[t['addr:housenumber'],t['addr:street'],t['addr:city'],t['addr:state']].filter(Boolean).join(', '),website:t.website||t['contact:website']||'',type:restaurantTypeFromTags(t),dist:(Number.isFinite(la)&&Number.isFinite(lo))?Math.round(distanceMeters(pos.lat,pos.lon,la,lo)/1609.34*10)/10:9999,searchName:normalizeRestaurantName(name),lat:la,lon:lo}}).filter(x=>x.name&&x.searchName&&x.type));matches=rank(all);if(matches.length)break}catch(e){}
    }
-  }
-
-  // Final safety filter: only business types and only strong name matches.
-  let unique=dedupeAndRank(all).filter(x=>x.type&&x.name&&nameMatches(x.searchName,key));
-  if(unique.length)restaurantSearchCache.set(key,unique);
-  if(token===window._restaurantSearchToken)renderRestaurantMatches(unique);
- }catch(e){if(token===window._restaurantSearchToken)box.innerHTML='<div class="autocompleteLoading">No restaurant matches found.</div>'}
+   if(!isCurrent())return;
+   if(matches.length)restaurantSearchCache.set(key,matches);
+   renderRestaurantMatches(matches);
+ }catch(e){if(isCurrent())box.innerHTML='<div class="autocompleteLoading">No restaurant matches found.</div>'}
 }
 function renderRestaurantMatches(items){let box=document.getElementById('restaurantNameResults');if(!box)return;box.innerHTML=items.length?items.map((x,i)=>`<button type="button" class="autocompleteItem" onclick="chooseRestaurantMatch(${i})"><span><b>${esc(x.name)}</b><small>${esc(x.address||'Nearby')} ${x.type?`• ${esc(x.type)}`:''}</small></span><em>${x.dist<9999?x.dist+' mi':''}</em></button>`).join(''):'<div class="autocompleteLoading">No matches found.</div>';window._restaurantMatches=items}
 function chooseRestaurantMatch(i){let x=(window._restaurantMatches||[])[i];if(!x)return;rName.value=x.name;rLoc.value=x.address||'';rWebsite.value=x.website||'';if(x.type&&rType)rType.value=x.type;let box=document.getElementById('restaurantNameResults');if(box)box.innerHTML=`<div class="autocompleteSelected">✓ ${esc(x.name)} selected</div>`}
