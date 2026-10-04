@@ -44,6 +44,20 @@
 <nav class="bottomNav" id="bottomNav" aria-label="Primary navigation"><button class="active" data-tab="home">⌂<br>Home</button><button data-tab="recipes">▱<br>Recipes</button><button data-tab="restaurants">◉<br>Dining</button></nav>
 <div id="modal" class="modal"><div class="sheet"><button class="close" aria-label="Close" onclick="closeModal()">×</button><div id="modalBody"></div></div></div>
 <input id="restoreFile" type="file" accept="application/json" hidden>
-<script src="app.js?v=20261005-22" defer></script>
+<script>
+/* Metro Eats navigation fallback — keeps primary navigation usable if app initialization is delayed */
+window.tab=function(t){
+  document.querySelectorAll('[data-tab]').forEach(function(b){b.classList.toggle('active',b.dataset.tab===t)});
+  document.querySelectorAll('.section').forEach(function(sec){sec.classList.toggle('active',sec.id===t)});
+  try{if(t==='recipes'&&typeof window.renderRecipes==='function')window.renderRecipes()}catch(e){}
+  try{if(t==='restaurants'&&typeof window.renderRestaurants==='function')window.renderRestaurants()}catch(e){}
+};
+document.addEventListener('DOMContentLoaded',function(){
+  document.querySelectorAll('[data-tab]').forEach(function(b){
+    b.onclick=function(){window.tab(b.dataset.tab)};
+  });
+});
+</script>
+<script src="app.js?v=20261005-23" defer></script>
 </body>
 </html>
