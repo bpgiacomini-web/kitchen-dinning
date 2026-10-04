@@ -1,5 +1,5 @@
 {
-  "updated": "2026-10-04T00:00:00+00:00",
+  "updated": "2026-10-04T06:00:00+00:00",
   "items": [
     {
       "title": "10 St. Louis restaurants with great burgers",
@@ -44,25 +44,32 @@
       "category": "food"
     },
     {
-      "title": "Heaterz Hot Chicken plans riverfront venue at Flock Food Truck site in Alton",
-      "source": "The Telegraph",
-      "date": "October 1, 2026",
-      "url": "https://www.thetelegraph.com/",
-      "category": "food"
+      "title": "The Heavy Anchor reopens after car smashed into the south St. Louis bar",
+      "source": "St. Louis Business Journal",
+      "date": "September 30, 2026",
+      "url": "https://www.bizjournals.com/stlouis/news/2026/09/30/the-heavy-anchor-reopens-car-smashed-building.html",
+      "category": "bars"
     },
     {
-      "title": "Alton restaurant owner serves free steaks to striking public works union members",
-      "source": "The Telegraph",
-      "date": "October 2, 2026",
-      "url": "https://www.thetelegraph.com/",
-      "category": "food"
+      "title": "The Nightmare Bar (October 3 – 31)",
+      "source": "Explore St. Louis",
+      "date": "October 3, 2026",
+      "url": "https://explorestlouis.com/events/category/music/",
+      "category": "bars"
     },
     {
-      "title": "Vote now for your favorite local metro-east breakfast restaurant: Round 1",
-      "source": "Belleville News-Democrat",
-      "date": "September 29, 2026",
-      "url": "https://www.bnd.com/news/local/",
-      "category": "food"
+      "title": "Sam Tallent",
+      "source": "Explore St. Louis",
+      "date": "October 4, 2026",
+      "url": "https://explorestlouis.com/events/category/comedy/",
+      "category": "comedy"
+    },
+    {
+      "title": "Graham Nash",
+      "source": "Explore St. Louis",
+      "date": "October 4, 2026",
+      "url": "https://explorestlouis.com/events/category/music/",
+      "category": "music"
     }
   ]
 }
