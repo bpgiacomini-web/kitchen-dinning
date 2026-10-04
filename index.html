@@ -77,9 +77,9 @@
   <div id="recipeList" class="list"></div>
 </section>
 <section id="restaurants" class="section diningSection">
-  <div class="toolbar"><input class="grow" id="restaurantSearch" aria-label="Search saved restaurants" placeholder="Search saved restaurants…" oninput="renderRestaurants()"><button class="btn primary" onclick="findRestaurantAroundMe()">⌖ Restaurants Around Me</button><button type="button" class="btn" data-me-dining-action="create">＋ Add Restaurant & Review</button></div>
+  <div class="toolbar"><input class="grow" id="restaurantSearch" aria-label="Search saved restaurants" placeholder="Search saved restaurants…" oninput="renderRestaurants()"><button class="btn primary" onclick="findRestaurantAroundMe()">⌖ Restaurants Around Me</button><button type="button" class="btn" onclick="meDiningAction('create')">＋ Add Restaurant & Review</button></div>
   <div id="locationStatus" class="status">Use <b>Restaurants Around Me</b> to identify the restaurant nearest your current location.</div>
-  <div class="surveyCard"><div class="eyebrow">Dining Experience</div><h3>Restaurant Review</h3><p class="hint">Rate 10 dining categories, then record what you ate and whether you would order it again. Every visit is saved separately.</p><div class="actions"><button type="button" class="btn primary" data-me-dining-action="create">★ Create Restaurant & Review</button><button class="btn" onclick="showRankings()">View My Rankings</button></div></div>
+  <div class="surveyCard"><div class="eyebrow">Dining Experience</div><h3>Restaurant Review</h3><p class="hint">Rate 10 dining categories, then record what you ate and whether you would order it again. Every visit is saved separately.</p><div class="actions"><button type="button" class="btn primary" onclick="meDiningAction('create')">★ Create Restaurant & Review</button><button class="btn" onclick="showRankings()">View My Rankings</button></div></div>
   <div id="nearbyResults"></div><div id="restaurantList" class="list"></div>
 </section>
 </div>
