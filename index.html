@@ -256,6 +256,12 @@ body{background:radial-gradient(900px 420px at 15% -120px,rgba(214,168,91,.16),t
  .newsBottom{align-items:flex-start;flex-direction:column}
  .newsMore{width:max-content}
 }
+
+/* Metro Eats News — self-contained editorial photo system. No assets folder required. */
+.newsMast{position:relative;min-height:330px;border-radius:28px;overflow:hidden;margin:18px 0 22px;border:1px solid #343a40;background:linear-gradient(135deg,#17110a,#10161b);box-shadow:0 24px 70px rgba(0,0,0,.45)}
+.newsMast::before{content:"";position:absolute;inset:0;background:radial-gradient(circle at 78% 28%,rgba(214,168,91,.26),transparent 28%),linear-gradient(115deg,rgba(8,10,13,.15),rgba(8,10,13,.88))}.newsMastIn{position:relative;z-index:1;min-height:330px;padding:clamp(28px,6vw,58px);display:flex;flex-direction:column;justify-content:flex-end;max-width:820px}.newsMast .eyebrow{color:#e2bb73;text-transform:uppercase;letter-spacing:.18em;font-size:11px;font-weight:900}.newsMast h2{font-size:clamp(42px,8vw,76px);line-height:.9;letter-spacing:-.055em;margin:10px 0 12px}.newsMast p{margin:0;color:#c6ccd2;font-size:17px;line-height:1.5;max-width:650px}
+.newsFilters{display:flex;gap:7px;flex-wrap:wrap;margin:0 0 14px}.newsFilters button{border:1px solid var(--line);background:#11161b;color:#aeb7bf;border-radius:999px;padding:8px 12px;font-size:12px;font-weight:800}.newsFilters button.active{background:var(--accent);color:#17130d;border-color:var(--accent)}
+.newsGrid{display:grid;grid-template-columns:repeat(12,1fr);gap:12px}.newsCard{grid-column:span 4;position:relative;overflow:hidden;min-height:245px;border:1px solid #303840;border-radius:20px;background:#11161b;padding:0;isolation:isolate;box-shadow:0 12px 34px rgba(0,0,0,.25);transition:transform .18s ease,border-color .18s ease}.newsCard.newsLead{grid-column:span 8;min-height:340px}.newsCard:hover{transform:translateY(-2px);border-color:#5a503f}.newsThumb{position:absolute!important;inset:0;width:100%!important;height:100%!important;max-width:none!important;object-fit:cover!important;border:0!important;border-radius:0!important;z-index:-2;display:block!important;filter:saturate(.95) contrast(1.04)}.newsShade{position:absolute;inset:0;z-index:-1;background:linear-gradient(180deg,rgba(5,7,9,.08) 10%,rgba(5,7,9,.28) 38%,rgba(5,7,9,.92) 100%),linear-gradient(90deg,rgba(5,7,9,.18),transparent 65%)}.newsInner{height:100%;min-height:inherit;display:flex;flex-direction:column;justify-content:space-between;padding:18px}.newsLead .newsInner{padding:24px}.newsMeta{display:flex;align-items:center;gap:7px;flex-wrap:wrap}.newsCategory,.newsSource{display:inline-flex;align-items:center;min-height:27px;padding:5px 9px;border-radius:999px;background:rgba(10,13,16,.72);border:1px solid rgba(255,255,255,.13);backdrop-filter:blur(8px);font-size:10px;font-weight:900;letter-spacing:.08em;text-transform:uppercase}.newsCategory{color:#f0c77b;border-color:rgba(214,168,91,.35)}.newsSource{color:#d9dee2}.newsCard h4{font-size:20px;line-height:1.08;letter-spacing:-.025em;margin:18px 0 10px;max-width:700px;text-shadow:0 2px 14px rgba(0,0,0,.45)}.newsLead h4{font-size:clamp(27px,4vw,42px)}.newsCard h4 a{color:#fff;text-decoration:none}.newsBottom{display:flex;align-items:end;justify-content:space-between;gap:10px}.newsDate{color:#c0c7cd;font-size:11px}.newsMore{color:#f0c77b;font-size:12px;font-weight:850;text-decoration:none!important;white-space:nowrap}.newsMore span{font-size:17px}.newsUpdated{color:#87919a;font-size:11px;margin:10px 0 0}@media(max-width:760px){.newsGrid{grid-template-columns:1fr 1fr}.newsCard,.newsCard.newsLead{grid-column:span 1;min-height:230px}.newsCard.newsLead{grid-column:1/-1;min-height:300px}.newsLead h4{font-size:30px}}@media(max-width:460px){.newsMast{min-height:285px;border-radius:22px}.newsMastIn{min-height:285px;padding:26px 20px}.newsMast h2{font-size:43px}.newsMast p{font-size:15px}.newsGrid{grid-template-columns:1fr}.newsCard,.newsCard.newsLead{grid-column:auto;min-height:215px}.newsCard.newsLead{min-height:285px}.newsLead h4{font-size:28px}.newsInner,.newsLead .newsInner{padding:17px}}
 </style>
 </head>
 <body>
@@ -547,7 +553,18 @@ const fallbackNews=[
 ];
 let currentNewsCategory='all';let cachedNewsItems=[];async function loadLocalNews(){const box=document.getElementById('newsGrid');const stamp=document.getElementById('newsUpdated');if(!box)return;try{const r=await fetch('news.json?'+Date.now(),{cache:'no-store'});if(!r.ok)throw new Error('news unavailable');const data=await r.json();cachedNewsItems=data.items||fallbackNews;renderLocalNews(cachedNewsItems,data.updated)}catch(e){cachedNewsItems=fallbackNews;renderLocalNews(cachedNewsItems,'Fallback stories')}}
 function setNewsCategory(cat){currentNewsCategory=cat;document.querySelectorAll('#newsFilters button').forEach(b=>b.classList.toggle('active',b.dataset.cat===cat));renderLocalNews(cachedNewsItems,document.getElementById('newsUpdated')?.dataset?.updatedValue||'')}
-function newsThumb(category){return ''}
+function newsArtwork(category,title,index){
+  const cfg={food:{bg:'#2b2115',fg:'#e4b969',accent:'#fff1cf',icon:'plate'},bars:{bg:'#201622',fg:'#d9a5ff',accent:'#f2ddff',icon:'glass'},music:{bg:'#14202b',fg:'#76c7e8',accent:'#e5f8ff',icon:'note'},comedy:{bg:'#252018',fg:'#f0c56d',accent:'#fff0c7',icon:'mask'}}[category]||{bg:'#172027',fg:'#d6a85b',accent:'#fff0c8',icon:'plate'};
+  const icons={
+    plate:'<circle cx="790" cy="150" r="105" fill="none" stroke="'+cfg.fg+'" stroke-width="10" opacity=".8"/><circle cx="790" cy="150" r="62" fill="none" stroke="'+cfg.accent+'" stroke-width="7" opacity=".8"/><path d="M718 48v204M690 48v72M746 48v72" stroke="'+cfg.fg+'" stroke-width="8" stroke-linecap="round" opacity=".65"/>',
+    glass:'<path d="M735 52h110l-18 92c-7 35-25 53-37 53s-30-18-37-53z" fill="none" stroke="'+cfg.fg+'" stroke-width="9"/><path d="M790 197v54M750 260h80" stroke="'+cfg.accent+'" stroke-width="9" stroke-linecap="round"/><circle cx="765" cy="86" r="8" fill="'+cfg.accent+'"/><circle cx="803" cy="103" r="7" fill="'+cfg.accent+'"/>',
+    note:'<path d="M748 70v142c-10-8-25-10-37-4-20 9-22 31-4 40 18 9 42 0 51-16 4-7 5-14 5-22V108l86-20v96c-10-8-25-10-37-4-20 9-22 31-4 40 18 9 42 0 51-16 4-7 5-14 5-22V52z" fill="none" stroke="'+cfg.fg+'" stroke-width="9" stroke-linejoin="round"/>',
+    mask:'<path d="M720 82c25-28 115-28 140 0 10 43-8 105-70 139-62-34-80-96-70-139z" fill="none" stroke="'+cfg.fg+'" stroke-width="9"/><circle cx="760" cy="132" r="8" fill="'+cfg.accent+'"/><circle cx="820" cy="132" r="8" fill="'+cfg.accent+'"/><path d="M756 166c21 17 47 17 68 0" fill="none" stroke="'+cfg.accent+'" stroke-width="8" stroke-linecap="round"/>'
+  };
+  const safe=String(title||'Metro Eats').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').slice(0,52);
+  const svg='<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 560"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop stop-color="'+cfg.bg+'"/><stop offset="1" stop-color="#0a0d10"/></linearGradient><radialGradient id="r"><stop stop-color="'+cfg.fg+'" stop-opacity=".22"/><stop offset="1" stop-color="'+cfg.fg+'" stop-opacity="0"/></radialGradient></defs><rect width="1000" height="560" fill="url(#g)"/><circle cx="820" cy="120" r="300" fill="url(#r)"/><path d="M0 430C190 350 300 490 480 405s320-20 520 55v100H0z" fill="#050709" opacity=".5"/>'+icons[cfg.icon]+'<text x="48" y="474" fill="'+cfg.accent+'" font-family="Arial,sans-serif" font-size="26" font-weight="800">METRO EATS • '+String(category||'local').toUpperCase()+'</text><text x="48" y="510" fill="#ffffff" font-family="Arial,sans-serif" font-size="21">'+safe+'</text></svg>';
+  return 'data:image/svg+xml;charset=UTF-8,'+encodeURIComponent(svg);
+}
 
 function renderLocalNews(items,updated){
   const box=document.getElementById('newsGrid'),stamp=document.getElementById('newsUpdated');
@@ -555,21 +572,10 @@ function renderLocalNews(items,updated){
   let filtered=currentNewsCategory==='all'?items:items.filter(x=>(x.category||'food')===currentNewsCategory);
   if(!filtered.length){box.innerHTML='<div class="newsEmpty">No stories in this category today. Try All for the full local edit.</div>';return}
   box.innerHTML=filtered.slice(0,9).map((x,index)=>{
-    let cat=x.category||'food', image=x.image||'';
-    return `<article class="newsCard ${index===0?'newsLead':''}" style="--news-image:url("${esc(image)}")">
-      <img class="newsThumb" src="${esc(image)}" alt="${esc(x.title||cat+' local feature')}" loading="lazy" onerror="this.style.display='none'">
-      <div class="newsShade"></div>
-      <div class="newsInner">
-        <div class="newsMeta"><span class="newsCategory">${esc(cat.replace(/^./,c=>c.toUpperCase()))}</span><span class="newsSource">${esc(x.source||'Local publication')}</span></div>
-        <h4><a href="${esc(x.url||'#')}" target="_blank" rel="noopener noreferrer">${esc(x.title||'Local story')}</a></h4>
-        <div class="newsBottom"><div class="newsDate">${esc(x.date||'')}</div><a class="newsMore" href="${esc(x.url||'#')}" target="_blank" rel="noopener noreferrer">Read original story <span>→</span></a></div>
-      </div>
-    </article>`
+    let cat=x.category||'food', image=newsArtwork(cat,x.title,index);
+    return '<article class="newsCard '+(index===0?'newsLead':'')+'"><img class="newsThumb" src="'+image+'" alt="'+esc(x.title||cat+' local feature')+'" loading="lazy"><div class="newsShade"></div><div class="newsInner"><div class="newsMeta"><span class="newsCategory">'+esc(cat.replace(/^./,c=>c.toUpperCase()))+'</span><span class="newsSource">'+esc(x.source||'Local publication')+'</span></div><h4><a href="'+esc(x.url||'#')+'" target="_blank" rel="noopener noreferrer">'+esc(x.title||'Local story')+'</a></h4><div class="newsBottom"><div class="newsDate">'+esc(x.date||'')+'</div><a class="newsMore" href="'+esc(x.url||'#')+'" target="_blank" rel="noopener noreferrer">Read original story <span>→</span></a></div></div></article>';
   }).join('');
-  if(updated&&stamp){
-    stamp.dataset.updatedValue=updated;
-    stamp.textContent=updated==='Fallback stories'?'Showing saved stories':'Updated '+new Date(updated).toLocaleDateString();
-  }
+  if(updated&&stamp){stamp.dataset.updatedValue=updated;stamp.textContent=updated==='Fallback stories'?'Showing saved stories':'Updated '+new Date(updated).toLocaleDateString();}
 }
 
 renderRecipes();renderRestaurants();loadLocalNews();
