@@ -156,3 +156,163 @@ async function loadLocalNews(){let stampEl=document.getElementById('newsUpdated'
 function renderLocalNews(items,updated){let box=document.getElementById('newsGrid'),stampEl=document.getElementById('newsUpdated');box.innerHTML=items.length?items.slice(0,10).map(x=>`<article class="newsCard"><div class="newsSource">${esc(x.source||'Local publication')}</div><h4><a href="${esc(x.url||'#')}" target="_blank" rel="noopener noreferrer">${esc(x.title||'Local story')}</a></h4><a class="newsMore" href="${esc(x.url||'#')}" target="_blank" rel="noopener noreferrer">Read Full Story →</a><div class="newsDate">${esc(x.date||'')}</div></article>`).join(''):'<div class="empty">No local stories are available right now.</div>';if(stampEl)stampEl.textContent=updated&&updated!=='Saved stories'?'Updated '+new Date(updated).toLocaleString():'Showing saved stories'}
 function registerSW(){if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{})}
 renderRecipes();renderRestaurants();updateStory();loadLocalNews();registerSW();
+
+
+/* Metro Eats Food Critic survey — independent of service-worker changes */
+var ME_CRITIC_QUESTIONS=[
+  ['Overall Experience','Your overall impression of the visit.'],
+  ['Food Quality','Calculated from the individual dishes and drinks you rated.'],
+  ['Service','Attentiveness, friendliness, professionalism and timing.'],
+  ['Value','Pricing, portions, quality and whether it felt worth it.']
+];
+var ME_CRITIC_CATS=['Appetizers','Entrées','Salads','Soups','Sides','Desserts','Drinks'];
+var ME_CRITIC_SUGGESTIONS={
+  Pizza:['Pizza','Wings','Toasted Ravioli','Garlic Bread','Pasta','House Salad'],
+  Mexican:['Tacos','Burrito','Enchiladas','Fajitas','Quesadilla','Nachos','Rice','Beans','Chips & Salsa'],
+  BBQ:['Brisket','Ribs','Pulled Pork','Chicken','Sausage','Baked Beans','Coleslaw','Potato Salad'],
+  Steakhouse:['Steak','Prime Rib','Burger','Chicken','Pork Chop','Salmon','Baked Potato','House Salad'],
+  Italian:['Pizza','Pasta','Lasagna','Chicken Parmesan','Italian Beef','Calzone','Garlic Bread','Tiramisu'],
+  Chinese:['Egg Rolls','Crab Rangoon','Fried Rice','Lo Mein','General Tso Chicken','Orange Chicken','Beef & Broccoli'],
+  Japanese:['Sushi','Sashimi','Ramen','Teriyaki','Tempura','Gyoza','Miso Soup'],
+  Indian:['Samosas','Tandoori Chicken','Chicken Tikka Masala','Butter Chicken','Biryani','Naan','Saag'],
+  Thai:['Pad Thai','Drunken Noodles','Curry','Tom Yum Soup','Fried Rice','Spring Rolls'],
+  Seafood:['Fish & Chips','Grilled Fish','Fried Shrimp','Crab Cakes','Salmon','Seafood Pasta','Coleslaw'],
+  Burgers:['Burger','Chicken Sandwich','Wings','Fries','Onion Rings','Tater Tots','Side Salad'],
+  'Breakfast & Brunch':['Eggs','Omelet','Pancakes','Waffles','French Toast','Biscuits & Gravy','Bacon','Sausage'],
+  'Bar & Grill':['Wings','Burger','Steak','Chicken','Fish','Sandwich','Pretzel','Fries','Side Salad'],
+  Other:['Appetizer','Entrée','Sandwich','Burger','Pizza','Salad','Soup','Side','Dessert']
+};
+var ME_CRITIC_ALIASES={'American':'Other','Deli':'Other','Fast Food':'Burgers','Fine Dining':'Steakhouse','French':'Steakhouse','Korean':'Other','Mediterranean':'Other','Middle Eastern':'Other','Vietnamese':'Other','Vegetarian / Vegan':'Other','Food Truck':'Other','Bakery':'Other','Dessert / Ice Cream':'Other','Brewery / Brewpub':'Bar & Grill','Gastropub':'Bar & Grill','Sports Bar':'Bar & Grill','Cafés & Coffee':'Breakfast & Brunch'};
+function meCriticEnsureState(){
+  if(!surveyState.foodItems)surveyState.foodItems=[];
+  if(!surveyState.foodOpen)surveyState.foodOpen={};
+  if(surveyState.legacyOrdered===undefined)surveyState.legacyOrdered=surveyState.ordered||'';
+  if(surveyState.orderAgain===undefined)surveyState.orderAgain='';
+}
+function meCriticSuggestions(type){return ME_CRITIC_SUGGESTIONS[type]||ME_CRITIC_SUGGESTIONS[ME_CRITIC_ALIASES[type]]||ME_CRITIC_SUGGESTIONS.Other}
+function meCriticCategory(name){
+  let n=normalizeRestaurantName(name);
+  if(/salad/.test(n))return'Salads';
+  if(/soup|chowder|pho|ramen/.test(n))return'Soups';
+  if(/dessert|cake|pie|ice cream|cookie|brownie|tiramisu|milkshake/.test(n))return'Desserts';
+  if(/drink|coffee|tea|beer|wine|cocktail/.test(n))return'Drinks';
+  if(/fries|potato|beans|rice|coleslaw|vegetable|bread|chips|naan/.test(n))return'Sides';
+  if(/appetizer|wings|egg rolls|spring rolls|samosa|rangoon|nachos|pretzel|dumpling|gyoza/.test(n))return'Appetizers';
+  return'Entrées';
+}
+function meCriticFoodAverage(){
+  meCriticEnsureState();
+  let a=surveyState.foodItems.map(x=>Number(x.rating||0)).filter(x=>x>0);
+  return a.length?Math.round(a.reduce((p,c)=>p+c,0)/a.length*10)/10:0;
+}
+function meCriticFinalScore(){
+  let a=[Number(surveyState.scores[0]||0),meCriticFoodAverage(),Number(surveyState.scores[2]||0),Number(surveyState.scores[3]||0)].filter(x=>x>0);
+  return a.length?Math.round(a.reduce((p,c)=>p+c,0)/a.length*10)/10:0;
+}
+function meCriticCapture(){
+  meCriticEnsureState();
+  surveyState.legacyOrdered=document.getElementById('criticLegacyOrder')?.value?.trim()||surveyState.legacyOrdered||'';
+  surveyState.foodItems.forEach(x=>{
+    let n=document.getElementById('criticFood-'+x.id),note=document.getElementById('criticNote-'+x.id);
+    if(n)x.name=n.value.trim()||x.name;
+    if(note)x.notes=note.value.trim();
+  });
+}
+function meCriticSetScore(i,n){meCriticCapture();surveyState.scores[i]=n;renderSurvey()}
+function meCriticSetAgain(v){meCriticCapture();surveyState.orderAgain=v;renderSurvey()}
+function meCriticToggleCat(c){meCriticCapture();surveyState.foodOpen[c]=!surveyState.foodOpen[c];renderSurvey()}
+function meCriticAddFood(c,n=''){meCriticCapture();surveyState.foodItems.push({id:uid(),category:c,name:n,rating:0,notes:''});surveyState.foodOpen[c]=true;renderSurvey()}
+function meCriticAddSuggested(c,n){meCriticEnsureState();if(!surveyState.foodItems.some(x=>x.category===c&&normalizeRestaurantName(x.name)===normalizeRestaurantName(n)))meCriticAddFood(c,n)}
+function meCriticRemoveFood(id){meCriticCapture();surveyState.foodItems=surveyState.foodItems.filter(x=>x.id!==id);renderSurvey()}
+function meCriticRateFood(id,n){meCriticCapture();let x=surveyState.foodItems.find(x=>x.id===id);if(x){x.rating=n;renderSurvey()}}
+function meCriticFoodCard(x){
+  return '<div style="border-top:1px solid var(--line);padding:10px 0"><div class="actions" style="margin:0"><input id="criticFood-'+x.id+'" class="grow" value="'+esc(x.name)+'" placeholder="What did you eat?"><button class="btn" onclick="meCriticRemoveFood(\''+x.id+'\')">Remove</button></div><div class="reviewScore">'+[1,2,3,4,5,6,7,8,9,10].map(n=>'<button class="'+(Number(x.rating)===n?'active':'')+'" onclick="meCriticRateFood(\''+x.id+'\','+n+')">'+n+'</button>').join('')+'</div><textarea id="criticNote-'+x.id+'" rows="2" class="surveyNote" placeholder="Critic notes — taste, texture, preparation, portion…">'+esc(x.notes||'')+'</textarea></div>';
+}
+function meCriticFoodBlock(c,type){
+  meCriticEnsureState();
+  let items=surveyState.foodItems.filter(x=>x.category===c),open=!!surveyState.foodOpen[c],suggestions=meCriticSuggestions(type).filter(x=>meCriticCategory(x)===c);
+  let h='<div class="surveyItem" style="margin:8px 0;padding:0"><button class="btn" style="width:100%;text-align:left" onclick="meCriticToggleCat(\''+c+'\')"><b>'+c+'</b><span style="float:right">'+(items.length||'+')+'</span></button>';
+  if(open){
+    h+='<div style="padding:8px">'+suggestions.map(x=>'<button class="btn secondary" style="margin:3px" onclick="meCriticAddSuggested(\''+c+'\',\''+x.replace(/'/g,'&#39;')+'\')">'+esc(x)+'</button>').join('');
+    h+=items.map(meCriticFoodCard).join('');
+    h+='<button class="btn primary" style="width:100%" onclick="meCriticAddFood(\''+c+'\')">＋ Add Item</button></div>';
+  }
+  return h+'</div>';
+}
+function meCriticLegacyScores(v){
+  let p=v?.scores||{};
+  if(Array.isArray(p))return {0:Number(p[0]||0),1:Number(p[1]||0),2:Number(p[3]||0),3:Number(p[6]||0)};
+  return {0:Number(p[0]||0),1:Number(p[1]||0),2:Number(p[2]||0),3:Number(p[3]||0)};
+}
+function startSurvey(id){
+  let r=db.restaurants.find(x=>x.id===id);if(!r)return;
+  pendingRestaurant=null;pendingReviewRestaurant={...r,photos:[...(r.photos||[])]};restaurantEditMode=false;window._editingPhotos=[...(r.photos||[])] ;
+  let latest=r.reviewHistory?.[r.reviewHistory.length-1]||r.survey||null;
+  let items=(latest?.foodItems||[]).map(x=>({...x,id:x.id||uid()}));
+  if(!items.length&&latest?.ordered)items=[{id:uid(),category:'Entrées',name:latest.ordered,rating:Number(latest?.scores?.[1]||0),notes:'Imported from an earlier review.'}];
+  surveyState={restaurantId:id,scores:meCriticLegacyScores(latest),foodItems:items,foodOpen:{},legacyOrdered:latest?.ordered||'',orderAgain:latest?.orderAgain||''};
+  renderSurvey();
+}
+function openRestaurant(id,prefilling=null){
+  let r=id==='new'?prefilling||{id:'new',name:'',type:'Other',location:'',website:'',menuUrl:'',notes:'',photos:[],survey:null,reviewHistory:[],createdAt:null,updatedAt:null}:db.restaurants.find(x=>String(x.id)===String(id));
+  if(!r)return;
+  if(id!=='new'&&!r.id){r.id=uid();save()}
+  pendingRestaurant=id==='new'?{...r}:null;pendingReviewRestaurant=id==='new'?null:{...r,photos:[...(r.photos||[])]};restaurantEditMode=id!=='new';window._editingPhotos=[...(r.photos||[])];
+  let latest=r.reviewHistory?.[r.reviewHistory.length-1]||r.survey||null;
+  surveyState={restaurantId:id==='new'?'new':r.id,scores:meCriticLegacyScores(latest),foodItems:(latest?.foodItems||[]).map(x=>({...x,id:x.id||uid()})),foodOpen:{},legacyOrdered:latest?.ordered||'',orderAgain:latest?.orderAgain||''};
+  if(!surveyState.foodItems.length&&latest?.ordered)surveyState.foodItems=[{id:uid(),category:'Entrées',name:latest.ordered,rating:Number(latest?.scores?.[1]||0),notes:'Imported from an earlier review.'}];
+  renderSurvey();
+}
+function useNearby(x){
+  pendingRestaurant={id:'new',name:x.name,type:x.type||'Other',location:x.address||'',website:x.website||'',menuUrl:'',notes:'',photos:[],survey:null,reviewHistory:[],createdAt:new Date().toISOString(),updatedAt:null,lat:x.lat,lon:x.lon};
+  pendingReviewRestaurant=null;restaurantEditMode=false;window._editingPhotos=[];surveyState={restaurantId:'new',scores:{},foodItems:[],foodOpen:{},legacyOrdered:'',orderAgain:''};renderSurvey();
+}
+function renderSurvey(){
+  meCriticEnsureState();
+  let r=currentSurveyRestaurant(),type=r?.type||'Other',foodAvg=meCriticFoodAverage(),final=meCriticFinalScore(),name=r?.name||'Restaurant Review';
+  if(!window._editingPhotos)window._editingPhotos=[...(r?.photos||[])];modal.classList.add('show');
+  let h=renderRestaurantEditor(r);
+  h+='<div class="status">Food Critic Review</div><div class="scoreHero"><div class="restaurantScore">'+(final||'—')+'<span style="font-size:.45em;letter-spacing:0"> / 10</span></div><div class="restaurantScoreLabel">Critic Score — Overall Experience, Food Quality, Service & Value</div></div>';
+  h+='<div class="meta">'+esc(name)+(r?.location?' • '+esc(r.location):'')+'</div>';
+  h+='<div class="reviewForm"><h3>Critic Rating</h3><p class="hint">Four ratings. Food Quality is calculated from the individual things you ate.</p>';
+  ME_CRITIC_QUESTIONS.forEach((q,i)=>{
+    let value=i===1?(foodAvg?foodAvg+'/10':'Calculated from food below'):(surveyState.scores[i]?surveyState.scores[i]+'/10':'Select 1–10');
+    h+='<div class="reviewQuestion"><div class="reviewQuestionHead"><b>'+(i+1)+'. '+q[0]+'</b><span>'+value+'</span></div>';
+    if(i===1)h+='<div class="status">'+(foodAvg?foodAvg.toFixed(1)+'/10 from '+surveyState.foodItems.filter(x=>Number(x.rating)>0).length+' rated item(s)':'Rate each item below to calculate this score.')+'</div>';
+    else h+='<div class="reviewScore">'+[1,2,3,4,5,6,7,8,9,10].map(n=>'<button aria-label="'+q[0]+' score '+n+'" class="'+(Number(surveyState.scores[i])===n?'active':'')+'" onclick="meCriticSetScore('+i+','+n+')">'+n+'</button>').join('')+'</div>';
+    h+='</div>';
+  });
+  h+='</div><div class="reviewExtras"><h3>What I Ate</h3><p class="hint">Rate the dishes and drinks you actually had. Add critic notes for taste, texture, preparation, portion and standout details.</p>';
+  h+=ME_CRITIC_CATS.map(c=>meCriticFoodBlock(c,type)).join('');
+  h+='<div class="field"><label for="criticLegacyOrder">Previous order note</label><textarea id="criticLegacyOrder" rows="2" class="surveyNote" placeholder="Optional">'+esc(surveyState.legacyOrdered||'')+'</textarea></div>';
+  h+='<div class="field"><label>Would I order it again?</label><div class="actions"><button class="btn '+(surveyState.orderAgain==='Yes'?'primary':'')+'" onclick="meCriticSetAgain(\'Yes\')">Yes</button><button class="btn '+(surveyState.orderAgain==='No'?'primary':'')+'" onclick="meCriticSetAgain(\'No\')">No</button></div></div></div>';
+  h+='<div class="surveyActions"><button class="btn danger" onclick="cancelSurvey()">Cancel</button><button class="btn primary" onclick="saveSurvey()">Save Restaurant & Review</button></div>';
+  modalBody.innerHTML=h;
+}
+async function saveSurvey(){
+  meCriticEnsureState();meCriticCapture();
+  let missing=[0,2,3].find(i=>!surveyState.scores[i]);
+  if(missing!==undefined){alert('Please choose a score from 1 to 10 for Question '+(missing+1)+'.');return}
+  if(!surveyState.foodItems.length||surveyState.foodItems.some(x=>!String(x.name||'').trim()||!Number(x.rating))){alert('Please add and rate every food item you ate.');return}
+  if(!surveyState.orderAgain){alert('Please choose Yes or No for whether you would order it again.');return}
+  let now=new Date().toISOString(),foodAvg=meCriticFoodAverage();
+  let review={scores:{0:Number(surveyState.scores[0]),1:foodAvg,2:Number(surveyState.scores[2]),3:Number(surveyState.scores[3])},foodItems:surveyState.foodItems.map(x=>({category:x.category,name:String(x.name).trim(),rating:Number(x.rating),notes:String(x.notes||'').trim()})),ordered:surveyState.legacyOrdered||'',orderAgain:surveyState.orderAgain,overall:meCriticFinalScore(),createdAt:now};
+  let currentRestaurant=pendingRestaurant||pendingReviewRestaurant||{},fields={name:fieldValue('rName')||currentRestaurant.name||'Unnamed restaurant',type:fieldValue('rType')||currentRestaurant.type||'Other',location:fieldValue('rLoc')||currentRestaurant.location||'',website:fieldValue('rWebsite')||currentRestaurant.website||'',menuUrl:fieldValue('rMenuUrl')||currentRestaurant.menuUrl||'',notes:fieldValue('rNotes')||currentRestaurant.notes||'',photos:[...(window._editingPhotos||currentRestaurant.photos||[])],lat:currentRestaurant.lat??null,lon:currentRestaurant.lon??null};
+  if(pendingRestaurant)pendingRestaurant={...pendingRestaurant,...fields};if(pendingReviewRestaurant)pendingReviewRestaurant={...pendingReviewRestaurant,...fields};
+  let saveButton=document.querySelector('.surveyActions .btn.primary');if(saveButton){saveButton.disabled=true;saveButton.textContent='Saving…'}
+  try{
+    if(pendingRestaurant){let r={...pendingRestaurant,...fields,reviewHistory:[review],survey:review,rating:Math.max(1,Math.min(5,Math.round(review.overall/2*10)/10)),createdAt:pendingRestaurant.createdAt||now,updatedAt:now};db.restaurants.unshift(r)}
+    else if(pendingReviewRestaurant){let r=db.restaurants.find(x=>x.id===pendingReviewRestaurant.id);if(!r)throw new Error('The restaurant could not be found in your saved restaurants.');Object.assign(r,pendingReviewRestaurant,fields);r.reviewHistory=restaurantEditMode&&r.reviewHistory?.length?[...(r.reviewHistory||[]).slice(0,-1),review]:[...(r.reviewHistory||[]),review];r.survey=review;r.rating=Math.max(1,Math.min(5,Math.round(review.overall/2*10)/10));r.updatedAt=now}
+    else{let r=db.restaurants.find(x=>x.id===surveyState.restaurantId);if(!r)throw new Error('The restaurant could not be found in your saved restaurants.');Object.assign(r,fields);r.reviewHistory=[...(r.reviewHistory||[]),review];r.survey=review;r.rating=Math.max(1,Math.min(5,Math.round(review.overall/2*10)/10));r.updatedAt=now}
+    await saveWithQuotaRecovery();pendingRestaurant=null;pendingReviewRestaurant=null;restaurantEditMode=false;window._editingPhotos=[];closeModal();renderRestaurants();showRankings();
+  }catch(e){console.error('Metro Eats food critic save failed',e);if(saveButton){saveButton.disabled=false;saveButton.textContent='Save Restaurant & Review'}alert('Metro Eats could not save this review. Your entries are still on screen.\n\n'+(e?.message||'Please try again.'))}
+}
+function meCriticTopFoods(s){return(s?.foodItems||[]).filter(x=>x.name&&Number(x.rating)>0).sort((a,b)=>Number(b.rating)-Number(a.rating)).slice(0,3)}
+function showVisitHistory(id){
+  let r=db.restaurants.find(x=>x.id===id);if(!r)return;let h=[...(r.reviewHistory||[])].reverse();modal.classList.add('show');
+  modalBody.innerHTML='<div class="eyebrow">Food Critic History</div><h2>'+esc(r.name)+'</h2><p class="hint">Each visit is kept as a separate critic review.</p><div class="visitHistory">'+(h.length?h.map((v,i)=>'<article class="visit"><div class="visitTop"><strong>Visit '+(h.length-i)+'</strong><strong>'+Number(v.overall||0).toFixed(1)+'/10</strong></div>'+stamp('Reviewed',v.createdAt)+'<div class="small" style="margin-top:8px"><b>What I ate:</b> '+esc(v.ordered||'—')+'</div><div class="small"><b>Order again:</b> '+esc(v.orderAgain||'—')+'</div>'+(v.foodItems?.length?'<div class="small" style="margin-top:8px"><b>Top items:</b> '+meCriticTopFoods(v).map(x=>esc(x.name)+' '+Number(x.rating).toFixed(1)+'/10').join(' • ')+'</div>':'')+'</article>').join(''):'<div class="empty">No visit history yet.</div>')+'</div><div class="actions"><button class="btn primary" onclick="closeModal();startSurvey(\''+r.id+'\')">Review Again</button><button class="btn danger" onclick="closeModal()">Close</button></div>';
+}
+function showRankings(){
+  let ranked=[...db.restaurants].filter(r=>r.survey).sort((a,b)=>(b.survey.overall||0)-(a.survey.overall||0));modal.classList.add('show');
+  modalBody.innerHTML='<div class="eyebrow">Food Critic</div><h2>My Restaurant Rankings</h2><p class="hint">Critic Score averages Overall Experience, Food Quality, Service and Value. Food Quality comes from the dishes and drinks you rated.</p>'+(ranked.length?'<div class="surveyGrid">'+ranked.map((r,i)=>'<div class="surveyItem"><span class="rankBadge">#'+(i+1)+'</span><div><b>'+esc(r.name)+'</b><div class="small">'+esc(r.location||'')+' • <strong>'+Number(r.survey.overall||0).toFixed(1)+'/10</strong></div>'+(r.survey.foodItems?.length?'<div class="small">Top: '+meCriticTopFoods(r.survey).map(x=>esc(x.name)+' '+Number(x.rating).toFixed(1)+'/10').join(' • ')+'</div>':'')+stamp('Latest review',r.survey.createdAt)+'</div><button class="btn" onclick="closeModal();startSurvey(\''+r.id+'\')">Review</button></div>').join('')+'</div>':'<div class="empty">Complete a food critic review to start your restaurant rankings.</div>')+'<div class="actions"><button class="btn danger" onclick="closeModal()">Close</button></div>';
+}
