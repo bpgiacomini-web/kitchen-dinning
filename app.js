@@ -662,3 +662,51 @@ function meDiningReview(id){
     alert('The review could not be opened. Please refresh Metro Eats and try again.');
   }
 }
+
+
+/* FINAL FINAL REVIEW-AGAIN HANDLER — must remain last so it wins over legacy declarations */
+function meDiningReview(id){
+  try{
+    let restaurants=Array.isArray(db&&db.restaurants)?db.restaurants:[];
+    let r=restaurants.find(function(x){return String(x.id)===String(id)});
+    if(!r){alert('That restaurant could not be found in Metro Eats.');return;}
+    pendingRestaurant=null;
+    pendingReviewRestaurant={...r,photos:Array.isArray(r.photos)?r.photos.slice():[]};
+    restaurantEditMode=false;
+    window._editingPhotos=Array.isArray(r.photos)?r.photos.slice():[];
+    meDiningLoadReviewState(r);
+
+    /* Build the review screen directly. This bypasses every older review renderer. */
+    let score=function(i){return Number((surveyState.scores||{})[i]||0)};
+    let foodItems=Array.isArray(surveyState.foodItems)?surveyState.foodItems:[];
+    let foodAvg=foodItems.map(function(x){return Number(x.rating||0)}).filter(function(x){return x>0});
+    foodAvg=foodAvg.length?Math.round(foodAvg.reduce(function(a,b){return a+b},0)/foodAvg.length*10)/10:0;
+    let finalScores=[score(0),foodAvg,score(2),score(3)].filter(function(x){return x>0});
+    let final=finalScores.length?Math.round(finalScores.reduce(function(a,b){return a+b},0)/finalScores.length*10)/10:0;
+    let h='<div class="eyebrow">Food Critic</div><h2>Review Again: '+esc(r.name||'Restaurant')+'</h2>';
+    h+='<p class="hint">Your previous review is loaded. Update the visit, dishes, ratings and notes, then save it as a new visit.</p>';
+    h+='<div class="scoreHero"><div class="restaurantScore">'+(final||'—')+'<span style="font-size:.45em"> / 10</span></div><div class="restaurantScoreLabel">Critic Score</div></div>';
+    h+='<div class="reviewForm"><h3>Critic Rating</h3>';
+    [0,2,3].forEach(function(i){
+      let labels={0:'Overall Experience',2:'Service',3:'Value'};
+      h+='<div class="reviewQuestion"><div class="reviewQuestionHead"><b>'+labels[i]+'</b><span>'+(score(i)||'Select 1–10')+'/10</span></div><div class="reviewScore">';
+      h+=[1,2,3,4,5,6,7,8,9,10].map(function(n){return '<button type="button" class="'+(score(i)===n?'active':'')+'" onclick="meCriticSetScore('+i+','+n+')">'+n+'</button>'}).join('');
+      h+='</div></div>';
+    });
+    h+='</div><div class="reviewExtras"><h3>What I Ate</h3><p class="hint">Your saved dishes are loaded below. Each can be rated 1–10.</p>';
+    foodItems.forEach(function(x){
+      h+='<div class="criticFoodCard"><div class="field"><label for="criticFood-'+x.id+'">Dish or drink</label><input id="criticFood-'+x.id+'" value="'+esc(x.name||'')+'"></div>';
+      h+='<div class="criticRatingBlock"><div class="criticRatingHead"><b>Food Rating</b><span>'+(Number(x.rating)?Number(x.rating)+'/10':'Select 1–10')+'</span></div><div class="criticFoodScore">';
+      h+=[1,2,3,4,5,6,7,8,9,10].map(function(n){return '<button type="button" class="criticFoodScoreBtn '+(Number(x.rating)===n?'active':'')+'" onclick="meCriticRateFood(\''+String(x.id).replace(/'/g,'\\\'')+'\','+n+')">'+n+'</button>'}).join('');
+      h+='</div></div><div class="field"><label for="criticNote-'+x.id+'">Critic Notes</label><textarea id="criticNote-'+x.id+'" class="criticFoodNotes" rows="3">'+esc(x.notes||'')+'</textarea></div></div>';
+    });
+    h+='<div class="field"><label for="criticLegacyOrder">Additional order note</label><textarea id="criticLegacyOrder" rows="2" class="surveyNote">'+esc(surveyState.legacyOrdered||'')+'</textarea></div>';
+    h+='<div class="field"><label>Would I order it again?</label><div class="actions"><button type="button" class="btn '+(surveyState.orderAgain==='Yes'?'primary':'')+'" onclick="meCriticSetAgain(\'Yes\')">Yes</button><button type="button" class="btn '+(surveyState.orderAgain==='No'?'primary':'')+'" onclick="meCriticSetAgain(\'No\')">No</button></div></div></div>';
+    h+='<div class="surveyActions"><button type="button" class="btn danger" onclick="cancelSurvey()">Cancel</button><button type="button" class="btn primary" onclick="saveSurvey()">Save Restaurant & Review</button></div>';
+    modal.classList.add('show');
+    modalBody.innerHTML=h;
+  }catch(e){
+    console.error('Metro Eats FINAL Review Again error',e);
+    alert('The review could not be opened. '+(e&&e.message?e.message:'Please try again.'));
+  }
+}
