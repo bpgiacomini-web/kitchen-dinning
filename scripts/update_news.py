@@ -1,149 +1,99 @@
+import datetime as dt
+import email.utils
 import json
 import re
 import urllib.parse
 import urllib.request
 import xml.etree.ElementTree as ET
-from datetime import datetime, timezone, timedelta
-from email.utils import parsedate_to_datetime
+from pathlib import Path
 
-MIN_STORIES = 10
-LOOKBACK_DAYS = 60
+ROOT = Path(__file__).resolve().parents[1]
+OUT = ROOT / "news.json"
 
-FEEDS = [
-    ("Sauce Magazine", 'site:saucemagazine.com "St. Louis" (restaurant OR dining OR food OR bar OR brewery)', "stl"),
-    ("St. Louis Magazine", 'site:stlmag.com/dining "St. Louis" (restaurant OR dining OR food OR bar OR brewery)', "stl"),
-    ("The Telegraph", 'site:thetelegraph.com (Alton OR Godfrey OR "East Alton" OR "Wood River" OR Bethalto OR Edwardsville OR "Glen Carbon" OR Grafton) (restaurant OR dining OR food OR bar OR brewery)', "metroEast"),
-    ("Belleville News-Democrat", 'site:bnd.com (Belleville OR Collinsville OR "Fairview Heights" OR "O\'Fallon" OR Shiloh OR Edwardsville OR "Metro East") (restaurant OR dining OR food OR breakfast OR bar OR brewery)', "metroEast"),
-    ("Local & Regional", '("St. Louis" OR "Metro East" OR Alton OR Belleville OR Edwardsville OR Collinsville) (restaurant OR dining OR food OR brewery OR bar)', "regional"),
+QUERIES = [
+    "St. Louis restaurant dining food when:7d",
+    "Alton Illinois restaurant dining food when:7d",
+    "Metro East Illinois restaurant food dining when:7d",
 ]
-
-LOCAL_TERMS = re.compile(
-    r"\b(st\.?\s*louis|saint\s*louis|metro\s*east|alton|godfrey|east\s*alton|wood\s*river|"
-    r"bethalto|grafton|edwardsville|glen\s*carbon|granite\s*city|collinsville|belleville|"
-    r"fairview\s*heights|shiloh|o'?fallon|ofallon|maryville|pontoon\s*beach|roxana|highland|"
-    r"millstadt|waterloo|columbia|creve\s*coeur|university\s*city|maplewood|kirkwood|"
-    r"brentwood|central\s*west\s*end|soulard|cherokee\s*street|the\s*hill)\b",
-    re.I,
-)
-
-FOOD_TERMS = re.compile(
-    r"\b(restaurant|restaurants|dining|food|drink|bar|bars|brewery|breweries|brewpub|cafe|cafes|"
-    r"coffee|chef|menu|menus|pizza|burger|burgers|breakfast|brunch|chicken|bbq|barbecue|dessert|"
-    r"ice\s*cream|taco|tacos|steak|seafood|bakery|baking|culinary|eatery|eateries|opens|opening|"
-    r"closes|closing|reopens|reopen|food\s*truck|hospitality|wine|cocktail|cocktails)\b",
-    re.I,
-)
-
-BAD_TERMS = re.compile(
-    r"\b(chicago|springfield|peoria|rockford|champaign|urbana|naperville|joliet|quad\s*cities|"
-    r"carbondale|decatur|indianapolis|kansas\s*city|nashville|new\s*york|los\s*angeles|miami|"
-    r"denver|seattle|portland|national|nationwide|travel|vacation|cruise|disney)\b",
-    re.I,
-)
-
-TRUSTED_LOCAL = {
+ALLOWED_SOURCES = {
     "Sauce Magazine",
     "St. Louis Magazine",
     "The Telegraph",
     "Belleville News-Democrat",
+    "EdGlenToday",
+    "RiverBender",
+    "St. Louis Business Journal",
 }
+FOOD_TERMS = re.compile(
+    r"\b(restaurant|restaurants|dining|food|drink|bar|bars|brewery|breweries|brewpub|"
+    r"cafe|coffee|chef|menu|menus|pizza|burger|burgers|breakfast|brunch|chicken|bbq|"
+    r"barbecue|dessert|ice\s*cream|taco|tacos|steak|seafood|bakery|culinary|eatery|"
+    r"opens|opening|closes|closing|reopens|reopen|food\s*truck|hospitality|wine|"
+    r"cocktail|cocktails|bloody\s*mary|tasting|food\s*event)\b", re.I
+)
+BAD_TERMS = re.compile(
+    r"\b(chicago|springfield|peoria|rockford|champaign|urbana|naperville|joliet|"
+    r"quad\s*cities|carbondale|decatur|indianapolis|kansas\s*city|nashville|"
+    r"new\s*york|los\s*angeles|miami|denver|seattle|portland|national|nationwide|"
+    r"travel|vacation|cruise|disney)\b", re.I
+)
 
-def rss_url(query):
-    return "https://news.google.com/rss/search?" + urllib.parse.urlencode({
-        "q": query,
-        "hl": "en-US",
-        "gl": "US",
-        "ceid": "US:en",
+def fetch_feed(query):
+    url = "https://news.google.com/rss/search?" + urllib.parse.urlencode({
+        "q": query, "hl": "en-US", "gl": "US", "ceid": "US:en"
     })
-
-def clean(text):
-    return re.sub(r"\s+", " ", re.sub(r"<[^>]+>", "", text or "")).strip()
-
-def parse_date(value):
-    try:
-        return parsedate_to_datetime(value).astimezone(timezone.utc)
-    except Exception:
-        return None
-
-def is_local_story(title, source, scope):
-    text = title or ""
-    if not FOOD_TERMS.search(text) or BAD_TERMS.search(text):
-        return False
-    if LOCAL_TERMS.search(text):
-        return True
-    if scope == "stl" and source in {"Sauce Magazine", "St. Louis Magazine"}:
-        return True
-    if scope == "metroEast" and source in {"The Telegraph", "Belleville News-Democrat"}:
-        return True
-    return False
-
-def fetch(feed_name, query, scope):
-    req = urllib.request.Request(
-        rss_url(query),
-        headers={"User-Agent": "Metro-Eats-News-Updater/2.0"},
-    )
+    req = urllib.request.Request(url, headers={"User-Agent": "Metro-Eats-News-Updater/1.0"})
     with urllib.request.urlopen(req, timeout=20) as response:
-        root = ET.fromstring(response.read())
+        return ET.fromstring(response.read())
 
-    rows = []
-    cutoff = datetime.now(timezone.utc) - timedelta(days=LOOKBACK_DAYS)
+items = []
+seen = set()
 
-    for item in root.findall(".//item"):
-        title = clean(item.findtext("title"))
-        link = item.findtext("link") or ""
-        pub = item.findtext("pubDate") or ""
-        dt = parse_date(pub)
-        source_node = item.find("source")
-        source_name = clean(source_node.text if source_node is not None else feed_name) or feed_name
+for query in QUERIES:
+    try:
+        root = fetch_feed(query)
+    except Exception as exc:
+        print("Feed failed:", query, exc)
+        continue
 
-        if not title or not link or not dt or dt < cutoff or dt > datetime.now(timezone.utc) + timedelta(days=1):
+    for item in root.findall("./channel/item"):
+        title = (item.findtext("title") or "").strip()
+        link = (item.findtext("link") or "").strip()
+        source_el = item.find("source")
+        source = (source_el.text or "").strip() if source_el is not None else ""
+        raw_date = item.findtext("pubDate") or ""
+
+        try:
+            published = email.utils.parsedate_to_datetime(raw_date).astimezone(dt.timezone.utc)
+        except Exception:
             continue
 
-        # Keep the feed's known-local publication identity instead of a Google News wrapper name.
-        source_name = feed_name
-        if not is_local_story(title, source_name, scope):
+        if source not in ALLOWED_SOURCES:
+            continue
+        if not FOOD_TERMS.search(title) or BAD_TERMS.search(title):
             continue
 
-        rows.append({
+        key = re.sub(r"[^a-z0-9]+", " ", title.lower()).strip()
+        if not key or key in seen:
+            continue
+
+        seen.add(key)
+        items.append({
             "title": title,
-            "source": source_name,
-            "date": dt.strftime("%B %-d, %Y"),
+            "source": source,
+            "date": published.strftime("%B %-d, %Y"),
             "url": link,
-            "_dt": dt,
+            "_published": published.isoformat(),
         })
 
-    return rows
-
-all_rows = []
-for name, query, scope in FEEDS:
-    try:
-        all_rows.extend(fetch(name, query, scope))
-    except Exception as exc:
-        print(f"Feed failed: {name}: {exc}")
-
-seen = set()
-selected = []
-
-for row in sorted(all_rows, key=lambda x: x["_dt"], reverse=True):
-    key = re.sub(r"[^a-z0-9]+", "", row["title"].lower())
-    if key in seen:
-        continue
-    seen.add(key)
-    row.pop("_dt", None)
-    selected.append(row)
-    if len(selected) >= MIN_STORIES:
-        break
-
-if not selected:
-    raise SystemExit("No qualifying local food/dining stories were retrieved; refusing to overwrite news.json.")
+items.sort(key=lambda x: x["_published"], reverse=True)
+items = items[:12]
+for item in items:
+    item.pop("_published", None)
 
 payload = {
-    "updated": datetime.now(timezone.utc).isoformat(),
-    "items": selected,
+    "updated": dt.datetime.now(dt.timezone.utc).isoformat(),
+    "items": items,
 }
-
-with open("news.json", "w", encoding="utf-8") as f:
-    json.dump(payload, f, ensure_ascii=False, indent=2)
-    f.write("\n")
-
-print(f"Wrote {len(selected)} qualifying St. Louis / Metro East food and dining stories.")
+OUT.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+print(f"Wrote {len(items)} stories to {OUT}")
