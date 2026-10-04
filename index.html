@@ -282,8 +282,34 @@ function saveRecipe(id){
 }
 function deleteRecipe(id){let r=db.recipes.find(x=>x.id===id);if(!r)return;if(!confirm(`Delete “${r.title}”?\n\nThis will permanently remove the recipe from Metro Eats.`))return;db.recipes=db.recipes.filter(x=>x.id!==id);save();closeModal();renderRecipes()}
 function openImportPaste(){modal.classList.add('show');modalBody.innerHTML=`<div class="eyebrow">Recipe parser</div><h2>Paste an Entire Recipe</h2><p class="hint">Paste the recipe text below. The app will identify the title, ingredients and directions, then put them into the standard Metro Eats format for review.</p><div class="field"><label>Recipe text</label><textarea id="rawRecipe" rows="16" placeholder="Paste the entire recipe here…"></textarea></div><div class="actions"><button class="btn primary" onclick="parsePaste()">Parse Recipe</button></div>`}
-function parsePaste(){let t=rawRecipe.value.trim();if(!t)return;let lines=t.split(/\r?\n/).map(x=>x.trim()).filter(Boolean);let ingStart=lines.findIndex(x=>/^(ingredients?|what you need)\b/i.test(x));let dirStart=lines.findIndex(x=>/^(directions?|instructions?|method|steps?)\b/i.test(x));let title=lines[0].replace(/^#+\s*/,'');let ingredients=ingStart>=0?(lines.slice(ingStart+1,dirStart>ingStart?dirStart:lines.length).filter(x=>!/^directions?/i.test(x))):[];let steps=dirStart>=0?lines.slice(dirStart+1):[];if(!ingredients.length){let split=Math.max(1,Math.floor(lines.length*.45));ingredients=lines.slice(1,split)}if(!steps.length)steps=lines.slice(Math.max(1,Math.floor(lines.length*.45)));modalBody.innerHTML=`<div class="eyebrow">Preview</div><h2>${esc(title)}</h2><p class="hint">Review the parsed recipe, choose its category and subcategory, then save it with your other recipes.</p><div class="fields"><div class="field"><label>Category</label><select id="pCat" onchange="fillImportSubcats()">${Object.keys(db.cats).map(c=>`<option>${esc(c)}</option>`).join('')}</select></div><div class="field"><label>Subcategory</label><select id="pSub"></select></div><div class="field full"><label>Ingredients</label><textarea id="pIng" rows="9">${esc(ingredients.join('\n'))}</textarea></div><div class="field full"><label>Directions</label><textarea id="pSteps" rows="9">${esc(steps.join('\n'))}</textarea></div></div><div class="actions"><button class="btn primary" onclick="saveParsed(${JSON.stringify(title)})">Save as Recipe</button></div>`;fillImportSubcats()}
-function saveParsed(title){let r={id:crypto.randomUUID(),title:(title||'').trim()||'Untitled Recipe',category:document.getElementById('pCat')?.value||Object.keys(db.cats)[0],subcategory:document.getElementById('pSub')?.value||'',ingredients:(document.getElementById('pIng')?.value||'').split('\n').map(x=>x.trim()).filter(Boolean),steps:(document.getElementById('pSteps')?.value||'').split('\n').map(x=>x.trim()).filter(Boolean),servings:'',time:'',favorite:false};if(!r.ingredients.length||!r.steps.length){alert('Please make sure the recipe has both ingredients and directions before saving.');return}db.recipes.unshift(r);save();closeModal();tab('recipes')}
+function parsePaste(){let t=rawRecipe.value.trim();if(!t)return;let lines=t.split(/\r?\n/).map(x=>x.trim()).filter(Boolean);let ingStart=lines.findIndex(x=>/^(ingredients?|what you need)\b/i.test(x));let dirStart=lines.findIndex(x=>/^(directions?|instructions?|method|steps?)\b/i.test(x));let title=lines[0].replace(/^#+\s*/,'');let ingredients=ingStart>=0?(lines.slice(ingStart+1,dirStart>ingStart?dirStart:lines.length).filter(x=>!/^directions?/i.test(x))):[];let steps=dirStart>=0?lines.slice(dirStart+1):[];if(!ingredients.length){let split=Math.max(1,Math.floor(lines.length*.45));ingredients=lines.slice(1,split)}if(!steps.length)steps=lines.slice(Math.max(1,Math.floor(lines.length*.45)));window._pendingParsedTitle=title;modalBody.innerHTML=`<div class="eyebrow">Preview</div><h2>${esc(title)}</h2><p class="hint">Review the parsed recipe, choose its category and subcategory, then save it with your other recipes.</p><div class="fields"><div class="field"><label>Category</label><select id="pCat" onchange="fillImportSubcats()">${Object.keys(db.cats).map(c=>`<option>${esc(c)}</option>`).join('')}</select></div><div class="field"><label>Subcategory</label><select id="pSub"></select></div><div class="field full"><label>Ingredients</label><textarea id="pIng" rows="9">${esc(ingredients.join('\n'))}</textarea></div><div class="field full"><label>Directions</label><textarea id="pSteps" rows="9">${esc(steps.join('\n'))}</textarea></div></div><div class="actions"><button class="btn primary" type="button" onclick="saveParsed()">Save as Recipe</button></div>`;fillImportSubcats()}
+function saveParsed(){
+  try{
+    let r={
+      id:crypto.randomUUID(),
+      title:(window._pendingParsedTitle||'').trim()||'Untitled Recipe',
+      category:document.getElementById('pCat')?.value||Object.keys(db.cats)[0],
+      subcategory:document.getElementById('pSub')?.value||'',
+      ingredients:(document.getElementById('pIng')?.value||'').split('\n').map(x=>x.trim()).filter(Boolean),
+      steps:(document.getElementById('pSteps')?.value||'').split('\n').map(x=>x.trim()).filter(Boolean),
+      servings:'',
+      time:'',
+      favorite:false
+    };
+    if(!r.ingredients.length||!r.steps.length){
+      alert('Please make sure the recipe has both ingredients and directions before saving.');
+      return;
+    }
+    db.recipes.unshift(r);
+    if(!save())return;
+    window._pendingParsedTitle='';
+    closeModal();
+    tab('recipes');
+  }catch(e){
+    console.error('Metro Eats imported recipe save failed:',e);
+    alert('Metro Eats could not save this imported recipe. Please try again.');
+  }
+}
 function openImportUrl(){modal.classList.add('show');modalBody.innerHTML=`<div class="eyebrow">Web recipe importer</div><h2>Import from Website</h2><p class="hint">Paste a recipe URL. Metro Eats will look for the recipe's own ingredients and directions instead of importing the surrounding article, ads, comments or unrelated page text.</p><div class="field"><label>Recipe URL</label><input id="recipeUrl" type="url" placeholder="https://example.com/recipe…"></div><div class="actions"><button class="btn primary" onclick="importUrl()">Find Recipe</button><button class="btn" onclick="closeModal()">Cancel</button></div><div class="notice">Some sites block automated access. If that happens, use Paste an Entire Recipe.</div>`}
 
 function stripImportedMarkup(value){
