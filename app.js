@@ -609,9 +609,14 @@ function restaurantCard(r){let s=r.survey,history=Array.isArray(r.reviewHistory)
 /* FINAL STABLE REVIEW-AGAIN LINK FIX */
 function meDiningReview(id){
   try{
-    if(typeof meDiningOpen==='function'){ meDiningOpen(String(id),null,true); return; }
-    if(typeof startSurvey==='function'){ startSurvey(String(id)); return; }
-    alert('The review could not be opened. Please refresh Metro Eats and try again.');
+    let r=db.restaurants.find(x=>String(x.id)===String(id));
+    if(!r){alert('That restaurant could not be found in Metro Eats.');return;}
+    pendingRestaurant=null;
+    pendingReviewRestaurant={...r,photos:[...(r.photos||[])]};
+    restaurantEditMode=false;
+    window._editingPhotos=[...(r.photos||[])];
+    meDiningLoadReviewState(r);
+    renderSurvey();
   }catch(e){
     console.error('Metro Eats Review Again error',e);
     alert('The review could not be opened. Please refresh Metro Eats and try again.');
