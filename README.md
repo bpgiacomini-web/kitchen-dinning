@@ -13,3 +13,5 @@ Metro Eats is a mobile-first personal recipe book, restaurant journal, and St. L
 
 ## Daily news
 GitHub Actions runs `update-news.py` daily and updates `news.json` when fresh local stories are found. Food is intentionally prioritized; local bars/nightlife, comedy, and music events are also categorized when available.
+
+- Restaurant name search uses progressive nearby matching with Overpass and a Nominatim fallback.
