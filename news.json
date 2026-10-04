@@ -1,75 +1,85 @@
 {
-  "updated": "2026-10-04T06:00:00+00:00",
+  "updated": "2026-10-04T08:30:17.678Z",
   "items": [
     {
       "title": "10 St. Louis restaurants with great burgers",
       "source": "Sauce Magazine",
       "date": "October 1, 2026",
       "url": "https://www.saucemagazine.com/",
-      "category": "food"
+      "category": "food",
+      "image": "https://www.saucemagazine.com/stlouis/first-look-the-bellwether-in-st-louis/Slideshow/17332873/17330100"
     },
     {
       "title": "St. Louis coffee shops roll out fall menus",
       "source": "Sauce Magazine",
       "date": "September 30, 2026",
       "url": "https://www.saucemagazine.com/",
-      "category": "food"
+      "category": "food",
+      "image": "https://s3-media0.fl.yelpcdn.com/bphoto/wQqOg9SEIrShaWKNdouzYQ/o.jpg"
     },
     {
       "title": "Heaterz is taking over Flock’s Downtown Alton property",
       "source": "Sauce Magazine",
       "date": "September 29, 2026",
       "url": "https://www.saucemagazine.com/places-2/",
-      "category": "food"
+      "category": "food",
+      "image": "https://static.wixstatic.com/media/73fa6d_d873aed4208d4f638c09811e4402d69e~mv2.jpg/v1/crop/x_0%2Cy_801%2Cw_2117%2Ch_2199/fill/w_398%2Ch_413%2Cal_c%2Cq_80%2Cusm_0.66_1.00_0.01%2Cenc_auto/A%20list%20pic%20of%20all%20four_edited.jpg"
     },
     {
       "title": "Oh London in Creve Coeur lands at No. 13 on Yelp’s Best New Restaurants of 2026 list",
       "source": "St. Louis Magazine",
       "date": "October 1, 2026",
       "url": "https://www.stlmag.com/dining/",
-      "category": "food"
+      "category": "food",
+      "image": "https://www.saucemagazine.com/stlouis/first-look-the-bellwether-in-st-louis/Slideshow/17332873/17330100"
     },
     {
       "title": "The Fountain on Locust team to open Conefection at Wash Ave Food Hall",
       "source": "St. Louis Magazine",
       "date": "September 28, 2026",
       "url": "https://www.stlmag.com/dining/",
-      "category": "food"
+      "category": "food",
+      "image": "https://www.takeroothospitality.com/bistro-la-floraison"
     },
     {
       "title": "Coffeestamp opens location in downtown St. Louis",
       "source": "St. Louis Magazine",
       "date": "September 25, 2026",
       "url": "https://www.stlmag.com/dining/",
-      "category": "food"
+      "category": "food",
+      "image": "https://www.audacy.com/media-library/coffeestamp.jpg?id=65130215&quality=70&width=800"
     },
     {
       "title": "The Heavy Anchor reopens after car smashed into the south St. Louis bar",
       "source": "St. Louis Business Journal",
       "date": "September 30, 2026",
       "url": "https://www.bizjournals.com/stlouis/news/2026/09/30/the-heavy-anchor-reopens-car-smashed-building.html",
-      "category": "bars"
+      "category": "bars",
+      "image": "https://img.p.mapq.st/?q=75&url=https%3A%2F%2Fs3-media0.fl.yelpcdn.com%2Fbphoto%2FCL5T8xSq7DUpf0JYIvwBJQ%2Fl.jpg%3Fw%3D3840"
     },
     {
       "title": "The Nightmare Bar (October 3 – 31)",
       "source": "Explore St. Louis",
       "date": "October 3, 2026",
       "url": "https://explorestlouis.com/events/category/music/",
-      "category": "bars"
+      "category": "bars",
+      "image": "https://www.fourseasons.com/alt/img-opt/~75.701.94%2C5564-0%2C0000-1000%2C5000-2001%2C0000/publish/content/dam/fourseasons/images/web/STL/STL_949_original.jpg"
     },
     {
       "title": "Sam Tallent",
       "source": "Explore St. Louis",
       "date": "October 4, 2026",
       "url": "https://explorestlouis.com/events/category/comedy/",
-      "category": "comedy"
+      "category": "comedy",
+      "image": "https://images.squarespace-cdn.com/content/v1/67ae070ed478276871f9f87c/eece669a-cd2c-4f7c-921a-0e9dea6eb141/FETRESS-BAR.jpg"
     },
     {
       "title": "Graham Nash",
       "source": "Explore St. Louis",
       "date": "October 4, 2026",
       "url": "https://explorestlouis.com/events/category/music/",
-      "category": "music"
+      "category": "music",
+      "image": "https://www.fourseasons.com/alt/img-opt/~70.620.28%2C3027-0%2C0000-912%2C0000-684%2C0000/publish/content/dam/fourseasons/images/web/STL/STL_ugc_maximizestl.jpg"
     }
   ]
 }
