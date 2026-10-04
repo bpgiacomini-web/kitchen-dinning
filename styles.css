@@ -13,3 +13,30 @@
 @media(max-width:760px){.homeFeatureButtons{grid-template-columns:1fr}.homeFeatureButton{min-height:100px}.brandLogo{width:185px}.nav{max-width:none}.nav button{padding:8px 7px;font-size:12px}.newsGrid{grid-template-columns:1fr}.newsCard,.newsCard:first-child{grid-column:auto;min-height:175px}.newsCard:first-child h4{font-size:24px}.homeColumns,.editorialStrip{grid-template-columns:1fr}.recipeBody{grid-template-columns:1fr}.fields,.choiceGrid,.backupGrid{grid-template-columns:1fr}.toolbar .filter{width:100%}.restaurantScoreCard{grid-template-columns:1fr;gap:8px}}
 @media(max-width:520px){.app{padding-left:12px;padding-right:12px}.top{padding-left:12px;padding-right:12px}.brandLogo{width:165px}.nav{display:none}.bottomNav{display:flex;position:fixed;left:0;right:0;bottom:0;z-index:150;padding:8px max(10px,env(safe-area-inset-left)) calc(8px + env(safe-area-inset-bottom));background:rgba(9,11,14,.96);backdrop-filter:blur(14px);border-top:1px solid var(--line);justify-content:space-around}.bottomNav button{border:0;background:transparent;color:#9da6ae;min-height:44px;min-width:76px;border-radius:12px;font-size:12px;font-weight:750}.bottomNav button.active{background:#1a1f24;color:var(--text)}.hero{border-radius:22px}.hero .actions,.actions.stack{display:grid;grid-template-columns:1fr}.hero .actions .btn,.actions.stack .btn{width:100%}.toolbar{display:grid;grid-template-columns:1fr 1fr}.toolbar .grow{grid-column:1/-1;min-width:0}.toolbar .filter{grid-column:1/-1}.toolbar .btn{width:100%}.scoreRow,.reviewScore{gap:3px}.scoreRow button,.reviewScore button{padding:9px 2px}.surveyItem{grid-template-columns:34px 1fr}.surveyItem .btn{grid-column:1/-1;width:100%}.sheet{padding:16px}.sectionTitle{align-items:flex-start;flex-direction:column}.newsCard:first-child{min-height:230px}}
 @media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;transition:none!important}}
+
+
+/* Food Critic item cards */
+.criticCategory{margin:10px 0;border:1px solid var(--line);border-radius:18px;background:#0d1115;overflow:hidden;box-shadow:0 8px 24px rgba(0,0,0,.12)}
+.criticCategoryHead{width:100%;display:flex;align-items:center;justify-content:space-between;gap:14px;padding:15px 16px;border:0;background:linear-gradient(145deg,#121a18,#0f1418);color:var(--text);text-align:left;cursor:pointer}
+.criticCategoryHead span{display:grid;gap:3px}.criticCategoryHead b{font-size:17px;letter-spacing:-.01em}.criticCategoryHead small{color:var(--muted);font-size:11px;font-weight:650}.criticCategoryHead strong{display:grid;place-items:center;width:30px;height:30px;border-radius:50%;background:#18231f;color:var(--accent);font-size:20px}
+.criticCategory.isOpen .criticCategoryHead{border-bottom:1px solid var(--line)}
+.criticSuggestions{padding:13px 14px 7px;display:flex;gap:7px;flex-wrap:wrap}
+.criticSuggestionsLabel{width:100%;font-size:10px;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);font-weight:850;margin-bottom:1px}
+.criticSuggestion{border:1px solid #355047;background:#14201c;color:#d5eee3;border-radius:999px;padding:8px 11px;font-weight:700;font-size:12px;min-height:38px}
+.criticFoodList{display:grid;gap:10px;padding:10px 12px}
+.criticFoodCard{border:1px solid #29343a;border-radius:16px;background:linear-gradient(145deg,#11181b,#0b1014);padding:14px;box-shadow:0 8px 20px rgba(0,0,0,.14)}
+.criticFoodTop{display:grid;grid-template-columns:38px minmax(0,1fr) auto;gap:10px;align-items:end}
+.criticFoodNumber{width:38px;height:38px;border-radius:12px;display:grid;place-items:center;background:#16251f;border:1px solid #355047;font-size:17px}
+.criticFoodNameWrap{min-width:0}.criticFoodLabel{display:block;text-transform:uppercase;letter-spacing:.1em;font-size:9px;color:var(--muted);font-weight:850;margin:0 0 5px}
+.criticFoodName{width:100%;min-height:44px;border:1px solid var(--line);background:#151b20;color:var(--text);border-radius:11px;padding:10px 12px;font-weight:750;font-size:16px;outline:none}
+.criticFoodName:focus,.criticFoodNotes:focus{border-color:var(--accent);box-shadow:0 0 0 2px #d6a85b20}
+.criticRemoveBtn{min-height:44px;border:1px solid #493238;background:#171215;color:#e5b9bd;border-radius:11px;padding:10px 11px;font-weight:750}
+.criticRatingBlock{margin-top:15px;padding-top:13px;border-top:1px solid #20282d}
+.criticRatingHead{display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin-bottom:8px}.criticRatingHead b{font-size:13px}.criticRatingHead span{font-size:11px;color:var(--accent);font-weight:850}
+.criticFoodScore{display:grid;grid-template-columns:repeat(10,minmax(0,1fr));gap:5px;width:100%}
+.criticFoodScoreBtn{width:100%;min-width:0;min-height:44px;padding:9px 2px;border:1px solid var(--line);background:#11161b;color:var(--text);border-radius:9px;font-weight:800;font-size:13px}
+.criticFoodScoreBtn.active{background:var(--accent);color:#15120c;border-color:var(--accent);font-weight:900;box-shadow:0 5px 14px #d6a85b28}
+.criticNotesBlock{margin-top:14px}.criticFoodNotes{display:block;width:100%;min-height:88px;resize:vertical;border:1px solid var(--line);background:#11161b;color:var(--text);border-radius:11px;padding:11px 12px;font:inherit;line-height:1.45}
+.criticAddItem{width:calc(100% - 24px);margin:2px 12px 12px;min-height:46px;border:1px dashed #49645b;background:#12201b;color:#d5eee3;border-radius:12px;font-weight:800}
+.criticAddItem span{color:var(--accent);font-size:18px;vertical-align:-1px;margin-right:4px}
+@media(max-width:560px){.criticFoodTop{grid-template-columns:34px minmax(0,1fr)}.criticFoodNumber{width:34px;height:34px}.criticRemoveBtn{grid-column:2;justify-self:start;min-height:38px;padding:7px 10px}.criticFoodScore{gap:3px}.criticFoodScoreBtn{min-height:42px;font-size:12px;padding:8px 1px}.criticFoodCard{padding:12px}.criticCategoryHead{padding:14px}.criticSuggestions{padding-left:12px;padding-right:12px}}
