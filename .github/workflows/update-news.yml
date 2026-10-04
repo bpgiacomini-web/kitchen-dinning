@@ -2,7 +2,7 @@ name: Update Metro Eats local news
 
 on:
   schedule:
-    - cron: "17 */6 * * *"
+    - cron: "17 * * * *"
   workflow_dispatch:
 
 permissions:
