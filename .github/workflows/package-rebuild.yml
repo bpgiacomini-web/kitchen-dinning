@@ -1,0 +1,28 @@
+name: Package Metro Eats Full Rebuild
+
+on:
+  push:
+    branches: [news-single-file-rebuild]
+  workflow_dispatch:
+
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build complete upload ZIP
+        run: |
+          rm -rf package Metro_Eats_Full_Rebuild.zip
+          mkdir -p package
+          cp README.md icon-180.png icon-512.png index.html manifest.json metro-eats-logo.png news.json update-news.py package/
+          if [ -d assets ]; then cp -R assets package/assets; fi
+          cd package
+          zip -r ../Metro_Eats_Full_Rebuild.zip .
+          cd ..
+          unzip -t Metro_Eats_Full_Rebuild.zip
+          node --check <(sed -n '/<script>/,/<\/script>/p' package/index.html | sed '1d;$d') || true
+      - name: Upload rebuild ZIP
+        uses: actions/upload-artifact@v4
+        with:
+          name: Metro_Eats_Full_Rebuild
+          path: Metro_Eats_Full_Rebuild.zip
