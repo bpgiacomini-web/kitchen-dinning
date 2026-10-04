@@ -506,12 +506,52 @@ function renderSurvey(){
 /* One navigation path for every saved restaurant review. This block is deliberately
    last in app.js so older review handlers cannot win. Service worker untouched. */
 function meDiningLoadReviewState(r){
-  let latest=r?.reviewHistory?.[r.reviewHistory.length-1]||r?.survey||null;
-  let items=(latest?.foodItems||[]).map(x=>({...x,id:x.id||uid()}));
+  let history=Array.isArray(r?.reviewHistory)?r.reviewHistory:[];
+  let latest=history.length?history[history.length-1]:(r?.survey||null);
+  let rawItems=Array.isArray(latest?.foodItems)?latest.foodItems:[];
+  let items=rawItems.filter(function(x){return x&&typeof x==='object'}).map(function(x){
+    return {...x,id:String(x.id||uid()),category:x.category||'Entrées',name:String(x.name||''),rating:Number(x.rating||0),notes:String(x.notes||'')};
+  });
   if(!items.length&&latest?.ordered){
     items=[{id:uid(),category:'Entrées',name:String(latest.ordered),rating:Number(latest?.scores?.[1]||0),notes:'Imported from an earlier review.'}];
   }
-  surveyState={restaurantId:r?.id==='new'?'new':r?.id||null,scores:meCriticLegacyScores(latest),foodItems:items,foodOpen:{},legacyOrdered:latest?.ordered||'',orderAgain:latest?.orderAgain||''};
+  let scores=meCriticLegacyScores(latest)||{};
+  surveyState={restaurantId:r?.id==='new'?'new':r?.id||null,scores:{0:Number(scores[0]||0),1:Number(scores[1]||0),2:Number(scores[2]||0),3:Number(scores[3]||0)},foodItems:items,foodOpen:{},legacyOrdered:latest?.ordered||'',orderAgain:latest?.orderAgain||''};
+}
+/* FINAL REVIEW-AGAIN ROBUSTNESS FIX */
+function meDiningReview(id){
+  try{
+    let r=(db.restaurants||[]).find(function(x){return String(x.id)===String(id)});
+    if(!r){alert('That restaurant could not be found in Metro Eats.');return;}
+    pendingRestaurant=null;
+    pendingReviewRestaurant={...r,photos:Array.isArray(r.photos)?r.photos.slice():[]};
+    restaurantEditMode=false;
+    window._editingPhotos=Array.isArray(r.photos)?r.photos.slice():[];
+    meDiningLoadReviewState(r);
+    try{
+      renderSurvey();
+    }catch(renderError){
+      console.error('Metro Eats review render error',renderError);
+      /* Render a guaranteed-safe critic screen instead of falling back to an alert. */
+      let name=String(r.name||'Restaurant Review');
+      let score=function(i){return Number(surveyState.scores[i]||0)};
+      let h='<div class="eyebrow">Food Critic</div><h2>'+esc(name)+'</h2><p class="hint">Review Again — your previous review has been loaded.</p>';
+      [0,2,3].forEach(function(i){
+        let labels={0:'Overall Experience',2:'Service',3:'Value'};
+        h+='<div class="reviewQuestion"><div class="reviewQuestionHead"><b>'+labels[i]+'</b><span>'+(score(i)||'Select 1–10')+'/10</span></div><div class="reviewScore">'+[1,2,3,4,5,6,7,8,9,10].map(function(n){return '<button type="button" class="'+(score(i)===n?'active':'')+'" onclick="meCriticSetScore('+i+','+n+')">'+n+'</button>'}).join('')+'</div></div>';
+      });
+      h+='<div class="reviewExtras"><h3>What I Ate</h3><p class="hint">Your saved dishes are listed below. Add or change items and ratings.</p>';
+      h+=surveyState.foodItems.map(function(x){
+        return '<div class="field"><label for="criticFood-'+x.id+'">Dish or drink</label><input id="criticFood-'+x.id+'" value="'+esc(x.name)+'"><div class="reviewScore">'+[1,2,3,4,5,6,7,8,9,10].map(function(n){return '<button type="button" class="'+(Number(x.rating)===n?'active':'')+'" onclick="meCriticRateFood(\''+x.id+'\','+n+')">'+n+'</button>'}).join('')+'</div><textarea id="criticNote-'+x.id+'" rows="2" class="surveyNote">'+esc(x.notes||'')+'</textarea></div>';
+      }).join('');
+      h+='<div class="field"><label>Would I order it again?</label><div class="actions"><button type="button" class="btn '+(surveyState.orderAgain==='Yes'?'primary':'')+'" onclick="meCriticSetAgain(\'Yes\')">Yes</button><button type="button" class="btn '+(surveyState.orderAgain==='No'?'primary':'')+'" onclick="meCriticSetAgain(\'No\')">No</button></div></div></div>';
+      h+='<div class="surveyActions"><button type="button" class="btn danger" onclick="cancelSurvey()">Cancel</button><button type="button" class="btn primary" onclick="saveSurvey()">Save Restaurant & Review</button></div>';
+      modal.classList.add('show');modalBody.innerHTML=h;
+    }
+  }catch(e){
+    console.error('Metro Eats Review Again error',e);
+    alert('The review could not be opened. '+(e?.message||'Please refresh Metro Eats and try again.'));
+  }
 }
 function meDiningOpen(id,prefilling,asNewVisit){
   let r=id==='new'
