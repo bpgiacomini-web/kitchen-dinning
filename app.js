@@ -18,6 +18,15 @@ const categories={
 };
 const restaurantTypes=['American','Bar & Grill','BBQ','Burgers','Breakfast & Brunch','Cafés & Coffee','Chinese','Deli','Fast Food','Fine Dining','French','Indian','Italian','Japanese','Korean','Mediterranean','Mexican','Middle Eastern','Pizza','Seafood','Southern / Soul Food','Steakhouse','Thai','Vietnamese','Vegetarian / Vegan','Food Truck','Bakery','Dessert / Ice Cream','Brewery / Brewpub','Gastropub','Sports Bar','Other'];
 const surveyQuestions=[['Overall Experience','Your overall impression of the visit.'],['Food Quality','Taste, freshness, preparation and consistency.'],['Menu & Selection','Variety, creativity and choices.'],['Service','Attentiveness, friendliness, professionalism and timing.'],['Atmosphere','Ambiance, comfort, noise level and vibe.'],['Cleanliness','Dining area, tables, restrooms and overall cleanliness.'],['Value for Money','Pricing, portions, quality and whether it felt worth it.'],['Drinks & Bar','Drink quality, selection, presentation and service.'],['Location & Accessibility','Parking, access, seating and convenience.'],['Would You Return?','How likely you are to return to this restaurant.']];
+
+/* FINAL FOOD CRITIC CONFIG — initialized before any app rendering */
+var ME_CRITIC_QUESTIONS=[
+  ['Overall Experience','Your overall impression of the visit.'],
+  ['Food Quality','Calculated from the individual dishes and drinks you rated.'],
+  ['Service','Attentiveness, friendliness, professionalism and timing.'],
+  ['Value','Pricing, portions, quality and whether it felt worth it.']
+];
+var ME_CRITIC_CATS=['Appetizers','Entrées','Salads','Soups','Sides','Desserts','Drinks'];
 const fallbackNews=[
  {title:'10 St. Louis restaurants with great burgers',source:'Sauce Magazine',date:'October 1, 2026',url:'https://www.saucemagazine.com/'},
  {title:'St. Louis coffee shops roll out fall menus',source:'Sauce Magazine',date:'September 30, 2026',url:'https://www.saucemagazine.com/'},
