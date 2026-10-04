@@ -348,3 +348,91 @@ function meCriticFoodBlock(c,type){
   }
   return h+'</section>';
 }
+
+/* Metro Eats Top Restaurant Spotlight — home page feature */
+function meSpotlightScore(r){
+  return Number(r?.survey?.overall||r?.rating||0);
+}
+function meSpotlightTopCategories(s){
+  if(!s)return [];
+  if(s.foodItems?.length){
+    let foods=s.foodItems.filter(x=>x.name&&Number(x.rating)>0).sort((a,b)=>Number(b.rating)-Number(a.rating)).slice(0,3);
+    return foods.map(x=>({label:x.name,score:Number(x.rating),kind:'dish'}));
+  }
+  return surveyQuestions.map((q,i)=>({label:q[0],score:Number(s.scores?.[i]||0),kind:'category'})).filter(x=>x.score>0).sort((a,b)=>b.score-a.score).slice(0,3);
+}
+function meSpotlightWebSearchUrl(r){
+  return 'https://www.google.com/search?tbm=isch&q='+encodeURIComponent((r?.name||'')+' '+(r?.location||'')+' restaurant food');
+}
+function meSpotlightPhotoCandidates(r){
+  let website=String(r?.website||'').trim();
+  if(!website)return [];
+  try{
+    let u=new URL(website);
+    return [
+      'https://api.allorigins.win/raw?url='+encodeURIComponent(u.href),
+      'https://api.allorigins.win/raw?url='+encodeURIComponent(new URL('/about/',u.href).href),
+      'https://api.allorigins.win/raw?url='+encodeURIComponent(new URL('/gallery/',u.href).href),
+      'https://api.allorigins.win/raw?url='+encodeURIComponent(new URL('/menu/',u.href).href)
+    ];
+  }catch{return []}
+}
+function meSpotlightExtractImage(html,baseUrl){
+  let m=String(html||'').match(/<meta[^>]+(?:property|name)=["'](?:og:image|twitter:image)["'][^>]+content=["']([^"']+)["'][^>]*>/i)
+    ||String(html||'').match(/<meta[^>]+content=["']([^"']+)["'][^>]+(?:property|name)=["'](?:og:image|twitter:image)["'][^>]*>/i);
+  if(!m)return '';
+  try{return new URL(m[1],baseUrl).href}catch{return m[1]}
+}
+async function meSpotlightFindWebPhoto(r){
+  let urls=meSpotlightPhotoCandidates(r);
+  for(let proxy of urls){
+    try{
+      let resp=await fetch(proxy,{cache:'no-store'});
+      if(!resp.ok)continue;
+      let html=await resp.text();
+      let image=meSpotlightExtractImage(html,r.website);
+      if(image)return image;
+    }catch(e){}
+  }
+  return '';
+}
+function meSpotlightMarkup(r,photo,source){
+  let s=r.survey||{},score=meSpotlightScore(r),top=meSpotlightTopCategories(s);
+  let food=top.filter(x=>x.kind==='dish'),cat=top.filter(x=>x.kind==='category');
+  let insight=food.length
+    ? 'Your highest-rated dishes are '+food.map(x=>esc(x.label)+' ('+x.score+'/10)').join(', ')+'.'
+    : cat.length
+      ? 'Your strongest areas are '+cat.map(x=>esc(x.label)+' ('+x.score+'/10)').join(', ')+'.'
+      : 'Your critic review is the starting point for this restaurant.';
+  let repeat=s.orderAgain?(' You said you would '+(s.orderAgain==='Yes'?'order it again.':'not order it again.')):'';
+  let img=photo?'<div class="restaurantSpotlightPhoto"><img src="'+esc(photo)+'" alt="'+esc(r.name)+'"><span>Web photo</span></div>':'';
+  return '<article class="restaurantSpotlightCard">'+
+    '<div class="restaurantSpotlightMain">'+
+      '<div class="sectionKicker">Your #1 Restaurant</div>'+
+      '<div class="restaurantSpotlightTitleRow"><div><h3>'+esc(r.name)+'</h3><div class="meta">'+esc(r.location||'')+(r.type?' • '+esc(r.type):'')+'</div></div><div class="restaurantSpotlightScore">'+score.toFixed(1)+'<small>/10</small></div></div>'+
+      '<p class="restaurantSpotlightInsight"><strong>Critic insight:</strong> '+insight+esc(repeat)+'</p>'+
+      (s.foodItems?.length?'<div class="restaurantSpotlightDishes"><b>Top dishes</b>'+meCriticTopFoods(s).map(x=>'<span>'+esc(x.name)+' <strong>'+Number(x.rating).toFixed(1)+'/10</strong></span>').join('')+'</div>':'')+
+      '<div class="actions"><button class="btn primary" onclick="showRankings()">View Rankings</button>'+(r.website?'<a class="btn" href="'+esc(r.website)+'" target="_blank" rel="noopener noreferrer">Official Website</a>':'')+'<a class="btn" href="'+esc(meSpotlightWebSearchUrl(r))+'" target="_blank" rel="noopener noreferrer">Web Photos →</a></div>'+
+    '</div>'+img+
+  '</article>';
+}
+async function renderRestaurantSpotlight(){
+  let box=document.getElementById('restaurantSpotlight');if(!box)return;
+  let ranked=[...(db.restaurants||[])].filter(r=>r.survey||r.rating).sort((a,b)=>meSpotlightScore(b)-meSpotlightScore(a));
+  if(!ranked.length){box.hidden=true;box.innerHTML='';return}
+  let r=ranked[0];box.hidden=false;
+  let savedPhoto=(r.photos||[])[0]||'';
+  box.innerHTML=meSpotlightMarkup(r,savedPhoto,'saved');
+  if(savedPhoto)return;
+  let photo=await meSpotlightFindWebPhoto(r);
+  if(photo){
+    let current=[...(db.restaurants||[])].filter(x=>x.survey||x.rating).sort((a,b)=>meSpotlightScore(b)-meSpotlightScore(a))[0];
+    if(current?.id===r.id)box.innerHTML=meSpotlightMarkup(r,photo,'web');
+  }
+}
+const meOriginalUpdateStory=window.updateStory;
+function updateStory(){
+  if(typeof meOriginalUpdateStory==='function')meOriginalUpdateStory();
+  renderRestaurantSpotlight();
+}
+renderRestaurantSpotlight();
