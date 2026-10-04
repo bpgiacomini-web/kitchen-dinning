@@ -6,80 +6,70 @@
       "source": "Sauce Magazine",
       "date": "October 1, 2026",
       "url": "https://www.saucemagazine.com/",
-      "category": "food",
-      "image": "assets/news/news-1.svg"
+      "category": "food"
     },
     {
       "title": "St. Louis coffee shops roll out fall menus",
       "source": "Sauce Magazine",
       "date": "September 30, 2026",
       "url": "https://www.saucemagazine.com/",
-      "category": "food",
-      "image": "assets/news/news-2.svg"
+      "category": "food"
     },
     {
       "title": "Heaterz is taking over Flock’s Downtown Alton property",
       "source": "Sauce Magazine",
       "date": "September 29, 2026",
       "url": "https://www.saucemagazine.com/places-2/",
-      "category": "food",
-      "image": "assets/news/news-3.svg"
+      "category": "food"
     },
     {
       "title": "Oh London in Creve Coeur lands at No. 13 on Yelp’s Best New Restaurants of 2026 list",
       "source": "St. Louis Magazine",
       "date": "October 1, 2026",
       "url": "https://www.stlmag.com/dining/",
-      "category": "food",
-      "image": "assets/news/news-4.svg"
+      "category": "food"
     },
     {
       "title": "The Fountain on Locust team to open Conefection at Wash Ave Food Hall",
       "source": "St. Louis Magazine",
       "date": "September 28, 2026",
       "url": "https://www.stlmag.com/dining/",
-      "category": "food",
-      "image": "assets/news/news-5.svg"
+      "category": "food"
     },
     {
       "title": "Coffeestamp opens location in downtown St. Louis",
       "source": "St. Louis Magazine",
       "date": "September 25, 2026",
       "url": "https://www.stlmag.com/dining/",
-      "category": "food",
-      "image": "assets/news/news-6.svg"
+      "category": "food"
     },
     {
       "title": "The Heavy Anchor reopens after car smashed into the south St. Louis bar",
       "source": "St. Louis Business Journal",
       "date": "September 30, 2026",
       "url": "https://www.bizjournals.com/stlouis/news/2026/09/30/the-heavy-anchor-reopens-car-smashed-building.html",
-      "category": "bars",
-      "image": "assets/news/news-7.svg"
+      "category": "bars"
     },
     {
       "title": "The Nightmare Bar (October 3 – 31)",
       "source": "Explore St. Louis",
       "date": "October 3, 2026",
       "url": "https://explorestlouis.com/events/category/music/",
-      "category": "bars",
-      "image": "assets/news/news-8.svg"
+      "category": "bars"
     },
     {
       "title": "Sam Tallent",
       "source": "Explore St. Louis",
       "date": "October 4, 2026",
       "url": "https://explorestlouis.com/events/category/comedy/",
-      "category": "comedy",
-      "image": "assets/news/news-9.svg"
+      "category": "comedy"
     },
     {
       "title": "Graham Nash",
       "source": "Explore St. Louis",
       "date": "October 4, 2026",
       "url": "https://explorestlouis.com/events/category/music/",
-      "category": "music",
-      "image": "assets/news/news-10.svg"
+      "category": "music"
     }
   ]
 }
