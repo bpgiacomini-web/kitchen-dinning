@@ -1,12 +1,21 @@
-# Metro Eats v5 — Restaurant Review Recovery & Highlighted History
+# Metro Eats — Restoration Build
 
-Complete replacement build for the Metro Eats GitHub Pages app.
+This is a complete replacement build based on the current Metro Eats site, with the requested restoration work applied.
 
-Changes:
-- Keeps the full restaurant review feed at the top of Dining.
-- Shows every saved visit, ranked by Overall Experience (highest first), with date as the tie-breaker.
-- Highlights restaurant name, rank, overall score, high scores, all 10 category scores, order, order-again result, and Review Again.
-- Adds a migration pass that looks for older Metro Eats localStorage versions and older restaurant/review structures on the same site origin.
-- Preserves the recipe search/category/subcategory filtering and News fixes from the previous build.
+## Included restorations
+- Recipe tap-to-expand / tap-to-collapse restored.
+- Recipe search, category/subcategory filters, favorites, edit and delete preserved.
+- Recipe photo field added, with iPhone-friendly image compression and saved recipe photos.
+- Manual recipe entry, Website import and Paste Recipe all finish in the standard recipe editor before saving.
+- Website recipe import now prefers Recipe JSON-LD (`recipeIngredient` / `recipeInstructions`) and falls back to tightly bounded recipe sections.
+- Dining review history remains the primary Dining view, with individual visits preserved and ranked by Overall Experience/date.
+- Review migration broadened to recover older restaurant/review data structures stored on the same site origin.
+- Restaurant name-search feature work was intentionally left alone, per request.
+- News continues to use only an actual `image` supplied by a story. If no usable image exists, no image is attempted or shown.
+- Broken/missing news artwork references were removed.
+- Existing localStorage data is preserved/migrated; this build does not intentionally clear it.
 
-Nothing is deployed automatically.
+## Important
+Nothing has been pushed or deployed to GitHub from this build.
+
+To install manually: upload/replace the files in your GitHub Pages repository with the contents of this ZIP, then allow GitHub Pages/Actions to publish normally.
