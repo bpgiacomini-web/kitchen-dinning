@@ -383,3 +383,49 @@ function updateStory(){
   renderRestaurantSpotlight();
 }
 renderRestaurantSpotlight();
+
+/* Metro Eats critic workflow safety net — keep review screens usable if a render error occurs */
+(function(){
+  function meCriticRenderFallback(){
+    try{
+      modal.classList.add('show');
+      let r=currentSurveyRestaurant()||{}, name=r.name||'Restaurant Review';
+      let h='<div class="eyebrow">Food Critic</div><h2>'+esc(name)+'</h2><p class="hint">Your review is ready. Choose your ratings below.</p>';
+      [0,2,3].forEach(function(i){
+        let labels={0:'Overall Experience',2:'Service',3:'Value'};
+        h+='<div class="reviewQuestion"><div class="reviewQuestionHead"><b>'+labels[i]+'</b><span>'+((surveyState.scores||{})[i]||'Select 1–10')+'/10</span></div><div class="reviewScore">'+[1,2,3,4,5,6,7,8,9,10].map(function(n){return '<button type="button" class="'+(Number(surveyState.scores[i])===n?'active':'')+'" onclick="meCriticSetScore('+i+','+n+')">'+n+'</button>'}).join('')+'</div></div>';
+      });
+      h+='<div class="field"><label for="criticFallbackFood">What did I eat?</label><input id="criticFallbackFood" value="'+esc((surveyState.foodItems&&surveyState.foodItems[0]?.name)||'')+'" placeholder="Enter a dish or drink"></div>';
+      h+='<div class="field"><label>Food Rating</label><div class="reviewScore">'+[1,2,3,4,5,6,7,8,9,10].map(function(n){return '<button type="button" onclick="meCriticFallbackFoodRating('+n+')">'+n+'</button>'}).join('')+'</div></div>';
+      h+='<div class="field"><label>Would I order it again?</label><div class="actions"><button type="button" class="btn" onclick="meCriticSetAgain(\'Yes\')">Yes</button><button type="button" class="btn" onclick="meCriticSetAgain(\'No\')">No</button></div></div>';
+      h+='<div class="surveyActions"><button class="btn danger" onclick="cancelSurvey()">Cancel</button><button class="btn primary" onclick="meCriticFallbackSave()">Save Restaurant & Review</button></div>';
+      modalBody.innerHTML=h;
+    }catch(e){modalBody.innerHTML='<div class="eyebrow">Metro Eats</div><h2>Review could not be opened</h2><p class="hint">Please close this window and try again.</p><div class="actions"><button class="btn danger" onclick="closeModal()">Close</button></div>'}
+  }
+  window.meCriticFallbackFoodRating=function(n){
+    meCriticEnsureState();
+    let name=document.getElementById('criticFallbackFood')?.value?.trim()||'';
+    if(!surveyState.foodItems.length)surveyState.foodItems.push({id:uid(),category:'Entrées',name:name,rating:n,notes:''});
+    else {surveyState.foodItems[0].name=name;surveyState.foodItems[0].rating=n}
+    meCriticRenderFallback();
+  };
+  window.meCriticFallbackSave=function(){
+    meCriticEnsureState();
+    let name=document.getElementById('criticFallbackFood')?.value?.trim()||'';
+    if(!surveyState.foodItems.length&&name)surveyState.foodItems.push({id:uid(),category:'Entrées',name:name,rating:0,notes:''});
+    if(surveyState.foodItems[0])surveyState.foodItems[0].name=name||surveyState.foodItems[0].name;
+    if(typeof saveSurvey==='function')saveSurvey();
+  };
+  const originalRenderSurvey=window.renderSurvey;
+  if(typeof originalRenderSurvey==='function'){
+    window.renderSurvey=function(){try{originalRenderSurvey()}catch(e){console.error('Metro Eats review render error',e);meCriticRenderFallback()}};
+  }
+  const originalShowRankings=window.showRankings;
+  if(typeof originalShowRankings==='function'){
+    window.showRankings=function(){try{originalShowRankings()}catch(e){console.error('Metro Eats rankings render error',e);modal.classList.add('show');modalBody.innerHTML='<div class="eyebrow">Food Critic</div><h2>My Restaurant Rankings</h2><p class="hint">Your saved reviews are still intact. The rankings screen hit a display error.</p><div class="actions"><button class="btn danger" onclick="closeModal()">Close</button></div>'}};
+  }
+  const originalShowVisitHistory=window.showVisitHistory;
+  if(typeof originalShowVisitHistory==='function'){
+    window.showVisitHistory=function(id){try{originalShowVisitHistory(id)}catch(e){console.error('Metro Eats review history render error',e);modal.classList.add('show');modalBody.innerHTML='<div class="eyebrow">Food Critic History</div><h2>Review History</h2><p class="hint">Your saved reviews are still intact. The history screen hit a display error.</p><div class="actions"><button class="btn danger" onclick="closeModal()">Close</button></div>'}};
+  }
+})();
