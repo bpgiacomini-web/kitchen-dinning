@@ -10,7 +10,7 @@
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="icon-180.png">
 <title>Metro Eats</title>
-<link rel="stylesheet" href="styles.css?v=20261004-3">
+<link rel="stylesheet" href="styles.css?v=20261005-4">
 </head>
 <body>
 <div class="app">
@@ -19,7 +19,8 @@
   <div class="nav" id="desktopNav"><button class="active" data-tab="home">Home</button><button data-tab="recipes">Recipes</button><button data-tab="restaurants">Dining</button></div>
 </header>
 <section id="home" class="section active">
-  <div class="hero"><div class="heroIn"><div class="eyebrow">St. Louis • Metro East</div><h2>Metro Eats<br><span class="fl">⚜</span> Recipes & Dining</h2><p>Your personal recipe book and restaurant journal — built around the food you actually love.</p><div class="homeFeatureButtons"><button class="homeFeatureButton recipeButton" onclick="tab('recipes')"><span class="homeFeatureIcon">✦</span><span><strong>Recipes</strong><small>Your Kitchen</small></span><span class="homeFeatureArrow">→</span></button><button class="homeFeatureButton diningButton" onclick="tab('restaurants')"><span class="homeFeatureIcon">⚜</span><span><strong>Dining Experience</strong><small>Your Restaurants & Reviews</small></span><span class="homeFeatureArrow">→</span></button></div></div></div>
+  <div class="hero"><div class="heroIn"><div class="eyebrow">St. Louis • Metro East</div><h2>Metro Eats<br><span class="fl">⚜</span> Recipes & Dining</h2><p>Your personal recipe book and restaurant journal — built around the food you actually love.</p><div class="homeFeatureButtons"><button class="homeFeatureButton recipeButton" onclick="tab('recipes')"><span class="homeFeatureIcon">✦</span><span><strong>Recipes</strong><small>Your Kitchen</small></span><span class="homeFeatureArrow">→</span></button><button class="homeFeatureButton diningButton" onclick="tab('restaurants')"><span class="homeFeatureIcon">⚜</span><span><strong>Dining Experience</strong><small>Your Restaurants & Reviews</small></span><span class="homeFeatureArrow">→</span></button></div>
+<div id="restaurantSpotlight" class="restaurantSpotlight" hidden></div></div></div>
   <div class="newsSection"><div class="sectionTitle"><div><div class="sectionKicker">Around the Metro</div><h3>What’s happening in St. Louis & Metro East</h3><div class="hint">Local food, drink, restaurant and dining stories.</div></div><div id="newsUpdated" class="small"></div></div><div id="newsGrid" class="newsGrid"><div class="empty">Loading local stories…</div></div></div>
   <div class="homeColumns">
     <article class="featureCard"><div><div class="sectionKicker">Your Kitchen</div><h3>Recipes worth keeping</h3><p>Build your personal cookbook, import recipes and keep the dishes you actually make easy to find.</p></div><div class="actions"><button class="btn primary" onclick="tab('recipes')">Open Recipes →</button><button class="btn" onclick="openRecipeChooser()">＋ Add Recipe</button></div></article>
@@ -58,6 +59,6 @@ document.addEventListener('DOMContentLoaded',function(){
   });
 });
 </script>
-<script src="app.js?v=20261005-23" defer></script>
+<script src="app.js?v=20261005-24" defer></script>
 </body>
 </html>
