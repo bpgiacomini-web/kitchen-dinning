@@ -724,3 +724,72 @@ function showRankings(){
   h+='<div class="actions"><button type="button" class="btn danger" onclick="closeModal()">Close</button></div>';
   modal.classList.add('show');modalBody.innerHTML=h;
 }
+
+
+/* FINAL DINING CLICK ROUTER — all Dining actions use one event path */
+(function(){
+  function route(action,id){
+    try{
+      id=id==null?'':String(id);
+      if(action==='create'){
+        meDiningOpen('new',null,false);
+      }else if(action==='edit'){
+        meDiningOpen(id,null,false);
+      }else if(action==='review'){
+        meDiningReview(id);
+      }else if(action==='history'){
+        showVisitHistory(id);
+      }else if(action==='rankings'){
+        showRankings();
+      }
+    }catch(e){
+      console.error('Metro Eats Dining action error',e);
+      alert('Metro Eats could not open that Dining action. '+(e&&e.message?e.message:'Please try again.'));
+    }
+  }
+  document.addEventListener('click',function(e){
+    let el=e.target&&e.target.closest?e.target.closest('[data-me-dining-action]'):null;
+    if(!el)return;
+    e.preventDefault();
+    e.stopPropagation();
+    route(el.getAttribute('data-me-dining-action'),el.getAttribute('data-me-dining-id'));
+  },true);
+})();
+function restaurantCard(r){
+  let s=r.survey,history=Array.isArray(r.reviewHistory)?r.reviewHistory:[],summary=s?topRatedSummary(s):'';
+  let id=String(r.id||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  return '<article class="restaurant">'+
+    '<div class="recipeHead"><div><h3>'+esc(r.name)+'</h3><div class="meta">'+esc(r.location||'')+' '+(r.type?'• '+esc(r.type):'')+'</div>'+stamp('Added',r.createdAt)+(r.updatedAt?stamp('Last updated',r.updatedAt):'')+'</div>'+
+    '<button type="button" class="btn" data-me-dining-action="edit" data-me-dining-id="'+id+'">Edit</button></div>'+
+    (s?'<div class="restaurantScoreCard"><div><div class="restaurantScore">'+Number(s.overall||0).toFixed(1)+'<span style="font-size:.45em;letter-spacing:0"> / 10</span></div><div class="restaurantScoreLabel">Overall Experience</div></div><div><div class="topRated"><strong>Top Rated:</strong> '+(summary||'Complete another visit for more detail.')+'</div>'+stamp('Reviewed',s.createdAt)+
+    '<div class="restaurantLinks"><button type="button" class="btn primary" data-me-dining-action="review" data-me-dining-id="'+id+'">Review Again</button><button type="button" class="btn" data-me-dining-action="history" data-me-dining-id="'+id+'">Visit History ('+history.length+')</button></div></div></div>':
+    '<div class="actions"><button type="button" class="btn primary" data-me-dining-action="review" data-me-dining-id="'+id+'">★ Rate This Restaurant</button></div>')+
+    (r.notes?'<p>'+esc(r.notes)+'</p>':'')+
+    '<div class="restaurantLinks">'+(r.website?'<a class="btn" href="'+esc(r.website)+'" target="_blank" rel="noopener noreferrer">Official Website</a>':'')+
+    (r.menuUrl?'<a class="btn" href="'+esc(r.menuUrl)+'" target="_blank" rel="noopener noreferrer">Official Menu</a>':'<a class="btn" href="'+officialMenuSearch(r.name,r.location||'')+'" target="_blank" rel="noopener noreferrer">Find Official Menu</a>')+
+    '</div>'+(r.photos?.length?'<div class="photos">'+r.photos.slice(0,6).map(function(p,i){return '<img src="'+esc(p)+'" alt="'+esc(r.name)+' meal photo '+(i+1)+'">'}).join('')+'</div>':'')+
+    '</article>';
+}
+function showRankings(){
+  let ranked=(db.restaurants||[]).filter(function(r){return r.survey}).sort(function(a,b){return Number(b.survey.overall||0)-Number(a.survey.overall||0)});
+  let h='<div class="eyebrow">Food Critic</div><h2>My Restaurant Rankings</h2><p class="hint">Rankings use your Food Critic scores.</p>';
+  h+=ranked.length?'<div class="surveyGrid">'+ranked.map(function(r,i){
+    let id=String(r.id||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    return '<div class="surveyItem"><span class="rankBadge">#'+(i+1)+'</span><div><b>'+esc(r.name)+'</b><div class="small">'+esc(r.location||'')+' • <strong>'+Number(r.survey.overall||0).toFixed(1)+'/10</strong></div>'+stamp('Latest review',r.survey.createdAt)+'</div><button type="button" class="btn" data-me-dining-action="review" data-me-dining-id="'+id+'">Review</button></div>';
+  }).join('')+'</div>':'<div class="empty">Complete a Food Critic review to start your rankings.</div>';
+  h+='<div class="actions"><button type="button" class="btn danger" onclick="closeModal()">Close</button></div>';
+  modal.classList.add('show');modalBody.innerHTML=h;
+}
+function showVisitHistory(id){
+  let r=db.restaurants.find(function(x){return String(x.id)===String(id)});if(!r)return;
+  let h='<div class="eyebrow">Food Critic</div><h2>'+esc(r.name)+'</h2><p class="hint">Every saved visit stays with this restaurant.</p>';
+  let rows=Array.isArray(r.reviewHistory)?r.reviewHistory:[];if(!rows.length&&r.survey)rows=[r.survey];
+  if(rows.length){
+    h+='<div class="surveyGrid">'+rows.slice().reverse().map(function(v,idx){
+      let rid=String(r.id||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+      return '<div class="surveyItem"><span class="rankBadge">#'+(rows.length-idx)+'</span><div><b>'+Number(v.overall||0).toFixed(1)+'/10</b><div class="small">'+esc(v.ordered||'Order not recorded')+'</div>'+stamp('Reviewed',v.createdAt)+'</div><button type="button" class="btn" data-me-dining-action="review" data-me-dining-id="'+rid+'">Review</button></div>';
+    }).join('')+'</div>';
+  }else h+='<div class="empty">No visits saved yet.</div>';
+  h+='<div class="actions"><button type="button" class="btn danger" onclick="closeModal()">Close</button></div>';
+  modal.classList.add('show');modalBody.innerHTML=h;
+}
