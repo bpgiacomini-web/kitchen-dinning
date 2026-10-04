@@ -1,17 +1,15 @@
 # Metro Eats
 
-Personal recipes, restaurant reviews, dining history, and St. Louis / Metro East food news.
+Metro Eats is a mobile-first personal recipe book, restaurant journal, and St. Louis / Metro East local food guide.
 
-## GitHub Pages
+## Current build
+- Large, older-user-friendly restaurant intake and 12-question dining survey
+- Progressive nearby restaurant search with name matching and multiple fallbacks
+- iPhone safe-area protection across pages and pop-outs
+- Restored Metro Eats logo
+- Daily local news with food prioritized, plus bars, comedy, and music categories
+- Recipes and restaurants stored in browser localStorage
+- Location features require browser permission
 
-This is a static GitHub Pages app. Upload the contents of this package to the repository root.
-
-## Daily local news
-
-`.github/workflows/daily-news.yml` runs the news updater daily and can also be run manually from GitHub Actions. It updates `news.json` when new local food stories are found.
-
-## Important
-
-- Recipes and restaurant data are stored in the browser's localStorage on the device being used.
-- The app does not use a server-side database.
-- Restaurant search and current-location features require browser location permission.
+## Daily news
+GitHub Actions runs `update-news.py` daily and updates `news.json` when fresh local stories are found. Food is intentionally prioritized; local bars/nightlife, comedy, and music events are also categorized when available.
