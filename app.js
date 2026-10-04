@@ -710,3 +710,17 @@ function meDiningReview(id){
     alert('The review could not be opened. '+(e&&e.message?e.message:'Please try again.'));
   }
 }
+
+
+/* FINAL RANKINGS REVIEW NAVIGATION — use the proven Review Again handler */
+function showRankings(){
+  let ranked=(db.restaurants||[]).filter(function(r){return r.survey}).sort(function(a,b){return Number(b.survey.overall||0)-Number(a.survey.overall||0)});
+  let h='<div class="eyebrow">Food Critic</div><h2>My Restaurant Rankings</h2><p class="hint">Rankings use your Food Critic scores.</p>';
+  if(ranked.length){
+    h+='<div class="surveyGrid">'+ranked.map(function(r,i){
+      return '<div class="surveyItem"><span class="rankBadge">#'+(i+1)+'</span><div><b>'+esc(r.name)+'</b><div class="small">'+esc(r.location||'')+' • <strong>'+Number(r.survey.overall||0).toFixed(1)+'/10</strong></div>'+stamp('Latest review',r.survey.createdAt)+'</div><button type="button" class="btn" onclick="closeModal();meDiningReview(\''+String(r.id).replace(/'/g,'&#39;')+'\')">Review</button></div>';
+    }).join('')+'</div>';
+  }else h+='<div class="empty">Complete a Food Critic review to start your rankings.</div>';
+  h+='<div class="actions"><button type="button" class="btn danger" onclick="closeModal()">Close</button></div>';
+  modal.classList.add('show');modalBody.innerHTML=h;
+}
