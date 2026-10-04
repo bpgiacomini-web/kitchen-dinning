@@ -1,21 +1,12 @@
-# Metro Eats
+# Metro Eats v5 — Restaurant Review Recovery & Highlighted History
 
-Metro Eats is a mobile-first personal recipe book, restaurant journal, and St. Louis / Metro East local food guide.
+Complete replacement build for the Metro Eats GitHub Pages app.
 
-## Current build
-- Large, older-user-friendly restaurant intake and 12-question dining survey
-- Progressive nearby restaurant search with name matching and multiple fallbacks
-- iPhone safe-area protection across pages and pop-outs
-- Restored Metro Eats logo
-- Daily local news with food prioritized, plus bars, comedy, and music categories
-- Recipes and restaurants stored in browser localStorage
-- Location features require browser permission
+Changes:
+- Keeps the full restaurant review feed at the top of Dining.
+- Shows every saved visit, ranked by Overall Experience (highest first), with date as the tie-breaker.
+- Highlights restaurant name, rank, overall score, high scores, all 10 category scores, order, order-again result, and Review Again.
+- Adds a migration pass that looks for older Metro Eats localStorage versions and older restaurant/review structures on the same site origin.
+- Preserves the recipe search/category/subcategory filtering and News fixes from the previous build.
 
-## Daily news
-GitHub Actions runs `update-news.py` daily and updates `news.json` when fresh local stories are found. Food is intentionally prioritized; local bars/nightlife, comedy, and music events are also categorized when available.
-
-- Restaurant name search uses progressive nearby matching with Overpass and a Nominatim fallback.
-
-
-## Visual refresh
-The interface uses a restrained editorial photo treatment and line-art icon system. Some local spotlight imagery is loaded from the original publisher/restaurant image URLs so the static GitHub Pages build does not redistribute third-party image files.
+Nothing is deployed automatically.
