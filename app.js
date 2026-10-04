@@ -501,3 +501,107 @@ function renderSurvey(){
   h+='<div class="surveyActions"><button type="button" class="btn danger" onclick="cancelSurvey()">Cancel</button><button type="button" class="btn primary" onclick="saveSurvey()">Save Restaurant & Review</button></div>';
   modal.classList.add('show');modalBody.innerHTML=h;
 }
+
+/* FINAL STABLE DINING NAVIGATION */
+/* One navigation path for every saved restaurant review. This block is deliberately
+   last in app.js so older review handlers cannot win. Service worker untouched. */
+function meDiningLoadReviewState(r){
+  let latest=r?.reviewHistory?.[r.reviewHistory.length-1]||r?.survey||null;
+  let items=(latest?.foodItems||[]).map(x=>({...x,id:x.id||uid()}));
+  if(!items.length&&latest?.ordered){
+    items=[{id:uid(),category:'Entrées',name:String(latest.ordered),rating:Number(latest?.scores?.[1]||0),notes:'Imported from an earlier review.'}];
+  }
+  surveyState={restaurantId:r?.id==='new'?'new':r?.id||null,scores:meCriticLegacyScores(latest),foodItems:items,foodOpen:{},legacyOrdered:latest?.ordered||'',orderAgain:latest?.orderAgain||''};
+}
+function meDiningOpen(id,prefilling,asNewVisit){
+  let r=id==='new'
+    ?(prefilling||{id:'new',name:'',type:'Other',location:'',website:'',menuUrl:'',notes:'',photos:[],survey:null,reviewHistory:[],createdAt:null,updatedAt:null})
+    :db.restaurants.find(x=>String(x.id)===String(id));
+  if(!r)return;
+  pendingRestaurant=id==='new'?{...r}:null;
+  pendingReviewRestaurant=id==='new'?null:{...r,photos:[...(r.photos||[])]};
+  restaurantEditMode=id!=='new'&&!asNewVisit;
+  window._editingPhotos=[...(r.photos||[])];
+  meDiningLoadReviewState(r);
+  renderSurvey();
+}
+function openRestaurant(id,prefilling){meDiningOpen(id,prefilling,false)}
+function startSurvey(id){meDiningOpen(id,null,true)}
+function useNearby(x){
+  let r={id:'new',name:x?.name||'',type:x?.type||'Other',location:x?.address||'',website:x?.website||'',menuUrl:'',notes:'',photos:[],survey:null,reviewHistory:[],createdAt:new Date().toISOString(),updatedAt:null,lat:x?.lat??null,lon:x?.lon??null};
+  pendingRestaurant=r;pendingReviewRestaurant=null;restaurantEditMode=false;window._editingPhotos=[];
+  meDiningLoadReviewState(r);renderSurvey();
+}
+function meDiningCapture(){
+  meCriticEnsureState();
+  surveyState.legacyOrdered=document.getElementById('criticLegacyOrder')?.value?.trim()||'';
+  surveyState.foodItems.forEach(x=>{
+    let n=document.getElementById('criticFood-'+x.id),note=document.getElementById('criticNote-'+x.id);
+    if(n)x.name=n.value.trim()||x.name;
+    if(note)x.notes=note.value.trim();
+  });
+}
+function saveSurvey(){
+  meDiningCapture();
+  if(!Number(surveyState.scores[0])){alert('Please rate Overall Experience from 1 to 10.');return}
+  if(!Number(surveyState.scores[2])){alert('Please rate Service from 1 to 10.');return}
+  if(!Number(surveyState.scores[3])){alert('Please rate Value from 1 to 10.');return}
+  let rated=surveyState.foodItems.filter(x=>String(x.name||'').trim()&&Number(x.rating)>0);
+  if(!rated.length){alert('Please add and rate at least one dish or drink.');return}
+  if(!surveyState.orderAgain){alert('Please choose Yes or No for whether you would order it again.');return}
+  let now=new Date().toISOString();
+  let current=pendingRestaurant||pendingReviewRestaurant||{};
+  let fields={
+    name:fieldValue('rName')||current.name||'Unnamed restaurant',
+    type:fieldValue('rType')||current.type||'Other',
+    location:fieldValue('rLoc')||current.location||'',
+    website:fieldValue('rWebsite')||current.website||'',
+    menuUrl:fieldValue('rMenuUrl')||current.menuUrl||'',
+    notes:fieldValue('rNotes')||current.notes||'',
+    photos:[...(window._editingPhotos||current.photos||[])],
+    lat:current.lat??null,lon:current.lon??null
+  };
+  let review={
+    scores:{0:Number(surveyState.scores[0]),1:Number(meCriticFoodAverage()),2:Number(surveyState.scores[2]),3:Number(surveyState.scores[3])},
+    foodItems:rated.map(x=>({...x})),
+    ordered:surveyState.legacyOrdered||rated.map(x=>x.name).join(', '),
+    orderAgain:surveyState.orderAgain,
+    overall:Number(meCriticFinalScore()),
+    createdAt:now
+  };
+  try{
+    if(pendingRestaurant){
+      let r={...pendingRestaurant,...fields,reviewHistory:[review],survey:review,rating:Math.round(review.overall)/2,createdAt:pendingRestaurant.createdAt||now,updatedAt:now};
+      db.restaurants.unshift(r);
+    }else if(pendingReviewRestaurant){
+      let r=db.restaurants.find(x=>String(x.id)===String(pendingReviewRestaurant.id));
+      if(!r)throw new Error('The restaurant could not be found.');
+      Object.assign(r,pendingReviewRestaurant,fields);
+      r.reviewHistory=Array.isArray(r.reviewHistory)?[...r.reviewHistory]:[];
+      if(restaurantEditMode&&r.reviewHistory.length)r.reviewHistory=[...r.reviewHistory.slice(0,-1),review];
+      else r.reviewHistory=[...r.reviewHistory,review];
+      r.survey=review;r.rating=Math.round(review.overall)/2;r.updatedAt=now;
+    }else throw new Error('No restaurant is selected.');
+    save();pendingRestaurant=null;pendingReviewRestaurant=null;restaurantEditMode=false;window._editingPhotos=[];closeModal();renderRestaurants();updateStory();
+  }catch(e){alert(e.message||'Unable to save this review.');}
+}
+function showVisitHistory(id){
+  let r=db.restaurants.find(x=>String(x.id)===String(id));if(!r)return;
+  let h='<div class="eyebrow">Food Critic</div><h2>'+esc(r.name)+'</h2><p class="hint">Every saved visit stays with this restaurant.</p>';
+  let rows=Array.isArray(r.reviewHistory)?r.reviewHistory:[];
+  if(!rows.length&&r.survey)rows=[r.survey];
+  h+=rows.length?'<div class="surveyGrid">'+rows.slice().reverse().map(function(v,idx){
+    return '<div class="surveyItem"><span class="rankBadge">#'+(rows.length-idx)+'</span><div><b>'+Number(v.overall||0).toFixed(1)+'/10</b><div class="small">'+esc(v.ordered||'Order not recorded')+'</div>'+stamp('Reviewed',v.createdAt)+'</div><button type="button" class="btn" onclick="closeModal();startSurvey(\''+String(r.id).replace(/'/g,'&#39;')+'\')">Review</button></div>';
+  }).join('')+'</div>':'<div class="empty">No visits saved yet.</div>';
+  h+='<div class="actions"><button type="button" class="btn danger" onclick="closeModal()">Close</button></div>';
+  modal.classList.add('show');modalBody.innerHTML=h;
+}
+function showRankings(){
+  let ranked=[...db.restaurants].filter(r=>r.survey).sort((a,b)=>Number(b.survey.overall||0)-Number(a.survey.overall||0));
+  let h='<div class="eyebrow">Food Critic</div><h2>My Restaurant Rankings</h2><p class="hint">Rankings use your Food Critic scores.</p>';
+  h+=ranked.length?'<div class="surveyGrid">'+ranked.map(function(r,i){
+    return '<div class="surveyItem"><span class="rankBadge">#'+(i+1)+'</span><div><b>'+esc(r.name)+'</b><div class="small">'+esc(r.location||'')+' • <strong>'+Number(r.survey.overall||0).toFixed(1)+'/10</strong></div>'+stamp('Latest review',r.survey.createdAt)+'</div><button type="button" class="btn" onclick="closeModal();startSurvey(\''+String(r.id).replace(/'/g,'&#39;')+'\')">Review</button></div>';
+  }).join('')+'</div>':'<div class="empty">Complete a Food Critic review to start your rankings.</div>';
+  h+='<div class="actions"><button type="button" class="btn danger" onclick="closeModal()">Close</button></div>';
+  modal.classList.add('show');modalBody.innerHTML=h;
+}
