@@ -429,3 +429,75 @@ renderRestaurantSpotlight();
     window.showVisitHistory=function(id){try{originalShowVisitHistory(id)}catch(e){console.error('Metro Eats review history render error',e);modal.classList.add('show');modalBody.innerHTML='<div class="eyebrow">Food Critic History</div><h2>Review History</h2><p class="hint">Your saved reviews are still intact. The history screen hit a display error.</p><div class="actions"><button class="btn danger" onclick="closeModal()">Close</button></div>'}};
   }
 })();
+
+
+/* FINAL REVIEW WORKFLOW FIX
+   The restaurant editor below is intentionally self-contained. It avoids the
+   previous layered renderRestaurantEditor/renderSurvey chain that could leave
+   the modal blank. Service worker code is untouched. */
+function meCriticFinalRestaurant(id,prefilling){
+  if(id==='new')return prefilling||{id:'new',name:'',type:'Other',location:'',website:'',menuUrl:'',notes:'',photos:[],survey:null,reviewHistory:[],createdAt:null,updatedAt:null};
+  return db.restaurants.find(x=>String(x.id)===String(id));
+}
+function meCriticFinalLoad(r){
+  let latest=r?.reviewHistory?.[r.reviewHistory.length-1]||r?.survey||null;
+  let items=(latest?.foodItems||[]).map(x=>({...x,id:x.id||uid()}));
+  if(!items.length&&latest?.ordered)items=[{id:uid(),category:'Entrées',name:String(latest.ordered),rating:Number(latest?.scores?.[1]||0),notes:'Imported from an earlier review.'}];
+  surveyState={restaurantId:r?.id==='new'?'new':r?.id||null,scores:meCriticLegacyScores(latest),foodItems:items,foodOpen:{},legacyOrdered:latest?.ordered||'',orderAgain:latest?.orderAgain||''};
+}
+function openRestaurant(id,prefilling){
+  let r=meCriticFinalRestaurant(id,prefilling);if(!r)return;
+  pendingRestaurant=id==='new'?{...r}:null;
+  pendingReviewRestaurant=id==='new'?null:{...r,photos:[...(r.photos||[])]};
+  restaurantEditMode=id!=='new';
+  window._editingPhotos=[...(r.photos||[])];
+  meCriticFinalLoad(r);renderSurvey();
+}
+function startSurvey(id){openRestaurant(id)}
+function useNearby(x){
+  let r={id:'new',name:x?.name||'',type:x?.type||'Other',location:x?.address||'',website:x?.website||'',menuUrl:'',notes:'',photos:[],survey:null,reviewHistory:[],createdAt:new Date().toISOString(),updatedAt:null,lat:x?.lat??null,lon:x?.lon??null};
+  pendingRestaurant=r;pendingReviewRestaurant=null;restaurantEditMode=false;window._editingPhotos=[];
+  meCriticFinalLoad(r);renderSurvey();
+}
+function meCriticFinalEditor(r){
+  let editing=!!pendingReviewRestaurant&&!pendingRestaurant;
+  let opts=restaurantTypes.map(function(x){return '<option value="'+esc(x)+'" '+(x===(r?.type||'Other')?'selected':'')+'>'+esc(x)+'</option>'}).join('');
+  return '<div class="eyebrow">'+(editing?'Restaurant Review':'Food Critic')+'</div>'+
+    '<h2>'+(editing?'Edit Restaurant & Review':'Create Restaurant & Review')+'</h2>'+
+    '<div class="fields">'+
+    '<div class="field full"><label for="rName">Restaurant name</label><input id="rName" value="'+esc(r?.name||'')+'" autocomplete="organization" oninput="restaurantNameChanged(this.value)"><div id="restaurantLookupResults"></div></div>'+
+    '<div class="field"><label for="rType">Restaurant type</label><select id="rType">'+opts+'</select></div>'+
+    '<div class="field"><label for="rLoc">Street + city + state</label><input id="rLoc" value="'+esc(r?.location||'')+'" placeholder="123 Main St, Alton, IL"></div>'+
+    '<div class="field full"><label for="rWebsite">Official website</label><input id="rWebsite" type="url" value="'+esc(r?.website||'')+'" placeholder="https://…"></div>'+
+    '<div class="field full"><label for="rMenuUrl">Official menu</label><input id="rMenuUrl" type="url" value="'+esc(r?.menuUrl||'')+'" placeholder="https://…"></div>'+
+    '<div class="field full"><label for="rNotes">Notes</label><textarea id="rNotes" rows="3">'+esc(r?.notes||'')+'</textarea></div>'+
+    '<div class="field full"><label for="rPhoto">Meal photos</label><input id="rPhoto" type="file" accept="image/*" multiple onchange="meCriticFinalPhotos(this)"><div id="photoPreview" class="photos">'+(window._editingPhotos||[]).map(function(p,i){return '<div><img src="'+esc(p)+'" alt="Meal photo '+(i+1)+'"><button type="button" class="btn" onclick="meCriticFinalRemovePhoto('+i+')">Remove</button></div>'}).join('')+'</div></div>'+
+    '</div><div class="actions"><button type="button" class="btn secondary" onclick="useCurrentLocationForAddress()">⌖ Use My Location</button><button type="button" class="btn" onclick="findWebsiteForCurrentRestaurant()">Find Official Website</button><button type="button" class="btn" onclick="findOfficialMenu()">Find Official Menu</button>'+
+    (editing?'<button type="button" class="btn danger" onclick="deleteCurrentSurvey()">Delete Survey & Restaurant</button>':'')+'</div>';
+}
+function meCriticFinalPhotos(input){
+  let files=[...(input?.files||[])];
+  (async function(){for(const file of files){try{window._editingPhotos.push(await readFileAsDataUrl(file))}catch(e){}}renderSurvey()})();
+}
+function meCriticFinalRemovePhoto(i){window._editingPhotos.splice(i,1);renderSurvey()}
+function renderSurvey(){
+  meCriticEnsureState();
+  let r=currentSurveyRestaurant()||{name:'New restaurant',type:'Other',location:'',photos:[]};
+  window._editingPhotos=window._editingPhotos||[...(r.photos||[])];
+  let avg=meCriticFoodAverage(),final=meCriticFinalScore(),h=meCriticFinalEditor(r);
+  h+='<div class="status">Food Critic Review</div><div class="scoreHero"><div class="restaurantScore">'+(final||'—')+'<span style="font-size:.45em"> / 10</span></div><div class="restaurantScoreLabel">Critic Score — Overall Experience, Food Quality, Service & Value</div></div>';
+  h+='<div class="meta">'+esc(r.name||'New restaurant')+(r.location?' • '+esc(r.location):'')+'</div><div class="reviewForm"><h3>Critic Rating</h3><p class="hint">Rate the visit and let the dishes you ate determine Food Quality.</p>';
+  ME_CRITIC_QUESTIONS.forEach(function(q,i){
+    let value=i===1?(avg?avg.toFixed(1)+'/10':'Calculated from food below'):(surveyState.scores[i]?surveyState.scores[i]+'/10':'Select 1–10');
+    h+='<div class="reviewQuestion"><div class="reviewQuestionHead"><b>'+(i+1)+'. '+q[0]+'</b><span>'+value+'</span></div>';
+    if(i===1)h+='<div class="status">'+(avg?avg.toFixed(1)+'/10 from '+surveyState.foodItems.filter(function(x){return Number(x.rating)>0}).length+' rated item(s)':'Rate each item below to calculate this score.')+'</div>';
+    else h+='<div class="reviewScore">'+[1,2,3,4,5,6,7,8,9,10].map(function(n){return '<button type="button" class="'+(Number(surveyState.scores[i])===n?'active':'')+'" onclick="meCriticSetScore('+i+','+n+')">'+n+'</button>'}).join('')+'</div>';
+    h+='</div>';
+  });
+  h+='</div><div class="reviewExtras"><h3>What I Ate</h3><p class="hint">Add every dish or drink you actually had. Each gets its own 1–10 rating and critic notes.</p>';
+  h+=ME_CRITIC_CATS.map(function(c){return meCriticFoodBlock(c,r.type||'Other')}).join('');
+  h+='<div class="field"><label for="criticLegacyOrder">Additional order note</label><textarea id="criticLegacyOrder" rows="2" class="surveyNote" placeholder="Optional">'+esc(surveyState.legacyOrdered||'')+'</textarea></div>';
+  h+='<div class="field"><label>Would I order it again?</label><div class="actions"><button type="button" class="btn '+(surveyState.orderAgain==='Yes'?'primary':'')+'" onclick="meCriticSetAgain(\'Yes\')">Yes</button><button type="button" class="btn '+(surveyState.orderAgain==='No'?'primary':'')+'" onclick="meCriticSetAgain(\'No\')">No</button></div></div></div>';
+  h+='<div class="surveyActions"><button type="button" class="btn danger" onclick="cancelSurvey()">Cancel</button><button type="button" class="btn primary" onclick="saveSurvey()">Save Restaurant & Review</button></div>';
+  modal.classList.add('show');modalBody.innerHTML=h;
+}
