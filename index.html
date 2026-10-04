@@ -191,10 +191,67 @@ function aiGuide(){let fav=db.recipes.filter(r=>r.favorite).map(r=>r.title).slic
 function closeModal(){modal.classList.remove('show');modalBody.innerHTML=''}
 
 const fallbackNews=[{"title":"10 St. Louis restaurants with great burgers","source":"Sauce Magazine","date":"October 1, 2026","url":"https://www.saucemagazine.com/"},{"title":"St. Louis coffee shops roll out fall menus","source":"Sauce Magazine","date":"September 30, 2026","url":"https://www.saucemagazine.com/"},{"title":"Heaterz is taking over Flock’s Downtown Alton property","source":"Sauce Magazine","date":"September 29, 2026","url":"https://www.saucemagazine.com/places-2/"},{"title":"Oh London in Creve Coeur lands at No. 13 on Yelp’s Best New Restaurants of 2026 list","source":"St. Louis Magazine","date":"October 1, 2026","url":"https://www.stlmag.com/dining/"},{"title":"The Fountain on Locust team to open Conefection at Wash Ave Food Hall","source":"St. Louis Magazine","date":"September 28, 2026","url":"https://www.stlmag.com/dining/"},{"title":"Coffeestamp opens location in downtown St. Louis","source":"St. Louis Magazine","date":"September 25, 2026","url":"https://www.stlmag.com/dining/"},{"title":"Heaterz Hot Chicken plans riverfront venue at Flock Food Truck site in Alton","source":"The Telegraph","date":"October 1, 2026","url":"https://www.thetelegraph.com/news/article/heaterz-hot-chicken-riverfront-alton-flock-truck-22454535.php"},{"title":"Alton restaurant owner serves free steaks to striking public works union members","source":"The Telegraph","date":"October 2, 2026","url":"https://www.thetelegraph.com/news/article/alton-teamsters-strike-free-steaks-macs-downtown-22457126.php"},{"title":"Vote now for your favorite local metro-east breakfast restaurant: Round 1","source":"Belleville News-Democrat","date":"September 29, 2026","url":"https://www.bnd.com/news/local/"}];
-async function loadLocalNews(){let box=document.getElementById('newsGrid'),stampEl=document.getElementById('newsUpdated');try{let r=await fetch('news.json?v='+Date.now(),{cache:'no-store',headers:{'Cache-Control':'no-cache'}});if(!r.ok)throw Error();let data=await r.json();renderLocalNews(data.items||fallbackNews,data.updated)}catch(e){renderLocalNews(fallbackNews,'Fallback stories')}}
-function renderLocalNews(items,updated){let box=document.getElementById('newsGrid'),stampEl=document.getElementById('newsUpdated');box.innerHTML=items.length?items.slice(0,9).map(x=>`<article class="newsCard"><div class="newsSource">${esc(x.source||'Local publication')}</div><h4><a href="${esc(x.url||'#')}" target="_blank" rel="noopener noreferrer">${esc(x.title||'Local story')}</a></h4><a class="newsMore" href="${esc(x.url||'#')}" target="_blank" rel="noopener noreferrer">Read the original story →</a><div class="newsDate">${esc(x.date||'')}</div></article>`).join(''):'<div class="empty">No local stories are available right now.</div>';if(updated&&stampEl)stampEl.textContent=updated==='Fallback stories'?'Showing saved stories':'Updated '+new Date(updated).toLocaleDateString()}
+const liveNewsQueries=[
+  {q:'site:saucemagazine.com St. Louis restaurant food dining bar brewery chef menu',source:'Sauce Magazine'},
+  {q:'site:stlmag.com/dining St. Louis restaurant food dining bar brewery chef menu',source:'St. Louis Magazine'},
+  {q:'site:thetelegraph.com Alton restaurant food dining bar brewery chef',source:'The Telegraph'},
+  {q:'site:bnd.com Metro East restaurant food dining breakfast bar brewery',source:'Belleville News-Democrat'},
+  {q:'St. Louis Metro East restaurant food dining brewery bar cafe October 2026',source:'Local & Regional'}
+];
+function cleanNewsText(v){return String(v||'').replace(/<[^>]*>/g,'').replace(/&amp;/g,'&').replace(/&#39;/g,"'").replace(/&quot;/g,'"').trim()}
+async function fetchLiveFeed(q,source){
+  const rss='https://news.google.com/rss/search?'+new URLSearchParams({q:q,hl:'en-US',gl:'US',ceid:'US:en'}).toString();
+  const endpoints=[
+    'https://api.rss2json.com/v1/api.json?rss_url='+encodeURIComponent(rss),
+    'https://api.allorigins.win/raw?url='+encodeURIComponent(rss)
+  ];
+  for(const endpoint of endpoints){
+    try{
+      const r=await fetch(endpoint,{cache:'no-store'});
+      if(!r.ok)continue;
+      const text=await r.text();
+      let items=[];
+      if(endpoint.includes('rss2json')){
+        const data=JSON.parse(text);
+        items=(data.items||[]).map(x=>({title:cleanNewsText(x.title),source:source,date:x.pubDate?new Date(x.pubDate).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}):'',url:x.link||'',ts:x.pubDate?new Date(x.pubDate).getTime():0}));
+      }else{
+        const xml=new DOMParser().parseFromString(text,'text/xml');
+        items=[...xml.querySelectorAll('item')].map(x=>({title:cleanNewsText(x.querySelector('title')?.textContent),source:source,date:x.querySelector('pubDate')?.textContent?new Date(x.querySelector('pubDate').textContent).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}):'',url:x.querySelector('link')?.textContent||'',ts:x.querySelector('pubDate')?.textContent?new Date(x.querySelector('pubDate').textContent).getTime():0}));
+      }
+      return items.filter(x=>x.title&&x.url&&x.ts&&x.ts<=Date.now()+86400000&&x.ts>=Date.now()-14*86400000);
+    }catch(e){}
+  }
+  return [];
+}
+async function loadLocalNews(){
+  let stampEl=document.getElementById('newsUpdated');
+  if(stampEl)stampEl.textContent='Refreshing live…';
+  try{
+    const batches=await Promise.all(liveNewsQueries.map(x=>fetchLiveFeed(x.q,x.source)));
+    const seen=new Set();
+    const live=batches.flat().sort((a,b)=>b.ts-a.ts).filter(x=>{let k=x.title.toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();if(seen.has(k))return false;seen.add(k);return true}).slice(0,9);
+    if(live.length){renderLocalNews(live,'live');return}
+    throw new Error('No live stories returned');
+  }catch(e){
+    try{
+      const r=await fetch('news.json?v='+Date.now(),{cache:'no-store',headers:{'Cache-Control':'no-cache'}});
+      if(!r.ok)throw Error();
+      const data=await r.json();
+      renderLocalNews(data.items||fallbackNews,'saved');
+    }catch(e2){renderLocalNews(fallbackNews,'saved')}
+  }
+}
+function renderLocalNews(items,updated){
+  let box=document.getElementById('newsGrid'),stampEl=document.getElementById('newsUpdated');
+  box.innerHTML=items.length?items.slice(0,9).map(x=>`<article class="newsCard"><div class="newsSource">${esc(x.source||'Local publication')}</div><h4><a href="${esc(x.url||'#')}" target="_blank" rel="noopener noreferrer">${esc(x.title||'Local story')}</a></h4><a class="newsMore" href="${esc(x.url||'#')}" target="_blank" rel="noopener noreferrer">Read the original story →</a><div class="newsDate">${esc(x.date||'')}</div></article>`).join(''):'<div class="empty">No local stories are available right now.</div>';
+  if(stampEl){
+    if(updated==='live')stampEl.textContent='Live • Updated '+new Date().toLocaleString('en-US',{month:'numeric',day:'numeric',year:'numeric',hour:'numeric',minute:'2-digit'});
+    else if(updated==='saved')stampEl.textContent='Live feed unavailable • Showing saved stories';
+    else stampEl.textContent='Updated '+new Date(updated).toLocaleDateString();
+  }
+}
 
-renderRecipes();renderRestaurants();loadLocalNews();setInterval(loadLocalNews,6*60*60*1000);
+renderRecipes();renderRestaurants();loadLocalNews();setInterval(loadLocalNews,60*60*1000);
 </script>
 </body>
 </html>
