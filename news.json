@@ -6,70 +6,80 @@
       "source": "Sauce Magazine",
       "date": "October 1, 2026",
       "url": "https://www.saucemagazine.com/",
-      "category": "food"
+      "category": "food",
+      "summary": "A quick local roundup of St. Louis spots for a serious burger run."
     },
     {
       "title": "St. Louis coffee shops roll out fall menus",
       "source": "Sauce Magazine",
       "date": "September 30, 2026",
       "url": "https://www.saucemagazine.com/",
-      "category": "food"
+      "category": "food",
+      "summary": "Local coffee shops are shifting into fall flavors and seasonal drinks."
     },
     {
       "title": "Heaterz is taking over Flock’s Downtown Alton property",
       "source": "Sauce Magazine",
       "date": "September 29, 2026",
       "url": "https://www.saucemagazine.com/places-2/",
-      "category": "food"
+      "category": "food",
+      "summary": "A new bar-and-food concept is headed for Flock’s former Downtown Alton space."
     },
     {
       "title": "Oh London in Creve Coeur lands at No. 13 on Yelp’s Best New Restaurants of 2026 list",
       "source": "St. Louis Magazine",
       "date": "October 1, 2026",
       "url": "https://www.stlmag.com/dining/",
-      "category": "food"
+      "category": "food",
+      "summary": "The Creve Coeur restaurant earns a national spot on Yelp’s 2026 best-new list."
     },
     {
       "title": "The Fountain on Locust team to open Conefection at Wash Ave Food Hall",
       "source": "St. Louis Magazine",
       "date": "September 28, 2026",
       "url": "https://www.stlmag.com/dining/",
-      "category": "food"
+      "category": "food",
+      "summary": "The Fountain on Locust team is expanding with a new concept at the Wash Ave Food Hall."
     },
     {
       "title": "Coffeestamp opens location in downtown St. Louis",
       "source": "St. Louis Magazine",
       "date": "September 25, 2026",
       "url": "https://www.stlmag.com/dining/",
-      "category": "food"
+      "category": "food",
+      "summary": "Coffeestamp adds a downtown St. Louis location to its growing local coffee presence."
     },
     {
       "title": "The Heavy Anchor reopens after car smashed into the south St. Louis bar",
       "source": "St. Louis Business Journal",
       "date": "September 30, 2026",
       "url": "https://www.bizjournals.com/stlouis/news/2026/09/30/the-heavy-anchor-reopens-car-smashed-building.html",
-      "category": "bars"
+      "category": "bars",
+      "summary": "The South City bar has reopened after a vehicle crashed into the building."
     },
     {
       "title": "The Nightmare Bar (October 3 – 31)",
       "source": "Explore St. Louis",
       "date": "October 3, 2026",
       "url": "https://explorestlouis.com/events/category/music/",
-      "category": "bars"
+      "category": "bars",
+      "summary": "A Halloween-season bar experience running through October 31."
     },
     {
       "title": "Sam Tallent",
       "source": "Explore St. Louis",
       "date": "October 4, 2026",
       "url": "https://explorestlouis.com/events/category/comedy/",
-      "category": "comedy"
+      "category": "comedy",
+      "summary": "A local comedy listing for Sam Tallent’s St. Louis appearance."
     },
     {
       "title": "Graham Nash",
       "source": "Explore St. Louis",
       "date": "October 4, 2026",
       "url": "https://explorestlouis.com/events/category/music/",
-      "category": "music"
+      "category": "music",
+      "summary": "A local event listing for Graham Nash in the St. Louis area."
     }
   ]
 }
