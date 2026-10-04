@@ -286,19 +286,66 @@ function parsePaste(){let t=rawRecipe.value.trim();if(!t)return;let lines=t.spli
 function saveParsed(title){let r={id:crypto.randomUUID(),title:(title||'').trim()||'Untitled Recipe',category:document.getElementById('pCat')?.value||Object.keys(db.cats)[0],subcategory:document.getElementById('pSub')?.value||'',ingredients:(document.getElementById('pIng')?.value||'').split('\n').map(x=>x.trim()).filter(Boolean),steps:(document.getElementById('pSteps')?.value||'').split('\n').map(x=>x.trim()).filter(Boolean),servings:'',time:'',favorite:false};if(!r.ingredients.length||!r.steps.length){alert('Please make sure the recipe has both ingredients and directions before saving.');return}db.recipes.unshift(r);save();closeModal();tab('recipes')}
 function openImportUrl(){modal.classList.add('show');modalBody.innerHTML=`<div class="eyebrow">Web recipe importer</div><h2>Import from Website</h2><p class="hint">Paste a recipe URL. Metro Eats will look for the recipe's own ingredients and directions instead of importing the surrounding article, ads, comments or unrelated page text.</p><div class="field"><label>Recipe URL</label><input id="recipeUrl" type="url" placeholder="https://example.com/recipe…"></div><div class="actions"><button class="btn primary" onclick="importUrl()">Find Recipe</button><button class="btn" onclick="closeModal()">Cancel</button></div><div class="notice">Some sites block automated access. If that happens, use Paste an Entire Recipe.</div>`}
 
-function cleanImportedLines(text){return text.split(/\r?\n/).map(x=>x.replace(/^\s*[-*•]\s*/,'').trim()).filter(Boolean).filter(x=>!/^\[?(jump to recipe|pin recipe|print recipe|share|save recipe|advertisement|sponsored|comments?)\]?$/i.test(x))}
-function extractSection(lines,patterns){let start=-1;for(let i=0;i<lines.length;i++){if(patterns.some(re=>re.test(lines[i]))){start=i;break}}if(start<0)return [];let out=[];const stop=/^(notes?|nutrition|equipment|reviews?|comments?|about|related recipes?|more recipes?|video|watch|tips?|storage|variations?|substitutions?|serving suggestions?)\s*:?$/i;const nextRecipe=/^(ingredients?|directions?|instructions?|method|steps?)\s*:?$/i;for(let i=start+1;i<lines.length;i++){let line=lines[i].replace(/^\s*[-*•]\s*/,'').trim();if(!line)continue;if(/^#{1,4}\s+/.test(line)||stop.test(line)||(nextRecipe.test(line)&&out.length>0))break;if(line.length>500)continue;if(/^(advertisement|sponsored|subscribe|sign up|jump to recipe|print recipe|share this|save recipe)$/i.test(line))continue;out.push(line)}return out}
-function extractRecipeFromText(text){let lines=cleanImportedLines(text);let title=(text.match(/^#\s+(.+)$/m)||[])[1]?.trim()||'';if(!title){for(const l of lines){if(l.length>4&&l.length<120&&!/^(ingredients?|directions?|instructions?|method|steps?)\b/i.test(l)){title=l;break}}}
-let ingredients=extractSection(lines,[/^#{0,4}\s*ingredients?\s*$/i,/^ingredients?\s*:/i]);
-let steps=extractSection(lines,[/^#{0,4}\s*(directions?|instructions?|method|steps?)\s*$/i,/^(directions?|instructions?|method|steps?)\s*:/i]);
-// Fallback: only use tightly bounded headings, never the whole article.
-if(!ingredients.length){let m=lines.findIndex(x=>/^#{0,4}\s*ingredients?\b/i.test(x));if(m>=0)ingredients=lines.slice(m+1,Math.min(m+41,lines.length)).filter(x=>!/^#{1,4}\s+/.test(x))}
-if(!steps.length){let m=lines.findIndex(x=>/^#{0,4}\s*(directions?|instructions?|method|steps?)\b/i.test(x));if(m>=0)steps=lines.slice(m+1,Math.min(m+31,lines.length)).filter(x=>!/^#{1,4}\s+/.test(x))}
-// Remove obvious non-recipe lines and stop runaway article content.
-ingredients=ingredients.filter(x=>x.length<=300&&!/^(prep time|cook time|total time|author|course|cuisine|calories|keyword|jump to|share|subscribe|follow us|equipment|notes?|tips?)\b/i.test(x));
-steps=steps.filter(x=>x.length<=600&&!/^(nutrition|calories|course|cuisine|keywords?|author|subscribe|comments?|equipment|notes?|tips?|substitutions?)\b/i.test(x));
-return {title:title||'Imported Recipe',ingredients:[...new Set(ingredients)].slice(0,60),steps:[...new Set(steps)].slice(0,50)} }
-function importUrl(){let u=recipeUrl.value.trim();if(!u){recipeUrl.focus();return}if(!/^https?:\/\//i.test(u)){recipeUrl.focus();return}let load=document.createElement('p');load.className='hint';load.id='importLoad';load.textContent='Finding the recipe…';modalBody.appendChild(load);fetch('https://r.jina.ai/'+u).then(async res=>{let text=await res.text();if(!res.ok)throw Error('Fetch failed');let parsed=extractRecipeFromText(text);if(!parsed.ingredients.length&&!parsed.steps.length)throw Error('No clear recipe section found');renderImportedPreview(parsed.title,parsed.ingredients,parsed.steps)}).catch(e=>{let el=document.getElementById('importLoad');if(el)el.textContent='This site could not be imported cleanly. Try Paste an Entire Recipe instead.'})}
+function stripImportedMarkup(value){
+ let x=String(value||'').replace(/\u00a0/g,' ').trim();
+ // Jina converts linked ingredient names into Markdown such as [Italian sausage](https://...).
+ // Keep the visible recipe text and remove the URL/Markdown wrapper.
+ x=x.replace(/!\[([^\]]*)\]\([^)]*\)/g,'$1');
+ x=x.replace(/\[([^\]]+)\]\((?:https?:\/\/|\/)[^)]*\)/g,'$1');
+ x=x.replace(/\[([^\]]+)\]\s*\((?:https?:\/\/|\/)[^)]*\)/g,'$1');
+ x=x.replace(/\bhttps?:\/\/\S+/gi,'');
+ x=x.replace(/\s*\(\s*https?:\/\/[^)]*\)\s*/gi,' ');
+ x=x.replace(/<[^>]+>/g,'');
+ x=x.replace(/\\([\[\]_*`])/g,'$1');
+ x=x.replace(/\s{2,}/g,' ').trim();
+ return x;
+}
+function cleanImportedLines(text){
+ return text.split(/\r?\n/)
+   .map(x=>stripImportedMarkup(x.replace(/^\s*[-*•]\s*/,'').trim()))
+   .filter(Boolean)
+   .filter(x=>!/^(?:\[?(jump to recipe|pin recipe|print recipe|share|save recipe|advertisement|sponsored|comments?)\]?)$/i.test(x));
+}
+function extractSection(lines,patterns){
+ let start=-1;
+ for(let i=0;i<lines.length;i++){if(patterns.some(re=>re.test(lines[i]))){start=i;break}}
+ if(start<0)return [];
+ let out=[];
+ const stop=/^(notes?|nutrition(?: facts?)?|equipment|reviews?|comments?|about|related recipes?|more recipes?|video|watch|tips?|storage|variations?|substitutions?|serving suggestions?|you'?ll also love|recipe submitted by|tweaks?)\s*:?$/i;
+ const nextRecipe=/^(ingredients?|directions?|instructions?|method|steps?)\s*:?$/i;
+ for(let i=start+1;i<lines.length;i++){
+   let line=stripImportedMarkup(lines[i].replace(/^\s*[-*•]\s*/,'').trim());
+   if(!line)continue;
+   if(/^#{1,4}\s+/.test(line)||stop.test(line)||(nextRecipe.test(line)&&out.length>0))break;
+   if(line.length>500)continue;
+   if(/^(advertisement|sponsored|subscribe|sign up|jump to recipe|print recipe|share this|save recipe)$/i.test(line))continue;
+   out.push(line);
+ }
+ return out;
+}
+function extractRecipeFromText(text){
+ let lines=cleanImportedLines(text);
+ let title=(text.match(/^#\s+(.+)$/m)||[])[1]?.trim()||'';
+ if(!title){for(const l of lines){if(l.length>4&&l.length<120&&!/^(ingredients?|directions?|instructions?|method|steps?)\b/i.test(l)){title=l;break}}}
+ title=stripImportedMarkup(title).replace(/^#+\s*/,'').trim();
+ let ingredients=extractSection(lines,[/^#{0,4}\s*ingredients?\s*$/i,/^ingredients?\s*:/i]);
+ let steps=extractSection(lines,[/^#{0,4}\s*(directions?|instructions?|method|steps?)\s*$/i,/^(directions?|instructions?|method|steps?)\s*:/i]);
+ // Fallback: only use tightly bounded headings, never the whole article.
+ if(!ingredients.length){let m=lines.findIndex(x=>/^#{0,4}\s*ingredients?\b/i.test(x));if(m>=0)ingredients=lines.slice(m+1,Math.min(m+41,lines.length)).filter(x=>!/^#{1,4}\s+/.test(x)).map(stripImportedMarkup)}
+ if(!steps.length){let m=lines.findIndex(x=>/^#{0,4}\s*(directions?|instructions?|method|steps?)\b/i.test(x));if(m>=0)steps=lines.slice(m+1,Math.min(m+31,lines.length)).filter(x=>!/^#{1,4}\s+/.test(x)).map(stripImportedMarkup)}
+ ingredients=ingredients.map(stripImportedMarkup).filter(x=>x.length<=300&&!/^(prep time|cook time|total time|author|course|cuisine|calories|keyword|jump to|share|subscribe|follow us|equipment|notes?|tips?)\b/i.test(x));
+ steps=steps.map(stripImportedMarkup).filter(x=>x.length<=600&&!/^(nutrition|calories|course|cuisine|keywords?|author|subscribe|comments?|equipment|notes?|tips?|substitutions?)\b/i.test(x));
+ return {title:title||'Imported Recipe',ingredients:[...new Set(ingredients)].slice(0,60),steps:[...new Set(steps)].slice(0,50)}
+}
+function importUrl(){
+ let u=recipeUrl.value.trim();
+ if(!u){recipeUrl.focus();return}
+ if(!/^https?:\/\//i.test(u)){recipeUrl.focus();return}
+ let load=document.createElement('p');load.className='hint';load.id='importLoad';load.textContent='Finding the recipe…';modalBody.appendChild(load);
+ fetch('https://r.jina.ai/'+u,{headers:{'Accept':'text/markdown'}})
+   .then(async res=>{let text=await res.text();if(!res.ok)throw Error('Fetch failed');let parsed=extractRecipeFromText(text);if(!parsed.ingredients.length||!parsed.steps.length)throw Error('No clear recipe sections found');renderImportedPreview(parsed.title,parsed.ingredients,parsed.steps)})
+   .catch(e=>{console.error('Metro Eats recipe import failed:',e);let el=document.getElementById('importLoad');if(el)el.textContent='This site could not be imported cleanly. Try Paste an Entire Recipe instead.'})
+}
 function renderImportedPreview(title,ingredients,steps){modalBody.innerHTML=`<div class="eyebrow">Imported recipe</div><h2>Review Before Saving</h2><p class="hint">Only the recipe fields below will be saved. Choose the same category and subcategory system used by your other recipes.</p><div class="fields"><div class="field full"><label>Recipe name</label><input id="pTitle" value="${esc(title)}"></div><div class="field"><label>Category</label><select id="pCat" onchange="fillImportSubcats()">${Object.keys(db.cats).map(c=>`<option>${esc(c)}</option>`).join('')}</select></div><div class="field"><label>Subcategory</label><select id="pSub"></select></div><div class="field full"><label>Ingredients — one per line</label><textarea id="pIng" rows="10">${esc(ingredients.join('\n'))}</textarea></div><div class="field full"><label>Directions — one step per line</label><textarea id="pSteps" rows="10">${esc(steps.join('\n'))}</textarea></div></div><div class="actions"><button class="btn primary" onclick="saveImportedRecipe()">Save Recipe</button><button class="btn" onclick="openImportUrl()">Start Over</button><button class="btn danger" onclick="closeModal()">Cancel</button></div>`;fillImportSubcats()}
 function fillImportSubcats(){let cat=document.getElementById('pCat'),sub=document.getElementById('pSub');if(!cat||!sub)return;sub.innerHTML=(db.cats[cat.value]||[]).map(x=>`<option>${esc(x)}</option>`).join('')}
 function saveImportedRecipe(){let title=(document.getElementById('pTitle')?.value||'').trim()||'Untitled Recipe';let category=document.getElementById('pCat')?.value||Object.keys(db.cats)[0]||'Uncategorized';let subcategory=document.getElementById('pSub')?.value||'';let ingredients=(document.getElementById('pIng')?.value||'').split(/\r?\n/).map(x=>x.trim()).filter(Boolean);let steps=(document.getElementById('pSteps')?.value||'').split(/\r?\n/).map(x=>x.trim()).filter(Boolean);if(!ingredients.length||!steps.length){alert('Please make sure the imported recipe has both ingredients and directions before saving.');return}db.recipes.unshift({id:crypto.randomUUID(),title,category,subcategory,servings:'',time:'',ingredients,steps,favorite:false});save();closeModal();tab('recipes')}
@@ -323,11 +370,12 @@ function normalizeRestaurantName(v){return (v||'').toLowerCase().replace(/[’'`
 function nameTokens(v){return normalizeRestaurantName(v).split(/\s+/).filter(Boolean)}
 function nameMatches(candidate,query){const c=normalizeRestaurantName(candidate),q=normalizeRestaurantName(query);if(!c||!q)return false;if(c===q||c.includes(q)||q.includes(c))return true;const ct=nameTokens(c),qt=nameTokens(q);return qt.every(t=>ct.some(x=>x.includes(t)||t.includes(x)));}
 function nameMatchScore(candidate,query){const c=normalizeRestaurantName(candidate),q=normalizeRestaurantName(query);if(!c||!q)return 0;if(c===q)return 1000;if(c.startsWith(q))return 900;if(c.includes(q))return 800;const qt=nameTokens(q),ct=nameTokens(c);let hits=qt.filter(t=>ct.some(x=>x.includes(t)||t.includes(x))).length;return hits*100-(Math.abs(c.length-q.length));}
+function getBrowserPosition(){return new Promise((resolve,reject)=>{if(!navigator.geolocation)return reject(new Error('Geolocation unavailable'));navigator.geolocation.getCurrentPosition(p=>resolve({lat:p.coords.latitude,lon:p.coords.longitude}),reject,{enableHighAccuracy:false,timeout:10000,maximumAge:300000})})}
 function restaurantNameChanged(initial=false){clearTimeout(restaurantSearchTimer);let input=document.getElementById('rName'),box=document.getElementById('restaurantNameResults');if(!input||!box)return;let term=input.value.trim();if(term.length<2){box.innerHTML='';return}let token=++window._restaurantSearchToken;restaurantSearchTimer=setTimeout(()=>searchRestaurantsAsTyped(term,token,initial),450)}
 async function searchRestaurantsAsTyped(term,token,initial=false){
  let box=document.getElementById('restaurantNameResults');if(!box)return;
  let key=normalizeRestaurantName(term);if(key.length<2)return;
- if(restaurantSearchCache.has(key)){renderRestaurantMatches(restaurantSearchCache.get(key));return}
+ if(restaurantSearchCache.has(key)){const cached=restaurantSearchCache.get(key);if(cached&&cached.length){renderRestaurantMatches(cached);return}restaurantSearchCache.delete(key)}
  box.innerHTML='<div class="autocompleteLoading">Searching nearby restaurants…</div>';
  const endpoints=['https://overpass-api.de/api/interpreter','https://overpass.kumi.systems/api/interpreter','https://overpass.private.coffee/api/interpreter'];
  const escapeQ=s=>String(s||'').replace(/\\/g,'\\\\').replace(/"/g,'\\\"');
@@ -346,7 +394,7 @@ async function searchRestaurantsAsTyped(term,token,initial=false){
   let pos=null;try{pos=await getBrowserPosition()}catch(e){}
   let all=[];
   const tokens=nameTokens(key);
-  const broadToken=(tokens.sort((a,b)=>b.length-a.length)[0]||key).slice(0,30);
+  const broadToken=(tokens.sort((a,b)=>b.length-a.length)[0]||key).slice(0,8);
   const regex=escapeQ(broadToken);
 
   // Search only actual restaurant/food-service POIs. Do not use generic name
@@ -370,25 +418,29 @@ async function searchRestaurantsAsTyped(term,token,initial=false){
   // Location-aware Nominatim fallback, but only retain records explicitly
   // identified as food/restaurant businesses. Never show geographic features.
   if(!dedupeAndRank(all).length){
-   const params=new URLSearchParams({q:term+', restaurant',format:'jsonv2',addressdetails:'1',limit:'50',dedupe:'1'});
-   if(pos){const d=0.45;params.set('viewbox',`${pos.lon-d},${pos.lat+d},${pos.lon+d},${pos.lat-d}`);params.set('bounded','0')}
-   try{
-    const data=await fetchJson('https://nominatim.openstreetmap.org/search?'+params.toString());
-    const nom=(data||[]).map(x=>{
-      let a=x.address||{},extra=String(x.type||'').toLowerCase(),klass=String(x.class||'').toLowerCase();
-      const foodTypes=new Set(['restaurant','fast_food','cafe','pub','bar','food_court','ice_cream','bakery','brewery']);
-      const isFood=foodTypes.has(extra)||klass==='amenity'||klass==='shop'&&['bakery'].includes(extra);
-      if(!isFood)return null;
-      let name=x.name||x.display_name?.split(',')[0]||'',la=parseFloat(x.lat),lo=parseFloat(x.lon);
-      return {name,address:[a.house_number,a.road,a.city||a.town||a.village||a.hamlet,a.state].filter(Boolean).join(', '),website:'',type:restaurantTypeFromTags({amenity:extra,name}),dist:(pos&&Number.isFinite(la)&&Number.isFinite(lo))?Math.round(distanceMeters(pos.lat,pos.lon,la,lo)/1609.34*10)/10:9999,searchName:normalizeRestaurantName(name),lat:la,lon:lo};
-    }).filter(x=>x&&x.name&&x.searchName&&x.type);
-    all.push(...nom);
-   }catch(e){}
+   const queries=[term,`${term} restaurant`];
+   for(const nomQuery of queries){
+    if(dedupeAndRank(all).length)break;
+    const params=new URLSearchParams({q:nomQuery,format:'jsonv2',addressdetails:'1',limit:'50',dedupe:'1',namedetails:'1'});
+    if(pos){const d=0.45;params.set('viewbox',`${pos.lon-d},${pos.lat+d},${pos.lon+d},${pos.lat-d}`);params.set('bounded','0')}
+    try{
+      const data=await fetchJson('https://nominatim.openstreetmap.org/search?'+params.toString());
+      const nom=(data||[]).map(x=>{
+        let a=x.address||{},extra=String(x.type||'').toLowerCase(),klass=String(x.class||'').toLowerCase();
+        const foodTypes=new Set(['restaurant','fast_food','cafe','pub','bar','food_court','ice_cream','bakery','brewery']);
+        const isFood=foodTypes.has(extra)||(klass==='amenity'&&foodTypes.has(extra))||(klass==='shop'&&extra==='bakery');
+        if(!isFood)return null;
+        let name=x.name||x.namedetails?.name||x.display_name?.split(',')[0]||'',la=parseFloat(x.lat),lo=parseFloat(x.lon);
+        return {name,address:[a.house_number,a.road,a.city||a.town||a.village||a.hamlet,a.state].filter(Boolean).join(', '),website:x.extratags?.website||'',type:restaurantTypeFromTags({amenity:extra,name}),dist:(pos&&Number.isFinite(la)&&Number.isFinite(lo))?Math.round(distanceMeters(pos.lat,pos.lon,la,lo)/1609.34*10)/10:9999,searchName:normalizeRestaurantName(name),lat:la,lon:lo};
+      }).filter(x=>x&&x.name&&x.searchName&&x.type);
+      all.push(...nom);
+    }catch(e){}
+   }
   }
 
   // Final safety filter: only business types and only strong name matches.
   let unique=dedupeAndRank(all).filter(x=>x.type&&x.name&&nameMatches(x.searchName,key));
-  restaurantSearchCache.set(key,unique);
+  if(unique.length)restaurantSearchCache.set(key,unique);
   if(token===window._restaurantSearchToken)renderRestaurantMatches(unique);
  }catch(e){if(token===window._restaurantSearchToken)box.innerHTML='<div class="autocompleteLoading">No restaurant matches found.</div>'}
 }
