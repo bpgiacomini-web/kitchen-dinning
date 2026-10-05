@@ -1,20 +1,21 @@
-# Metro Eats — Recovery / Restaurant Search Fix Build
+# Metro Eats
 
-This is a recovery/test build based on the last Metro Eats/Kitchen to Dining source available in the project files. It is **not claimed to be the latest live build** because the newer source could not be recovered from GitHub.
+Metro Eats is a mobile-first personal recipe book, restaurant journal, and St. Louis / Metro East local food guide.
 
-## Restaurant search fix
-- Debounced name search (450 ms)
-- Works with or without location
-- Current-location ranking and progressive 2 / 5 / 15 / 30 mile search attempts
-- Name normalization for punctuation such as Joe's / Joes / Joe’s
-- Exact/strong name matches rank before distance
-- Multiple providers: Nominatim with Photon fallback
-- Hard 5-second provider timeout
-- Stale requests are aborted/ignored
-- User must explicitly select a result
-- Address shown to the user is street, city, state only
-- Selection stores coordinates internally and official website when available
-- Manual entry remains available if lookup fails
+## Current build
+- Large, older-user-friendly restaurant intake and 12-question dining survey
+- Progressive nearby restaurant search with name matching and multiple fallbacks
+- iPhone safe-area protection across pages and pop-outs
+- Restored Metro Eats logo
+- Daily local news with food prioritized, plus bars, comedy, and music categories
+- Recipes and restaurants stored in browser localStorage
+- Location features require browser permission
 
-## Test case
-Try `Gentlin's`, then `Gentlins`, then a partial name. The search should either return results or end with a clear error/manual-entry message; it must never spin forever.
+## Daily news
+GitHub Actions runs `update-news.py` daily and updates `news.json` when fresh local stories are found. Food is intentionally prioritized; local bars/nightlife, comedy, and music events are also categorized when available.
+
+- Restaurant name search uses progressive nearby matching with Overpass and a Nominatim fallback.
+
+
+## Visual refresh
+The interface uses a restrained editorial photo treatment and line-art icon system. Some local spotlight imagery is loaded from the original publisher/restaurant image URLs so the static GitHub Pages build does not redistribute third-party image files.
