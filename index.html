@@ -101,5 +101,25 @@ document.addEventListener('DOMContentLoaded',function(){
 });
 </script>
 <script src="app.js?v=20261005-65" defer></script>
+<script>
+/* Dining controls fallback: run after the deferred app script has had a chance to initialize. */
+(function(){
+  function wire(){
+    var create=document.getElementById('meCreateRestaurantBtn');
+    var add=document.getElementById('meAddRestaurantBtn');
+    var around=document.getElementById('meAroundMeBtn');
+    function bind(el,fn){
+      if(!el)return;
+      el.onclick=function(e){e.preventDefault();e.stopPropagation();fn();};
+      el.ontouchend=function(e){e.preventDefault();e.stopPropagation();fn();};
+    }
+    bind(create,function(){ if(typeof window.meDiningAction==='function') window.meDiningAction('create'); });
+    bind(add,function(){ if(typeof window.meDiningAction==='function') window.meDiningAction('create'); });
+    bind(around,function(){ if(typeof window.findRestaurantAroundMe==='function') window.findRestaurantAroundMe(); });
+  }
+  setTimeout(wire,0);
+  document.addEventListener('DOMContentLoaded',wire);
+})();
+</script>
 </body>
 </html>
