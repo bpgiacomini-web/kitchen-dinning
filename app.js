@@ -1055,6 +1055,18 @@ function showVisitHistory(id){
 }
 
 
+(function(){
+  function wireMetroDiningButtons(){
+    var create=document.getElementById('meCreateRestaurantBtn');
+    var add=document.getElementById('meAddRestaurantBtn');
+    var around=document.getElementById('meAroundMeBtn');
+    if(create)create.onclick=function(e){e.preventDefault();e.stopPropagation();if(typeof meDiningAction==='function')meDiningAction('create');};
+    if(add)add.onclick=function(e){e.preventDefault();e.stopPropagation();if(typeof meDiningAction==='function')meDiningAction('create');};
+    if(around)around.onclick=function(e){e.preventDefault();e.stopPropagation();if(typeof findRestaurantAroundMe==='function')findRestaurantAroundMe();};
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',wireMetroDiningButtons);else wireMetroDiningButtons();
+})();
+
 /* FINAL DINING LOOP — single explicit handler for every Dining action */
 function meDiningAction(action,id){
   try{
