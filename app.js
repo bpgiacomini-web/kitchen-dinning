@@ -409,6 +409,7 @@ async function fetchWithTimeout(url,options,timeoutMs){
   }finally{clearTimeout(timer)}
 }
 async function findRestaurantAroundMe(){
+  if(!window._restaurantCreateLookup)window._restaurantCreateLookup=false;
   let status=document.getElementById('locationStatus');
   status.textContent='Requesting your location…';
   if(!navigator.geolocation){status.textContent='Location services are not available in this browser.';return}
@@ -793,7 +794,7 @@ function meCriticFinalEditor(r){
   return '<div class="eyebrow">'+(editing?'Restaurant Review':'Food Critic')+'</div>'+
     '<h2>'+(editing?'Edit Restaurant & Review':'Create Restaurant & Review')+'</h2>'+
     '<div class="fields">'+
-    '<div class="field full"><label for="rName">Restaurant name</label><input id="rName" value="'+esc(r?.name||'')+'" autocomplete="organization" oninput="restaurantNameChanged(this.value)"><div id="restaurantLookupResults"></div></div>'+
+    '<div class="field full"><label for="rName">Restaurant name</label><input id="rName" value="'+esc(r?.name||'')+'" autocomplete="organization" oninput="restaurantNameChanged(this.value)"><div id="restaurantLookupResults"></div><div class="actions" style="margin-top:8px"><button type="button" class="btn" onclick="findRestaurantAroundMeForCreate()">⌖ Restaurants Around Me</button></div></div>'+
     '<div class="field"><label for="rType">Restaurant type</label><select id="rType">'+opts+'</select></div>'+
     '<div class="field"><label for="rLoc">Street + city + state</label><input id="rLoc" value="'+esc(r?.location||'')+'" placeholder="123 Main St, Alton, IL"></div>'+
     '<div class="field full"><label for="rWebsite">Official website</label><input id="rWebsite" type="url" value="'+esc(r?.website||'')+'" placeholder="https://…"></div>'+
