@@ -370,4 +370,11 @@ function renderLocalNews(items,updated){const box=document.getElementById('newsG
 
 renderRecipes();renderRestaurants();loadLocalNews();
 </script>
-</body></html>
+<script id="METRO_EATS_CACHE_RESET_V31">
+/* Metro Eats cache recovery: install the current service-worker cache after stale builds. */
+if('serviceWorker' in navigator){
+  window.addEventListener('load',()=>{
+    navigator.serviceWorker.register('sw.js?v=31',{updateViaCache:'none'}).catch(()=>{});
+  });
+}
+</script></body></html>
