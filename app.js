@@ -976,9 +976,17 @@ function showVisitHistory(id){
     }
     return h+'</section>';
   }
+  function renderRestaurantInfo(r){
+    var h=editor(r);
+    h=h.replace('<div class="eyebrow">'+(state.mode==='edit'?'Restaurant Review':'Food Critic')+'</div><h2>'+(state.mode==='edit'?'Edit Restaurant & Review':'Create Restaurant & Review')+'</h2>','<div class="eyebrow">Restaurant Information</div><h2>Edit Restaurant Information</h2>');
+    h+='<div class="notice" style="margin-top:14px"><strong>Restaurant information only.</strong><div class="small">Use Review Again on the restaurant card when you want to change ratings, dishes, or visit details.</div></div>';
+    h+='<div class="surveyActions"><button type="button" class="btn danger" onclick="meV3Cancel()">Cancel</button><button type="button" class="btn primary" onclick="meV3SaveRestaurantInfo()">Save Restaurant Information</button></div>';
+    modal.classList.add('show');modalBody.innerHTML=h;
+  }
   function render(){
     meReviewV3Capture();
     var r=current()||{name:'New restaurant',type:'Other',location:'',photos:[]};
+    if(state.mode==='edit')return renderRestaurantInfo(r);
     if(!window._editingPhotos)window._editingPhotos=clonePhotos(r);
     var avg=foodAverage(),final=score(),h=editor(r);
     h+='<div class="status">Food Critic Review</div><div class="scoreHero"><div class="restaurantScore">'+(final||'—')+'<span style="font-size:.45em"> / 10</span></div><div class="restaurantScoreLabel">Critic Score — Overall Experience, Food Quality, Service & Value</div></div>';
@@ -1031,6 +1039,37 @@ function showVisitHistory(id){
   };
   window.renderSurvey=function(){render()};
   window.saveSurvey=function(){return window.meV3Save()};
+  window.meV3SaveRestaurantInfo=async function(){
+    meReviewV3Capture();
+    var name=fieldValue('rName')||'';
+    var location=fieldValue('rLoc')||'';
+    var type=fieldValue('rType')||'Other';
+    var website=fieldValue('rWebsite')||'';
+    var menuUrl=fieldValue('rMenuUrl')||'';
+    var notes=fieldValue('rNotes')||'';
+    if(!name){alert('Please enter or select a restaurant name.');return}
+    var saved=(db.restaurants||[]).find(function(x){return String(x.id)===String(state.restaurantId)});
+    if(!saved){alert('That restaurant could not be found in Metro Eats.');return}
+    var now=new Date().toISOString();
+    var oldPhotos=Array.isArray(saved.photos)?saved.photos:[];
+    var fields={name:name,type:type,location:location,website:website,menuUrl:menuUrl,notes:notes,photos:(window._editingPhotos||oldPhotos).slice(),lat:saved.lat??null,lon:saved.lon??null,updatedAt:now};
+    var btn=document.querySelector('.surveyActions .btn.primary');
+    if(btn){btn.disabled=true;btn.textContent='Saving…'}
+    try{
+      Object.assign(saved,fields);
+      await saveWithQuotaRecovery();
+      var persisted=parseData();
+      var check=(persisted.restaurants||[]).find(function(x){return String(x.id)===String(saved.id)});
+      if(!check)throw new Error('The restaurant information could not be verified in device storage.');
+      if(String(check.name||'')!==String(name)||String(check.location||'')!==String(location))throw new Error('The restaurant was not saved with the selected name and address. Your entries are still on screen.');
+      pendingRestaurant=null;pendingReviewRestaurant=null;restaurantEditMode=false;window._editingPhotos=[];state={mode:'',restaurantId:null,pending:null,items:[],scores:{0:0,2:0,3:0},orderAgain:'',legacyOrdered:'',foodOpen:{}};
+      closeModal();renderRestaurants();updateStory();
+    }catch(e){
+      console.error('Metro Eats restaurant info save failed',e);
+      if(btn){btn.disabled=false;btn.textContent='Save Restaurant Information'}
+      alert('Metro Eats could not save the restaurant information. Your entries are still on screen.\n\n'+(e&&e.message||'Please try again.'));
+    }
+  };
   window.meV3Save=async function(){
     meReviewV3Capture();
     var name=fieldValue('rName')||'';
