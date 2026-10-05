@@ -998,3 +998,654 @@ The shared page is a focused review card/page, not a copy of the full restaurant
 ### Sharing flow
 
 - Tap Share.
+- Immediately open the normal iPhone Share Sheet.
+- Share a polished Metro Eats review page/link.
+- Recipient does not need a Metro Eats account.
+- Links are public-but-unlisted.
+- Shared pages are not intended to be indexed by search engines.
+- Use non-guessable share identifiers.
+- Shared page should include polished social-preview metadata.
+- Preview image: selected review photo when one exists; otherwise Metro Eats branding.
+- Social title:
+  `My Metro Eats Review: [Restaurant Name] — [Score]/10`
+
+### Shared review updates
+
+Shared restaurant reviews mirror the current underlying review:
+- Edited score updates.
+- Edited category scores update.
+- Edited Would Return? updates.
+- Edited What I Ordered updates.
+- Replaced/removed selected photo updates.
+- Deleted review disables the shared link.
+- Deleted restaurant disables associated shared links.
+
+### Revoking
+
+- `Stop Sharing` is available.
+- It immediately disables the shared link.
+- No confirmation is required.
+- The old link shows:
+  `This review is no longer available`
+- Shared links remain active indefinitely until revoked or until the underlying review/restaurant is deleted.
+
+Do not over-engineer V1 with:
+- Share-version history.
+- Recipe sharing infrastructure.
+- Complicated link-management dashboards.
+- Passwords.
+- Expiration settings.
+- Follower systems.
+
+---
+
+## 30. Privacy
+
+Everything is private by default.
+
+This includes:
+- Restaurants.
+- Visits.
+- Scores.
+- Meals.
+- Items.
+- Item ratings.
+- Drinks.
+- Spending.
+- Notes.
+- Photos.
+- Receipts.
+- Recipes.
+- Recipe sources.
+- Insights.
+- Personal history.
+- Backup/export data.
+
+Nothing becomes public unless the user explicitly chooses to share an approved restaurant review.
+
+The product should be privacy-first even if expanded later.
+
+Basic security is sufficient for V1.
+Do not add a separate PIN/Face ID layer unless separately approved.
+
+---
+
+## 31. Offline and Recovery
+
+Metro Eats should be offline-capable for essential personal use.
+
+When offline:
+- Allow the user to capture necessary review information.
+- Save personal data locally.
+- Do not block core review entry because external restaurant data is unavailable.
+
+When online again:
+- Retrieve missing external restaurant/menu/public information where reliable.
+- Allow the user to review/edit autofilled fields.
+- Never change personal scores because external information arrived later.
+
+Principle:
+**Capture what matters now; complete external information later.**
+
+---
+
+## 32. Backup and Migration
+
+Backup/recovery is important but must not slow normal use.
+
+Preferred direction:
+- Automatic background backup where practical.
+- Manual export.
+- Normal device/iCloud backup remains useful.
+- Metro Eats provides its own transferable export/backup.
+- New iPhone migration must preserve:
+  - Restaurants.
+  - Visits.
+  - Scores.
+  - Meals/items.
+  - Recipes.
+  - Notes.
+  - Photos.
+  - Other personal data.
+
+V1 is device-first.
+Active cross-device synchronization is deferred.
+
+Architecture should allow future sync without a complete rebuild.
+
+Free/low-cost infrastructure is preferred for V1. Do not introduce recurring developer costs without explicit approval.
+
+---
+
+## 33. Resume / Interrupted Work
+
+Normally open to Home.
+
+If there is an unfinished:
+- Restaurant review.
+- Recipe edit.
+- Other meaningful task.
+
+offer:
+**Resume Where You Left Off**
+
+Do not interrupt the normal Home experience when there is no unfinished task.
+
+---
+
+## 34. Notifications
+
+No notifications in V1.
+
+Do not add:
+- Push reminders.
+- Nagging.
+- Marketing notifications.
+- Review reminders.
+
+---
+
+## 35. AI and Intelligent Assistance
+
+AI is allowed but should be quiet and useful.
+
+Good uses:
+- Recipe extraction/cleanup.
+- Restaurant data cleanup.
+- Cuisine/category classification.
+- Insights.
+- Background data organization.
+- Occasional highly relevant contextual suggestions based on the user's own history.
+
+Do not build:
+- Constant AI chat.
+- AI pop-ups.
+- Generic recommendation feeds.
+- Traditional recommendation engines.
+- AI that changes scores.
+
+Principle:
+**AI should work in the background and get out of the way.**
+
+Recommendations must be:
+- Subtle.
+- Clearly grounded in user data.
+- Optional.
+- Never allowed to influence the user's recorded score.
+
+---
+
+## 36. Data Integrity
+
+User-entered personal data is authoritative.
+
+Never:
+- Invent scores.
+- Guess user notes.
+- Fabricate menu items.
+- Silently change historical records.
+- Replace old personal item history because a menu changed.
+- Let outside ratings alter personal scores.
+- Let awards alter personal scores.
+- Let AI alter personal scores.
+
+When uncertain:
+- Ask if materially important.
+- Otherwise leave blank.
+- Allow later correction.
+
+---
+
+## 37. V1 Scope
+
+### Core V1
+
+- Home.
+- My Restaurants.
+- My Recipes.
+- My Insights.
+- Universal search.
+- Restaurant location/name discovery.
+- Restaurant data enrichment.
+- Restaurant visit journal.
+- Fast review entry.
+- 1–10 scoring.
+- Item scoring.
+- Drink scoring.
+- Restaurant history.
+- Places I Want to Visit.
+- External rating comparison.
+- Local food news.
+- Recipe creation/editing.
+- Recipe URL/text/share-sheet import.
+- Recipe cleanup.
+- Recipe source tracking.
+- Recipe shopping lists.
+- Insights.
+- Offline capture.
+- Backup/export.
+- Restaurant review sharing only.
+
+### Explicitly out of V1
+
+- Recipe sharing.
+- Active cross-device sync.
+- Voice entry.
+- Push notifications.
+- Separate PIN/Face ID lock.
+- Serving scaling.
+- Persistent global shopping list.
+- Traditional recommendation engine.
+- Public profiles/followers.
+- Public restaurant database/community reviews.
+- Complex sharing/version-history infrastructure.
+
+---
+
+## 38. Open Technical Decisions
+
+Do not invent answers where the product specification intentionally leaves implementation choices open.
+
+Examples:
+- Exact technical stack.
+- Exact local storage/database implementation.
+- Exact backup/export format.
+- Exact external restaurant-data providers.
+- Exact news-source implementation.
+- Exact score visualization graphics.
+- Exact animation/microinteraction details.
+- Exact category-inference algorithm.
+- Exact responsive desktop layout.
+
+Resolve these during technical design based on:
+- Reliability.
+- Cost.
+- Performance.
+- Privacy.
+- Maintainability.
+- Ease of deployment.
+- Compatibility with the user's workflow.
+
+---
+
+## 39. Quality / Verification Before Delivery
+
+Before delivering a replacement ZIP, verify at minimum:
+
+1. Home loads correctly.
+2. iPhone safe-area behavior works.
+3. Add/edit/save recipe.
+4. Recipe category/subcategory selection.
+5. Paste recipe.
+6. Website recipe import.
+7. Restaurant name search.
+8. Current-location restaurant search.
+9. Restaurant selection/autofill.
+10. Review entry and review summary.
+11. Menu/website links.
+12. Local news section.
+13. Places I Want to Visit.
+14. Restaurant sharing.
+15. Offline capture where implemented.
+16. Backup/export where implemented.
+17. Delete confirmations.
+18. Shared-review privacy boundaries.
+
+Fix errors instead of hiding them.
+
+Do not add features merely because they seem useful.
+Keep approved scope.
+
+Preserve working features when making unrelated changes.
+
+When replacing files, make sure the ZIP contains the complete app, not only changed files.
+
+---
+
+## 40. Final Product Test
+
+Before considering a feature complete, ask:
+
+1. Does this make the user's food journal easier to use?
+2. Does it reduce manual work?
+3. Does it protect personal data by default?
+4. Does it keep new reviews unbiased?
+5. Does it avoid unnecessary UI clutter?
+6. Does it work well on an iPhone?
+7. Does it preserve accessibility and readability?
+8. Does it respect historical personal data?
+9. Does it avoid inventing uncertain information?
+10. Does it feel like a premium personal Metro Eats journal rather than a generic restaurant app?
+
+If not, simplify the feature before adding more complexity.
+
+
+---
+
+## 41. Modular Architecture and Regression Safety
+
+Metro Eats 2.0 must be built as a deliberately compartmentalized application.
+
+### Module boundaries
+
+Core areas should be separated into independently maintainable modules/features wherever practical, including:
+
+- Home
+- Restaurant discovery/search
+- Restaurant data
+- Restaurant visits/reviews
+- Items and drinks
+- Places I Want to Visit
+- Recipes
+- Recipe importing/extraction
+- Recipe shopping lists
+- Insights
+- Local news
+- Restaurant review sharing
+- Settings
+- Local storage/data layer
+- External data services
+- Backup/export
+
+A change to one module should not require changes to unrelated modules unless there is a genuine shared dependency.
+
+### Separation of concerns
+
+Where practical, keep these concerns separate:
+
+- UI/presentation.
+- Feature/business logic.
+- Data models.
+- Local persistence/storage.
+- External API/data providers.
+- Shared utilities.
+- Shared UI components.
+
+Do not create a tightly coupled application where a small feature change requires editing a large number of unrelated files.
+
+Avoid a single monolithic application file. Prefer small, clearly named, independently testable modules.
+
+Shared components and utilities should be centralized intentionally rather than duplicated throughout the application.
+
+### Minimize blast radius
+
+Every implementation should aim for the smallest reasonable blast radius.
+
+Before changing a shared component, determine:
+- Which features use it.
+- Whether the proposed change is truly shared.
+- Whether a feature-specific component would be safer.
+
+Do not modify shared behavior simply to solve a problem that belongs to one feature.
+
+---
+
+## 42. Mandatory Fix → Diagnose → Regression Workflow
+
+Every meaningful bug fix or functional change must go through a verification cycle before it is presented for user review.
+
+Required workflow:
+
+**Fix → Build → Diagnose → Test affected area → Run regression checks → Review**
+
+A change is not considered complete merely because the original problem appears fixed.
+
+### Step 1 — Fix
+
+Implement the smallest appropriate change.
+
+Avoid unrelated cleanup or refactoring during a focused bug fix unless it is necessary for the fix.
+
+### Step 2 — Build
+
+Run the appropriate build/validation process.
+
+Confirm:
+- The application builds successfully.
+- Required assets/modules resolve.
+- No new build errors are introduced.
+
+### Step 3 — Diagnose
+
+Run a technical diagnosis after the fix.
+
+Check for:
+- JavaScript/runtime errors.
+- Console errors.
+- Unhandled exceptions.
+- Failed imports.
+- Broken dependencies.
+- Failed network/API requests.
+- Data/storage errors.
+- Routing/navigation errors.
+- Broken event handlers.
+- CSS/layout errors.
+- iPhone safe-area regressions.
+- Unexpected warnings that indicate a real functional problem.
+
+Do not simply suppress or hide errors to make a diagnosis appear clean.
+
+### Step 4 — Test the affected area
+
+Exercise the feature that was changed.
+
+Verify the complete relevant flow rather than only the individual button/control that was modified.
+
+### Step 5 — Run regression checks
+
+Check adjacent functionality and then the appropriate broader application regression suite.
+
+At minimum, verify that the change has not broken:
+- Home.
+- Navigation.
+- Data persistence.
+- Restaurant flows.
+- Recipe flows.
+- Insights.
+- Sharing.
+- Search.
+- Mobile layout.
+
+For a change touching shared infrastructure, navigation, storage, global CSS, or shared components, run the **full application regression suite**.
+
+### Step 6 — Review
+
+Only after the diagnosis and regression checks pass should the change be presented to the user for review.
+
+The user should not be asked to discover obvious regressions that could have been caught by the development process.
+
+---
+
+## 43. Regression Severity and Scope
+
+Not every change requires identical testing depth.
+
+### Feature-local change
+
+Example:
+- Recipe editor layout change.
+
+Required:
+- Full recipe-editor flow.
+- Recipe save/load/edit.
+- Relevant mobile layout checks.
+- Adjacent recipe functionality.
+- Basic Home/navigation smoke test.
+
+### Shared-component change
+
+Example:
+- Global modal.
+- Shared score component.
+- Shared navigation.
+- Shared data model.
+
+Required:
+- Full application regression suite.
+
+### Infrastructure/data/storage change
+
+Example:
+- Local database migration.
+- Persistence layer.
+- Backup/export format.
+- Shared API/data service.
+
+Required:
+- Full application regression suite.
+- Existing-data compatibility checks.
+- Save/load/edit/delete verification.
+- Recovery/backup checks where applicable.
+
+### Global visual/CSS change
+
+Required:
+- Full application regression suite.
+- iPhone portrait.
+- iPhone landscape where practical.
+- Safe-area checks.
+- Major forms/modals.
+- Home.
+- Restaurant flows.
+- Recipe flows.
+- Insights.
+- Shared review page.
+
+---
+
+## 44. Regression Checklist
+
+Maintain a repeatable regression checklist for Metro Eats 2.0.
+
+At minimum:
+
+### Core
+- [ ] App starts.
+- [ ] Home loads.
+- [ ] Navigation works.
+- [ ] Universal Search works.
+- [ ] Settings opens.
+
+### Restaurants
+- [ ] Current-location search.
+- [ ] Restaurant name search.
+- [ ] Progressive search expansion.
+- [ ] Restaurant selection.
+- [ ] Restaurant data autofill.
+- [ ] Official website/menu link.
+- [ ] Restaurant page.
+- [ ] New visit.
+- [ ] Review save.
+- [ ] Review results.
+- [ ] Review edit.
+- [ ] Review delete.
+- [ ] Restaurant aggregate recalculation.
+- [ ] Item ratings.
+- [ ] Drink handling.
+- [ ] Places I Want to Visit.
+- [ ] External rating separation.
+
+### Recipes
+- [ ] Recipe list.
+- [ ] Category/subcategory.
+- [ ] Manual recipe.
+- [ ] Paste recipe.
+- [ ] URL import.
+- [ ] Share-sheet import where implemented.
+- [ ] Ingredient cleanup.
+- [ ] Directions cleanup.
+- [ ] Recipe edit.
+- [ ] Recipe save.
+- [ ] Unsaved-change protection.
+- [ ] Recipe delete.
+- [ ] Recipe photo.
+- [ ] Source attribution.
+- [ ] Shopping list.
+
+### Insights
+- [ ] Overview.
+- [ ] Restaurants.
+- [ ] Food.
+- [ ] Trends.
+- [ ] Score calculations.
+- [ ] Historical data.
+- [ ] Visualizations.
+
+### Sharing
+- [ ] Share a restaurant review.
+- [ ] Correct visit-specific score.
+- [ ] Correct category breakdown.
+- [ ] What I Ordered toggle.
+- [ ] Photo toggle.
+- [ ] Would Return toggle.
+- [ ] Privacy exclusions.
+- [ ] Shared page opens without account.
+- [ ] Social preview metadata.
+- [ ] Edit underlying review updates shared page.
+- [ ] Stop Sharing disables link.
+- [ ] Deleted review disables link.
+
+### Home / News
+- [ ] Food news loads.
+- [ ] Maximum 10 stories.
+- [ ] Source links work.
+- [ ] No fabricated fallback content.
+- [ ] Recent visits display correctly.
+
+### Mobile
+- [ ] Dynamic Island/status-bar safe area.
+- [ ] Home indicator safe area.
+- [ ] No excessive blank margins.
+- [ ] Touch targets.
+- [ ] Text readability.
+- [ ] Accessibility scaling.
+- [ ] No color-only information.
+
+### Offline / Data
+- [ ] Essential review capture offline.
+- [ ] Local save.
+- [ ] Reopening preserves data.
+- [ ] External information can arrive later.
+- [ ] External information cannot overwrite personal scores.
+- [ ] Export.
+- [ ] Import/recovery where implemented.
+
+---
+
+## 45. Change Discipline
+
+When implementing an approved change:
+
+1. Identify the owning module.
+2. Identify dependencies.
+3. Make the smallest reasonable change.
+4. Avoid unrelated refactoring.
+5. Build.
+6. Diagnose.
+7. Test the affected flow.
+8. Run the required regression scope.
+9. Record the verified result in the checkpoint.
+10. Only then present the result for user review.
+
+If a change unexpectedly requires modifying many unrelated modules, stop and reassess the architecture rather than continuing to spread the change.
+
+If repeated fixes to one feature routinely break another feature, treat that as an architectural defect to be corrected rather than normal development behavior.
+
+---
+
+## 46. Checkpoint Requirements
+
+After meaningful development milestones, record:
+
+- Current approved build/state.
+- Git commit/hash.
+- ZIP/backup location when applicable.
+- What was completed.
+- What remains.
+- Known issues.
+- Last regression diagnosis result.
+- Any intentionally deferred problems.
+
+Never claim a checkpoint is current unless the underlying files/build/commit were actually verified.
+
+The checkpoint should make it possible to resume development in a new chat without reconstructing the project's history from memory.
