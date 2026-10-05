@@ -353,7 +353,7 @@ function restaurantSearchDistance(lat,lon){let p=window._restaurantLookupLocatio
 function dedupeRestaurantLookup(items){let seen=new Set();return items.filter(x=>{let k=normalizeRestaurantName(x.name)+'|'+(x.address||'');if(!x.name||seen.has(k))return false;seen.add(k);return true})}
 function restaurantMatchRank(a,q){let n=normalizeRestaurantName(a.name),qq=normalizeRestaurantName(q);if(!n||!qq)return 99;if(n===qq)return 0;if(n.startsWith(qq))return 1;if(n.includes(qq))return 2;let words=qq.split(' ').filter(Boolean);if(words.length&&words.every(w=>n.includes(w)))return 3;if(qq.length>=4&&restaurantNameSimilarity(n,qq)>=0.58)return 4;return 5}
 function sortRestaurantNameResults(items,q){return items.sort((a,b)=>{let ar=restaurantMatchRank(a,q),br=restaurantMatchRank(b,q);if(ar!==br)return ar-br;if(ar>=4){let as=restaurantNameSimilarity(a.name,q),bs=restaurantNameSimilarity(b.name,q);if(as!==bs)return bs-as}let ad=a.dist??999999,bd=b.dist??999999;return ad-bd})}
-async function searchRestaurantLookup(q,requestId){
+async async function searchRestaurantLookup(q,requestId){
   let name=q.trim(),results=[],local=window._restaurantLookupLocation;
   try{
     if(local){
