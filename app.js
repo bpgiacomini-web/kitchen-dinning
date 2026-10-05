@@ -1173,7 +1173,7 @@ function showVisitHistory(id){
       }).join('');
       h+='</div>';
     }
-    h+='<div class="actions"><button type="button" class="btn danger" onclick="closeModal()">Close</button></div>';
+    h+='<div class="actions"><button type="button" class="btn primary" onclick="closeModal();meDiningReview(\''+String(r.id).replace(/'/g,"&#39;")+'\')">Edit Review</button><button type="button" class="btn danger" onclick="closeModal()">Close</button></div>';
     modal.classList.add('show');modalBody.innerHTML=h;
   };
   window.showRankings=function(){
