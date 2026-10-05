@@ -859,3 +859,247 @@ function showVisitHistory(id){
   h+='<div class="actions"><button type="button" class="btn danger" onclick="closeModal()">Close</button></div>';
   modal.classList.add('show');modalBody.innerHTML=h;
 }
+
+/* METRO EATS REVIEW ENGINE V3
+   Single authoritative restaurant-review path.
+   This intentionally replaces the accumulated legacy review handlers above.
+   It keeps the existing data model, restaurant lookup, location, website/menu,
+   photo and backup helpers, but removes recursive render chains and duplicate
+   navigation paths from the active runtime. */
+(function(){
+  var state={mode:'',restaurantId:null,pending:null,items:[],scores:{0:0,2:0,3:0},orderAgain:'',legacyOrdered:'',foodOpen:{}};
+
+  function clonePhotos(r){return Array.isArray(r&&r.photos)?r.photos.slice():[]}
+  function latestReview(r){
+    var h=Array.isArray(r&&r.reviewHistory)?r.reviewHistory:[];
+    return h.length?h[h.length-1]:(r&&r.survey)||null;
+  }
+  function load(r,mode){
+    var v=latestReview(r), raw=Array.isArray(v&&v.foodItems)?v.foodItems:[];
+    var items=raw.filter(function(x){return x&&typeof x==='object'}).map(function(x){
+      return {id:String(x.id||uid()),category:x.category||'Entrées',name:String(x.name||''),rating:Number(x.rating||0),notes:String(x.notes||'')};
+    });
+    if(!items.length&&v&&v.ordered){
+      items=[{id:uid(),category:'Entrées',name:String(v.ordered),rating:Number(v.scores&&v.scores[1]||0),notes:''}];
+    }
+    var sc=v&&v.scores||{};
+    state={
+      mode:mode,
+      restaurantId:r&&r.id==='new'?'new':(r&&r.id)||null,
+      pending:mode==='new'?Object.assign({},r):null,
+      items:items,
+      scores:{0:Number(sc[0]||0),2:Number(sc[2]||0),3:Number(sc[3]||0)},
+      orderAgain:v&&v.orderAgain||'',
+      legacyOrdered:v&&v.ordered||'',
+      foodOpen:{}
+    };
+    pendingRestaurant=mode==='new'?state.pending:null;
+    pendingReviewRestaurant=mode==='new'?null:Object.assign({},r,{photos:clonePhotos(r)});
+    restaurantEditMode=mode==='edit';
+    window._editingPhotos=clonePhotos(r);
+  }
+  function current(){
+    if(state.mode==='new')return state.pending;
+    return (db.restaurants||[]).find(function(x){return String(x.id)===String(state.restaurantId)})||state.pending;
+  }
+  function foodAverage(){
+    var a=state.items.map(function(x){return Number(x.rating||0)}).filter(function(x){return x>0});
+    return a.length?Math.round(a.reduce(function(p,c){return p+c},0)/a.length*10)/10:0;
+  }
+  function score(){
+    var a=[Number(state.scores[0]||0),foodAverage(),Number(state.scores[2]||0),Number(state.scores[3]||0)].filter(function(x){return x>0});
+    return a.length?Math.round(a.reduce(function(p,c){return p+c},0)/a.length*10)/10:0;
+  }
+  function capture(){
+    var order=document.getElementById('meV3Order');
+    if(order)state.legacyOrdered=order.value.trim();
+    state.items.forEach(function(x){
+      var n=document.getElementById('meV3Food-'+x.id),note=document.getElementById('meV3Note-'+x.id);
+      if(n)x.name=n.value.trim();
+      if(note)x.notes=note.value.trim();
+    });
+  }
+  function editor(r){
+    var editing=state.mode==='edit';
+    var opts=restaurantTypes.map(function(x){return '<option value="'+esc(x)+'" '+(x===(r&&r.type||'Other')?'selected':'')+'>'+esc(x)+'</option>'}).join('');
+    var photos=(window._editingPhotos||[]).map(function(p,i){
+      return '<div><img src="'+esc(p)+'" alt="Meal photo '+(i+1)+'"><button type="button" class="btn" onclick="meV3RemovePhoto('+i+')">Remove</button></div>';
+    }).join('');
+    return '<div class="eyebrow">'+(editing?'Restaurant Review':'Food Critic')+'</div>'+
+      '<h2>'+(editing?'Edit Restaurant & Review':'Create Restaurant & Review')+'</h2>'+
+      '<div class="fields">'+
+      '<div class="field full"><label for="rName">Restaurant name</label><input id="rName" value="'+esc(r&&r.name||'')+'" autocomplete="organization" oninput="restaurantNameChanged(this.value)"><div id="restaurantLookupResults"></div></div>'+
+      '<div class="field"><label for="rType">Restaurant type</label><select id="rType">'+opts+'</select></div>'+
+      '<div class="field"><label for="rLoc">Street + city + state</label><input id="rLoc" value="'+esc(r&&r.location||'')+'" placeholder="123 Main St, Alton, IL"></div>'+
+      '<div class="field full"><label for="rWebsite">Official website</label><input id="rWebsite" type="url" inputmode="url" value="'+esc(r&&r.website||'')+'" placeholder="https://…"></div>'+
+      '<div class="field full"><label for="rMenuUrl">Official menu</label><input id="rMenuUrl" type="url" inputmode="url" value="'+esc(r&&r.menuUrl||'')+'" placeholder="https://…"></div>'+
+      '<div class="field full"><label for="rNotes">Notes</label><textarea id="rNotes" rows="3">'+esc(r&&r.notes||'')+'</textarea></div>'+
+      '<div class="field full"><label for="rPhoto">Meal photos</label><input id="rPhoto" type="file" accept="image/*" multiple onchange="meV3Photos(this)"><div id="photoPreview" class="photos">'+photos+'</div></div>'+
+      '</div>'+
+      '<div class="actions"><button type="button" class="btn secondary" onclick="useCurrentLocationForAddress()">⌖ Use My Location</button><button type="button" class="btn" onclick="findWebsiteForCurrentRestaurant()">Find Official Website</button><button type="button" class="btn" onclick="findOfficialMenu()">Find Official Menu</button>'+
+      (editing?'<button type="button" class="btn danger" onclick="deleteCurrentSurvey()">Delete Survey & Restaurant</button>':'')+'</div>';
+  }
+  function categoryBlock(cat,type){
+    var items=state.items.filter(function(x){return x.category===cat}),open=!!state.foodOpen[cat];
+    var suggestions=meCriticSuggestions(type).filter(function(x){return meCriticCategory(x)===cat});
+    var h='<section class="criticCategory '+(open?'isOpen':'')+'"><button type="button" class="criticCategoryHead" onclick="meV3ToggleCat(\''+cat.replace(/'/g,"\\'")+'\')"><span><b>'+esc(cat)+'</b><small>'+(items.length?items.length+' item'+(items.length===1?'':'s'):'Add something you ate')+'</small></span><strong>'+(open?'−':'+')+'</strong></button>';
+    if(open){
+      if(suggestions.length){
+        h+='<div class="criticSuggestions"><span class="criticSuggestionsLabel">Popular choices</span>'+suggestions.map(function(x){
+          return '<button type="button" class="criticSuggestion" onclick="meV3AddSuggested(\''+String(cat).replace(/'/g,"\\'")+'\',\''+String(x).replace(/'/g,"\\'")+'\')">'+esc(x)+'</button>';
+        }).join('')+'</div>';
+      }
+      h+='<div class="criticFoodList">'+items.map(function(x){
+        var buttons=[1,2,3,4,5,6,7,8,9,10].map(function(n){
+          return '<button type="button" class="criticFoodScoreBtn '+(Number(x.rating)===n?'active':'')+'" onclick="meV3RateFood(\''+String(x.id).replace(/'/g,"\\'")+'\','+n+')">'+n+'</button>';
+        }).join('');
+        return '<article class="criticFoodCard"><div class="criticFoodTop"><div class="criticFoodNumber">🍽</div><div class="criticFoodNameWrap"><label class="criticFoodLabel" for="meV3Food-'+x.id+'">What did I eat?</label><input id="meV3Food-'+x.id+'" class="criticFoodName" value="'+esc(x.name)+'" placeholder="Enter the dish or drink"></div><button type="button" class="criticRemoveBtn" onclick="meV3RemoveFood(\''+String(x.id).replace(/'/g,"\\'")+'\')">Remove</button></div><div class="criticRatingBlock"><div class="criticRatingHead"><b>Food Rating</b><span>'+(x.rating?x.rating+'/10':'Select 1–10')+'</span></div><div class="criticFoodScore">'+buttons+'</div><div class="surveyScale"><span>Poor</span><span>Average</span><span>Exceptional</span></div></div><div class="criticNotesBlock"><label class="criticFoodLabel" for="meV3Note-'+x.id+'">Critic Notes</label><textarea id="meV3Note-'+x.id+'" class="criticFoodNotes" rows="3" placeholder="Taste, texture, preparation, portion, presentation, and anything that stood out…">'+esc(x.notes)+'</textarea></div></article>';
+      }).join('')+'</div>';
+      h+='<button type="button" class="criticAddItem" onclick="meV3AddFood(\''+String(cat).replace(/'/g,"\\'")+'\')"><span>＋</span> Add another item</button>';
+    }
+    return h+'</section>';
+  }
+  function render(){
+    meReviewV3Capture();
+    var r=current()||{name:'New restaurant',type:'Other',location:'',photos:[]};
+    if(!window._editingPhotos)window._editingPhotos=clonePhotos(r);
+    var avg=foodAverage(),final=score(),h=editor(r);
+    h+='<div class="status">Food Critic Review</div><div class="scoreHero"><div class="restaurantScore">'+(final||'—')+'<span style="font-size:.45em"> / 10</span></div><div class="restaurantScoreLabel">Critic Score — Overall Experience, Food Quality, Service & Value</div></div>';
+    h+='<div class="meta">'+esc(r.name||'New restaurant')+(r.location?' • '+esc(r.location):'')+'</div><div class="reviewForm"><h3>Critic Rating</h3>';
+    [['Overall Experience',0],['Food Quality',1],['Service',2],['Value',3]].forEach(function(q){
+      var value=q[1]===1?(avg?avg.toFixed(1)+'/10':'Calculated from food below'):(state.scores[q[1]]?state.scores[q[1]]+'/10':'Select 1–10');
+      h+='<div class="reviewQuestion"><div class="reviewQuestionHead"><b>'+q[0]+'</b><span>'+value+'</span></div>';
+      if(q[1]===1)h+='<div class="status">'+(avg?avg.toFixed(1)+'/10 from '+state.items.filter(function(x){return Number(x.rating)>0}).length+' rated item(s)':'Rate each item below to calculate this score.')+'</div>';
+      else h+='<div class="reviewScore">'+[1,2,3,4,5,6,7,8,9,10].map(function(n){return '<button type="button" aria-label="'+q[0]+' score '+n+'" class="'+(Number(state.scores[q[1]])===n?'active':'')+'" onclick="meV3SetScore('+q[1]+','+n+')">'+n+'</button>'}).join('')+'</div>';
+      h+='</div>';
+    });
+    h+='</div><div class="reviewExtras"><h3>What I Ate</h3>';
+    h+=ME_CRITIC_CATS.map(function(c){return categoryBlock(c,r.type||'Other')}).join('');
+    h+='<div class="field"><label for="meV3Order">Additional order note</label><textarea id="meV3Order" rows="2" class="surveyNote" placeholder="Optional">'+esc(state.legacyOrdered||'')+'</textarea></div>';
+    h+='<div class="field"><label>Would I order it again?</label><div class="actions"><button type="button" class="btn '+(state.orderAgain==='Yes'?'primary':'')+'" onclick="meV3SetAgain(\'Yes\')">Yes</button><button type="button" class="btn '+(state.orderAgain==='No'?'primary':'')+'" onclick="meV3SetAgain(\'No\')">No</button></div></div></div>';
+    h+='<div class="surveyActions"><button type="button" class="btn danger" onclick="meV3Cancel()">Cancel</button><button type="button" class="btn primary" onclick="meV3Save()">Save Restaurant & Review</button></div>';
+    modal.classList.add('show');modalBody.innerHTML=h;
+  }
+  window.meReviewV3Capture=function(){capture()};
+  window.meV3SetScore=function(i,n){capture();state.scores[i]=n;render()};
+  window.meV3SetAgain=function(v){capture();state.orderAgain=v;render()};
+  window.meV3ToggleCat=function(c){capture();state.foodOpen[c]=!state.foodOpen[c];render()};
+  window.meV3AddFood=function(c,n){capture();state.items.push({id:uid(),category:c,name:n||'',rating:0,notes:''});state.foodOpen[c]=true;render()};
+  window.meV3AddSuggested=function(c,n){capture();if(!state.items.some(function(x){return x.category===c&&normalizeRestaurantName(x.name)===normalizeRestaurantName(n)}))state.items.push({id:uid(),category:c,name:n,rating:0,notes:''});state.foodOpen[c]=true;render()};
+  window.meV3RemoveFood=function(id){capture();state.items=state.items.filter(function(x){return String(x.id)!==String(id)});render()};
+  window.meV3RateFood=function(id,n){capture();var x=state.items.find(function(v){return String(v.id)===String(id)});if(x)x.rating=n;render()};
+  window.meV3Photos=function(input){
+    capture();
+    var files=[...(input&&input.files||[])];
+    Promise.all(files.map(function(file){return readFileAsDataUrl(file)})).then(function(parts){
+      window._editingPhotos=(window._editingPhotos||[]).concat(parts);render();
+    }).catch(function(e){console.error('Metro Eats photo import failed',e)});
+  };
+  window.meV3RemovePhoto=function(i){capture();window._editingPhotos.splice(i,1);render()};
+  window.meV3Cancel=function(){pendingRestaurant=null;pendingReviewRestaurant=null;restaurantEditMode=false;window._editingPhotos=[];state={mode:'',restaurantId:null,pending:null,items:[],scores:{0:0,2:0,3:0},orderAgain:'',legacyOrdered:'',foodOpen:{}};closeModal()};
+  window.meV3Open=function(id,mode,prefill){
+    var r;
+    if(id==='new')r=prefill||{id:'new',name:'',type:'Other',location:'',website:'',menuUrl:'',notes:'',photos:[],survey:null,reviewHistory:[],createdAt:null,updatedAt:null};
+    else r=(db.restaurants||[]).find(function(x){return String(x.id)===String(id)});
+    if(!r){alert('That restaurant could not be found in Metro Eats.');return}
+    load(r,mode||'edit');render();
+  };
+  window.meDiningReview=function(id){meV3Open(String(id),'review')};
+  window.meDiningOpen=function(id,prefilling,asNewVisit){meV3Open(id,id==='new'?'new':(asNewVisit?'review':'edit'),prefilling)};
+  window.openRestaurant=function(id,prefilling){meV3Open(id,id==='new'?'new':'edit',prefilling)};
+  window.startSurvey=function(id){meV3Open(id,'review')};
+  window.useNearby=function(x){
+    var r={id:'new',name:x&&x.name||'',type:x&&x.type||'Other',location:x&&x.address||'',website:x&&x.website||'',menuUrl:'',notes:'',photos:[],survey:null,reviewHistory:[],createdAt:new Date().toISOString(),updatedAt:null,lat:x&&x.lat||null,lon:x&&x.lon||null};
+    meV3Open('new','new',r);
+  };
+  window.renderSurvey=function(){render()};
+  window.saveSurvey=function(){return window.meV3Save()};
+  window.meV3Save=async function(){
+    capture();
+    if(!Number(state.scores[0])||!Number(state.scores[2])||!Number(state.scores[3])){alert('Please rate Overall Experience, Service and Value from 1 to 10.');return}
+    var rated=state.items.filter(function(x){return String(x.name||'').trim()&&Number(x.rating)>0});
+    if(!rated.length){alert('Please add and rate at least one dish or drink.');return}
+    if(!state.orderAgain){alert('Please choose Yes or No for whether you would order it again.');return}
+    var r=current()||{},now=new Date().toISOString();
+    var fields={name:fieldValue('rName')||r.name||'Unnamed restaurant',type:fieldValue('rType')||r.type||'Other',location:fieldValue('rLoc')||r.location||'',website:fieldValue('rWebsite')||r.website||'',menuUrl:fieldValue('rMenuUrl')||r.menuUrl||'',notes:fieldValue('rNotes')||r.notes||'',photos:(window._editingPhotos||r.photos||[]).slice(),lat:r.lat??null,lon:r.lon??null};
+    var review={scores:{0:Number(state.scores[0]),1:Number(foodAverage()),2:Number(state.scores[2]),3:Number(state.scores[3])},foodItems:rated.map(function(x){return {category:x.category,name:String(x.name).trim(),rating:Number(x.rating),notes:String(x.notes||'').trim()}}),ordered:state.legacyOrdered||rated.map(function(x){return x.name}).join(', '),orderAgain:state.orderAgain,overall:Number(score()),createdAt:now};
+    var btn=document.querySelector('.surveyActions .btn.primary');
+    if(btn){btn.disabled=true;btn.textContent='Saving…'}
+    try{
+      if(state.mode==='new'){
+        var created=Object.assign({},r,fields,{id:r.id==='new'?uid():r.id,reviewHistory:[review],survey:review,rating:Math.round(review.overall)/2,createdAt:r.createdAt||now,updatedAt:now});
+        db.restaurants.unshift(created);
+      }else{
+        var saved=(db.restaurants||[]).find(function(x){return String(x.id)===String(state.restaurantId)});
+        if(!saved)throw new Error('The restaurant could not be found in your saved restaurants.');
+        Object.assign(saved,fields);
+        var history=Array.isArray(saved.reviewHistory)?saved.reviewHistory.slice():[];
+        if(state.mode==='edit'&&history.length)history[history.length-1]=review;else history.push(review);
+        saved.reviewHistory=history;saved.survey=review;saved.rating=Math.round(review.overall)/2;saved.updatedAt=now;
+      }
+      await saveWithQuotaRecovery();
+      pendingRestaurant=null;pendingReviewRestaurant=null;restaurantEditMode=false;window._editingPhotos=[];state={mode:'',restaurantId:null,pending:null,items:[],scores:{0:0,2:0,3:0},orderAgain:'',legacyOrdered:'',foodOpen:{}};
+      closeModal();renderRestaurants();updateStory();
+    }catch(e){
+      console.error('Metro Eats V3 review save failed',e);
+      if(btn){btn.disabled=false;btn.textContent='Save Restaurant & Review'}
+      alert('Metro Eats could not save this review. Your entries are still on screen.\n\n'+(e&&e.message||'Please try again.'));
+    }
+  };
+  window.showVisitHistory=function(id){
+    var r=(db.restaurants||[]).find(function(x){return String(x.id)===String(id)});if(!r)return;
+    var rows=Array.isArray(r.reviewHistory)?r.reviewHistory.slice():[];if(!rows.length&&r.survey)rows=[r.survey];
+    var h='<div class="eyebrow">Food Critic History</div><h2>'+esc(r.name)+'</h2><p class="hint">Each visit is kept as a separate critic review.</p>';
+    h+=rows.length?'<div class="surveyGrid">'+rows.slice().reverse().map(function(v,i){
+      return '<div class="surveyItem"><span class="rankBadge">#'+(rows.length-i)+'</span><div><b>'+Number(v.overall||0).toFixed(1)+'/10</b><div class="small">'+esc(v.ordered||'Order not recorded')+'</div>'+stamp('Reviewed',v.createdAt)+(v.foodItems&&v.foodItems.length?'<div class="small">Top: '+v.foodItems.filter(function(x){return x.name&&Number(x.rating)>0}).sort(function(a,b){return Number(b.rating)-Number(a.rating)}).slice(0,3).map(function(x){return esc(x.name)+' '+Number(x.rating).toFixed(1)+'/10'}).join(' • ')+'</div>':'')+'</div><button type="button" class="btn" onclick="meDiningReview(\''+String(r.id).replace(/'/g,"&#39;")+'\')">Review Again</button></div>';
+    }).join(''):'<div class="empty">No visits saved yet.</div>';
+    h+='<div class="actions"><button type="button" class="btn danger" onclick="closeModal()">Close</button></div>';
+    modal.classList.add('show');modalBody.innerHTML=h;
+  };
+  window.showRankings=function(){
+    var ranked=(db.restaurants||[]).filter(function(r){return r&&r.survey}).sort(function(a,b){return Number(b.survey.overall||0)-Number(a.survey.overall||0)});
+    var h='<div class="eyebrow">Food Critic</div><h2>My Restaurant Rankings</h2><p class="hint">Rankings use the latest critic score for each restaurant.</p>';
+    h+=ranked.length?'<div class="surveyGrid">'+ranked.map(function(r,i){
+      return '<div class="surveyItem"><span class="rankBadge">#'+(i+1)+'</span><div><b>'+esc(r.name)+'</b><div class="small">'+esc(r.location||'')+' • <strong>'+Number(r.survey.overall||0).toFixed(1)+'/10</strong></div>'+stamp('Latest review',r.survey.createdAt)+'</div><button type="button" class="btn" onclick="meDiningReview(\''+String(r.id).replace(/'/g,"&#39;")+'\')">Review</button></div>';
+    }).join('')+'</div>':'<div class="empty">Complete a Food Critic review to start your rankings.</div>';
+    h+='<div class="actions"><button type="button" class="btn danger" onclick="closeModal()">Close</button></div>';
+    modal.classList.add('show');modalBody.innerHTML=h;
+  };
+  window.restaurantCard=function(r){
+    var s=r&&r.survey,history=Array.isArray(r&&r.reviewHistory)?r.reviewHistory:[],summary='';
+    if(s&&s.foodItems&&s.foodItems.length)summary=s.foodItems.filter(function(x){return x.name&&Number(x.rating)>0}).sort(function(a,b){return Number(b.rating)-Number(a.rating)}).slice(0,3).map(function(x){return esc(x.name)+' '+Number(x.rating).toFixed(1)+'/10'}).join(' • ');
+    return '<article class="restaurant"><div class="recipeHead"><div><h3>'+esc(r.name)+'</h3><div class="meta">'+esc(r.location||'')+(r.type?' • '+esc(r.type):'')+'</div>'+stamp('Added',r.createdAt)+(r.updatedAt?stamp('Last updated',r.updatedAt):'')+'</div><button type="button" class="btn" onclick="openRestaurant(\''+String(r.id).replace(/'/g,"&#39;")+'\')">Edit</button></div>'+
+      (s?'<div class="restaurantScoreCard"><div><div class="restaurantScore">'+Number(s.overall||0).toFixed(1)+'<span style="font-size:.45em"> / 10</span></div><div class="restaurantScoreLabel">Overall Experience</div></div><div><div class="topRated"><strong>Top Rated:</strong> '+(summary||'Complete another visit for more detail.')+'</div>'+stamp('Reviewed',s.createdAt)+'<div class="restaurantLinks"><button type="button" class="btn primary" onclick="meDiningReview(\''+String(r.id).replace(/'/g,"&#39;")+'\')">Review Again</button><button type="button" class="btn" onclick="showVisitHistory(\''+String(r.id).replace(/'/g,"&#39;")+'\')">Visit History ('+history.length+')</button></div></div></div>':'<div class="actions"><button type="button" class="btn primary" onclick="meDiningReview(\''+String(r.id).replace(/'/g,"&#39;")+'\')">★ Rate This Restaurant</button></div>')+
+      (r.notes?'<p>'+esc(r.notes)+'</p>':'')+
+      '<div class="restaurantLinks">'+(r.website?'<a class="btn" href="'+esc(r.website)+'" target="_blank" rel="noopener noreferrer">Official Website</a>':'')+(r.menuUrl?'<a class="btn" href="'+esc(r.menuUrl)+'" target="_blank" rel="noopener noreferrer">Official Menu</a>':'<a class="btn" href="'+officialMenuSearch(r.name,r.location||'')+'" target="_blank" rel="noopener noreferrer">Find Official Menu</a>')+'</div>'+
+      (r.photos&&r.photos.length?'<div class="photos">'+r.photos.slice(0,6).map(function(p,i){return '<img src="'+esc(p)+'" alt="'+esc(r.name)+' meal photo '+(i+1)+'">'}).join(''):'')+'</article>';
+  };
+  window.meDiningAction=function(action,id){
+    if(action==='create')return meV3Open('new','new');
+    if(action==='edit')return meV3Open(String(id),'edit');
+    if(action==='review')return meV3Open(String(id),'review');
+    if(action==='history')return showVisitHistory(String(id));
+    if(action==='rankings')return showRankings();
+  };
+  window.deleteCurrentSurvey=function(){
+    var id=state.restaurantId|| (pendingReviewRestaurant&&pendingReviewRestaurant.id);
+    if(!id||id==='new'){meV3Cancel();return}
+    if(!confirm('Delete this restaurant and all of its saved review history? This cannot be undone.'))return;
+    var i=db.restaurants.findIndex(function(x){return String(x.id)===String(id)});
+    if(i<0){alert('That restaurant could not be found in Metro Eats.');return}
+    db.restaurants.splice(i,1);
+    try{save();meV3Cancel();renderRestaurants();updateStory();}catch(e){alert('Metro Eats could not delete this restaurant. '+(e&&e.message||''))}
+  };
+  window.meV3RunSelfCheck=function(){
+    var problems=[];
+    if(typeof renderRestaurants!=='function')problems.push('restaurant list renderer missing');
+    if(typeof saveWithQuotaRecovery!=='function')problems.push('storage recovery missing');
+    if(!Array.isArray(db.restaurants))problems.push('restaurant data is not an array');
+    (db.restaurants||[]).forEach(function(r,i){
+      if(!r.id)problems.push('restaurant '+i+' has no id');
+      if(r.reviewHistory&&!Array.isArray(r.reviewHistory))problems.push('restaurant '+i+' reviewHistory is not an array');
+      if(r.survey&&typeof r.survey!=='object')problems.push('restaurant '+i+' survey is not an object');
+    });
+    return problems;
+  };
+})();
