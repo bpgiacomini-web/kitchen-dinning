@@ -461,6 +461,27 @@ async function findRestaurantAroundMe(){
         if(resp.ok)addOverpass(await resp.json());
       }catch(e){console.warn('Fallback Overpass unavailable',e)}
     }
+    if(all.length<12){
+      try{
+        let queries=['restaurants '+[city||'',state||''].filter(Boolean).join(' '),'fast food '+[city||'',state||''].filter(Boolean).join(' '),'cafes '+[city||'',state||''].filter(Boolean).join(' ')];
+        if(city||state){
+          await Promise.all(queries.map(async function(q){
+            try{
+              let u='https://photon.komoot.io/api/?q='+encodeURIComponent(q)+'&limit=50&lang=en';
+              let resp=await fetchWithTimeout(u,{headers:{'Accept':'application/json'}},7000);
+              if(resp.ok){
+                let data=await resp.json();
+                (data.features||[]).forEach(function(f){
+                  let p=f.properties||{},g=f.geometry?.coordinates||[],la=Number(g[1]),lo=Number(g[0]),name=String(p.name||'').trim();
+                  if(!name||!Number.isFinite(la)||!Number.isFinite(lo))return;
+                  add(name,[p.housenumber,p.street,p.city||p.locality,p.state].filter(Boolean).join(', '),la,lo,restaurantTypeFromLookup({amenity:p.osm_value,cuisine:p.extra?.cuisine}),p.extra?.website||'');
+                });
+              }
+            }catch(e){}
+          }));
+        }
+      }catch(e){}
+    }
     if(all.length<5){
       let city='',state='';
       try{
@@ -497,15 +518,19 @@ function renderNearby(places,createMode){
   var inCreate=!!createMode;
   let box=document.getElementById(inCreate?'restaurantLookupResults':'nearbyResults');
   if(!box)return;
+  window._nearbyRestaurantResults=places||[];
   var html=places.length?'<div class="'+(inCreate?'lookupResults':'locCard')+'"><div class="eyebrow">Choose your restaurant</div><h3>Restaurants Around Me</h3><div class="nearbyList">':'';
-  if(places.length) places.forEach(function(x){
+  if(places.length) places.forEach(function(x,i){
     var dist=x.dist<1609?(Math.round(x.dist*3.28084)+' ft'):(x.dist/1609.34).toFixed(1)+' mi';
-    var payload=JSON.stringify(x).replace(/'/g,'&#39;');
-    html+='<div class="nearbyItem"><strong>'+esc(x.name)+'</strong><div class="meta">'+dist+(x.address?' • '+esc(x.address):'')+(x.type?' • '+esc(x.type):'')+'</div><div class="actions"><button type="button" class="btn primary" onclick="useNearby('+payload+')">Select This Restaurant</button></div></div>';
+    html+='<div class="nearbyItem"><strong>'+esc(x.name)+'</strong><div class="meta">'+dist+(x.address?' • '+esc(x.address):'')+(x.type?' • '+esc(x.type):'')+'</div><div class="actions"><button type="button" class="btn primary" onclick="useNearbyByIndex('+i+')">Select This Restaurant</button></div></div>';
   });
   if(places.length)html+='</div></div>';
   box.innerHTML=html;
   if(inCreate&&places.length)box.scrollIntoView({behavior:'smooth',block:'nearest'});
+}
+function useNearbyByIndex(index){
+  var x=(window._nearbyRestaurantResults||[])[Number(index)];
+  if(x)useNearby(x);
 }
 function findRestaurantAroundMeForCreate(){
   window._restaurantCreateLookup=true;
