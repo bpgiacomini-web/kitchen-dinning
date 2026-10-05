@@ -1014,20 +1014,48 @@ function showVisitHistory(id){
   window.renderSurvey=function(){render()};
   window.saveSurvey=function(){return window.meV3Save()};
   window.meV3Save=async function(){
-    capture();
-    if(!Number(state.scores[0])||!Number(state.scores[2])||!Number(state.scores[3])){alert('Please rate Overall Experience, Service and Value from 1 to 10.');return}
+    meReviewV3Capture();
+    var name=fieldValue('rName')||'';
+    var location=fieldValue('rLoc')||'';
+    var type=fieldValue('rType')||'Other';
+    var website=fieldValue('rWebsite')||'';
+    var menuUrl=fieldValue('rMenuUrl')||'';
+    var notes=fieldValue('rNotes')||'';
     var rated=state.items.filter(function(x){return String(x.name||'').trim()&&Number(x.rating)>0});
+    if(!name){alert('Please enter or select a restaurant name.');return}
+    if(!Number(state.scores[0])||!Number(state.scores[2])||!Number(state.scores[3])){alert('Please rate Overall Experience, Service and Value from 1 to 10.');return}
     if(!rated.length){alert('Please add and rate at least one dish or drink.');return}
     if(!state.orderAgain){alert('Please choose Yes or No for whether you would order it again.');return}
-    var r=current()||{},now=new Date().toISOString();
-    var fields={name:fieldValue('rName')||r.name||'Unnamed restaurant',type:fieldValue('rType')||r.type||'Other',location:fieldValue('rLoc')||r.location||'',website:fieldValue('rWebsite')||r.website||'',menuUrl:fieldValue('rMenuUrl')||r.menuUrl||'',notes:fieldValue('rNotes')||r.notes||'',photos:(window._editingPhotos||r.photos||[]).slice(),lat:r.lat??null,lon:r.lon??null};
-    var review={scores:{0:Number(state.scores[0]),1:Number(foodAverage()),2:Number(state.scores[2]),3:Number(state.scores[3])},foodItems:rated.map(function(x){return {category:x.category,name:String(x.name).trim(),rating:Number(x.rating),notes:String(x.notes||'').trim()}}),ordered:state.legacyOrdered||rated.map(function(x){return x.name}).join(', '),orderAgain:state.orderAgain,overall:Number(score()),createdAt:now};
+    var current=state.pending||(db.restaurants||[]).find(function(x){return String(x.id)===String(state.restaurantId)})||{};
+    var now=new Date().toISOString();
+    var fields={
+      name:name,
+      type:type,
+      location:location,
+      website:website,
+      menuUrl:menuUrl,
+      notes:notes,
+      photos:(window._editingPhotos||current.photos||[]).slice(),
+      lat:current.lat??null,
+      lon:current.lon??null
+    };
+    var review={
+      scores:{0:Number(state.scores[0]),1:Number(foodAverage()),2:Number(state.scores[2]),3:Number(state.scores[3])},
+      foodItems:rated.map(function(x){return {category:x.category,name:String(x.name).trim(),rating:Number(x.rating),notes:String(x.notes||'').trim()}}),
+      ordered:state.legacyOrdered||rated.map(function(x){return x.name}).join(', '),
+      orderAgain:state.orderAgain,
+      overall:Number(score()),
+      createdAt:now
+    };
     var btn=document.querySelector('.surveyActions .btn.primary');
     if(btn){btn.disabled=true;btn.textContent='Saving…'}
     try{
+      var savedId;
       if(state.mode==='new'){
-        var created=Object.assign({},r,fields,{id:r.id==='new'?uid():r.id,reviewHistory:[review],survey:review,rating:Math.round(review.overall)/2,createdAt:r.createdAt||now,updatedAt:now});
+        savedId=uid();
+        var created=Object.assign({},current,fields,{id:savedId,reviewHistory:[review],survey:review,rating:Math.round(review.overall)/2,createdAt:current.createdAt||now,updatedAt:now});
         db.restaurants.unshift(created);
+        state.restaurantId=savedId;
       }else{
         var saved=(db.restaurants||[]).find(function(x){return String(x.id)===String(state.restaurantId)});
         if(!saved)throw new Error('The restaurant could not be found in your saved restaurants.');
@@ -1035,8 +1063,16 @@ function showVisitHistory(id){
         var history=Array.isArray(saved.reviewHistory)?saved.reviewHistory.slice():[];
         if(state.mode==='edit'&&history.length)history[history.length-1]=review;else history.push(review);
         saved.reviewHistory=history;saved.survey=review;saved.rating=Math.round(review.overall)/2;saved.updatedAt=now;
+        savedId=saved.id;
       }
+      /* Persist and verify the exact restaurant record before closing the form. */
       await saveWithQuotaRecovery();
+      var persisted=parseData();
+      var check=(persisted.restaurants||[]).find(function(x){return String(x.id)===String(savedId)});
+      if(!check)throw new Error('The review was created in memory but could not be verified in device storage.');
+      if(String(check.name||'')!==String(name)||String(check.location||'')!==String(location)){
+        throw new Error('The restaurant was not saved with the selected name and address. Your entries are still on screen.');
+      }
       pendingRestaurant=null;pendingReviewRestaurant=null;restaurantEditMode=false;window._editingPhotos=[];state={mode:'',restaurantId:null,pending:null,items:[],scores:{0:0,2:0,3:0},orderAgain:'',legacyOrdered:'',foodOpen:{}};
       closeModal();renderRestaurants();updateStory();
     }catch(e){
