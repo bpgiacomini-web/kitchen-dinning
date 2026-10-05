@@ -400,6 +400,14 @@ function officialMenuSearch(name,loc){return 'https://www.google.com/search?q='+
 function renderRestaurants(){let q=fieldValue('restaurantSearch').toLowerCase(),arr=db.restaurants.filter(r=>JSON.stringify(r).toLowerCase().includes(q));document.getElementById('restaurantList').innerHTML=arr.length?arr.map(r=>restaurantCard(r)).join(''):'<div class="empty">No saved restaurants yet.</div>';updateStory()}
 function restaurantCard(r){let s=r.survey,history=r.reviewHistory||[],summary=s?topRatedSummary(s):'';return `<article class="restaurant"><div class="recipeHead"><div><h3>${esc(r.name)}</h3><div class="meta">${esc(r.location||'')} ${r.type?'• '+esc(r.type):''}</div>${stamp('Added',r.createdAt)}${r.updatedAt?stamp('Last updated',r.updatedAt):''}</div><button class="btn" onclick="openRestaurant('${r.id}')">Edit</button></div>${s?`<div class="restaurantScoreCard"><div><div class="restaurantScore">${Number(s.overall||0).toFixed(1)}<span style="font-size:.45em;letter-spacing:0"> / 10</span></div><div class="restaurantScoreLabel">Overall Experience</div></div><div><div class="topRated"><strong>Top Rated:</strong> ${summary||'Complete another visit for more detail.'}</div>${stamp('Reviewed',s.createdAt)}<div class="restaurantLinks"><button class="btn primary" onclick="startSurvey('${r.id}')">Review Again</button><button class="btn" onclick="showVisitHistory('${r.id}')">Visit History (${history.length})</button></div></div></div>`:`<div class="actions"><button class="btn primary" onclick="startSurvey('${r.id}')">★ Rate This Restaurant</button></div>`}${r.notes?`<p>${esc(r.notes)}</p>`:''}<div class="restaurantLinks">${r.website?`<a class="btn" href="${esc(r.website)}" target="_blank" rel="noopener noreferrer">Official Website</a>`:''}${r.menuUrl?`<a class="btn" href="${esc(r.menuUrl)}" target="_blank" rel="noopener noreferrer">Official Menu</a>`:`<a class="btn" href="${officialMenuSearch(r.name,r.location||'')}" target="_blank" rel="noopener noreferrer">Find Official Menu</a>`}</div>${r.photos?.length?`<div class="photos">${r.photos.slice(0,6).map((p,i)=>`<img src="${esc(p)}" alt="${esc(r.name)} meal photo ${i+1}">`).join('')}</div>`:''}</article>`}
 function topRatedSummary(s){let labels=surveyQuestions.map((q,i)=>({name:q[0],score:Number(s?.scores?.[i]||0),i})).filter(x=>x.i>0&&x.i<9&&x.score>0).sort((a,b)=>b.score-a.score).slice(0,3);return labels.map(x=>`${esc(x.name)} ${x.score}/10`).join(' • ')}
+async function fetchWithTimeout(url,options,timeoutMs){
+  let controller=new AbortController();
+  let timer=setTimeout(function(){controller.abort()},timeoutMs||8000);
+  try{
+    let opts=Object.assign({},options||{},{signal:controller.signal});
+    return await fetch(url,opts);
+  }finally{clearTimeout(timer)}
+}
 async function findRestaurantAroundMe(){
   let status=document.getElementById('locationStatus');
   status.textContent='Requesting your location…';
@@ -408,52 +416,43 @@ async function findRestaurantAroundMe(){
     let lat=pos.coords.latitude,lon=pos.coords.longitude;
     window._restaurantLookupLocation={lat,lon};
     status.textContent='Looking for restaurants near your location…';
-    try{
-      let all=[],seen={};
-      let radii=[1609,3219,8047];
-      for(let i=0;i<radii.length;i++){
-        let radius=radii[i];
-        let q='[out:json][timeout:20];(nwr["amenity"~"restaurant|fast_food|cafe|bar|pub"](around:'+radius+','+lat+','+lon+'););out center tags;';
-        try{
-          let data=await fetchOverpassRestaurants(q);
-          (data.elements||[]).forEach(function(x){
-            let t=x.tags||{},la=x.lat??x.center?.lat,lo=x.lon??x.center?.lon;
-            let name=String(t.name||'').trim();
-            if(!name||typeof la!=='number'||typeof lo!=='number')return;
-            let key=(name+'|'+Math.round(la*10000)+'|'+Math.round(lo*10000)).toLowerCase();
-            if(seen[key])return;
-            seen[key]=1;
-            let address=[t['addr:housenumber'],t['addr:street'],t['addr:city']||t['addr:town']||t['addr:village'],t['addr:state']].filter(Boolean).join(', ');
-            all.push({name:name,website:t.website||t['contact:website']||'',address:address,lat:la,lon:lo,type:restaurantTypeFromLookup(t),dist:Math.round(distanceMeters(lat,lon,la,lo))});
-          });
-        }catch(e){}
-        if(all.length>=12)break;
-      }
-      if(!all.length){
-        try{
-          let u='https://photon.komoot.io/api/?q=restaurant&lat='+encodeURIComponent(lat)+'&lon='+encodeURIComponent(lon)+'&limit=20&lang=en';
-          let resp=await fetch(u);
-          if(resp.ok){
-            let data=await resp.json();
-            (data.features||[]).forEach(function(f){
-              let p=f.properties||{},g=f.geometry?.coordinates||[],la=Number(g[1]),lo=Number(g[0]),name=String(p.name||'').trim();
-              if(!name||!Number.isFinite(la)||!Number.isFinite(lo))return;
-              let key=(name+'|'+Math.round(la*10000)+'|'+Math.round(lo*10000)).toLowerCase();
-              if(seen[key])return;seen[key]=1;
-              let address=[p.housenumber,p.street,p.city||p.town||p.village,p.state].filter(Boolean).join(', ');
-              all.push({name:name,website:'',address:address,lat:la,lon:lo,type:restaurantTypeFromLookup(p),dist:Math.round(distanceMeters(lat,lon,la,lo))});
-            });
-          }
-        }catch(e){}
-      }
-      all.sort(function(a,b){return a.dist-b.dist});
-      let places=all.filter(function(x){return x.dist<=8047}).slice(0,12);
-      renderNearby(places);
-      status.textContent=places.length?'Select the restaurant that matches where you are.':'No named restaurants were found within 5 miles. You can add it manually.';
-    }catch(e){
-      console.error('Metro Eats nearby search failed',e);
-      status.textContent='Could not query nearby restaurants. You can still add the restaurant manually.';
+    let all=[],seen={};
+    function addPlace(x){
+      let t=x.tags||{},la=x.lat??x.center?.lat,lo=x.lon??x.center?.lon,name=String(t.name||'').trim();
+      if(!name||typeof la!=='number'||typeof lo!=='number')return;
+      let key=(name+'|'+Math.round(la*10000)+'|'+Math.round(lo*10000)).toLowerCase();
+      if(seen[key])return;seen[key]=1;
+      let address=[t['addr:housenumber'],t['addr:street'],t['addr:city']||t['addr:town']||t['addr:village'],t['addr:state']].filter(Boolean).join(', ');
+      all.push({name:name,website:t.website||t['contact:website']||'',address:address,lat:la,lon:lo,type:restaurantTypeFromLookup(t),dist:Math.round(distanceMeters(lat,lon,la,lo))});
     }
+    try{
+      let radius=8047;
+      let q='[out:json][timeout:8];nwr["amenity"~"restaurant|fast_food|cafe|bar|pub"](around:'+radius+','+lat+','+lon+');out center tags;';
+      let resp=await fetchWithTimeout('https://overpass-api.de/api/interpreter?data='+encodeURIComponent(q),{method:'GET'},9000);
+      if(resp.ok){let data=await resp.json();(data.elements||[]).forEach(addPlace)}
+    }catch(e){console.warn('Primary nearby search unavailable',e)}
+    if(!all.length){
+      status.textContent='Using a backup restaurant search…';
+      try{
+        let u='https://photon.komoot.io/api/?q=restaurant&lat='+encodeURIComponent(lat)+'&lon='+encodeURIComponent(lon)+'&limit=30&lang=en';
+        let resp=await fetchWithTimeout(u,{},7000);
+        if(resp.ok){
+          let data=await resp.json();
+          (data.features||[]).forEach(function(f){
+            let p=f.properties||{},g=f.geometry?.coordinates||[],la=Number(g[1]),lo=Number(g[0]),name=String(p.name||'').trim();
+            if(!name||!Number.isFinite(la)||!Number.isFinite(lo))return;
+            let key=(name+'|'+Math.round(la*10000)+'|'+Math.round(lo*10000)).toLowerCase();
+            if(seen[key])return;seen[key]=1;
+            let address=[p.housenumber,p.street,p.city||p.town||p.village,p.state].filter(Boolean).join(', ');
+            all.push({name:name,website:'',address:address,lat:la,lon:lo,type:restaurantTypeFromLookup(p),dist:Math.round(distanceMeters(lat,lon,la,lo))});
+          });
+        }
+      }catch(e){console.warn('Backup nearby search unavailable',e)}
+    }
+    all.sort(function(a,b){return a.dist-b.dist});
+    let places=all.filter(function(x){return x.dist<=8047}).slice(0,12);
+    renderNearby(places);
+    status.textContent=places.length?'Select the restaurant that matches where you are.':'No named restaurants were found within 5 miles. You can add it manually.';
   },function(err){
     status.textContent=err&&err.code===1?'Location permission was denied. Please allow location access for Metro Eats in Safari settings.':'Location could not be determined. Please try again.';
   },{enableHighAccuracy:true,timeout:15000,maximumAge:30000});
