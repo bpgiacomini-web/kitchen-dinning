@@ -1156,15 +1156,24 @@ function showVisitHistory(id){
     var foods=Array.isArray(v.foodItems)?v.foodItems.filter(function(x){return x&&x.name}):[];
     var h='<div class="eyebrow">Food Critic Results</div><h2>'+esc(r.name)+'</h2><p class="hint">Read-only copy of your saved review. Nothing on this screen can be edited.</p>';
     h+='<div class="scoreHero"><div class="restaurantScore">'+Number(v.overall||0).toFixed(1)+'<span style="font-size:.45em"> / 10</span></div><div class="restaurantScoreLabel">Overall Experience</div></div>';
-    h+='<div class="reviewResultsReadOnly">';
-    h+='<div class="reviewResultsRow"><b>Food Quality</b><span>'+Number(v.scores&&v.scores[1]||0).toFixed(1)+'/10</span></div>';
-    h+='<div class="reviewResultsRow"><b>Service</b><span>'+Number(v.scores&&v.scores[2]||0).toFixed(1)+'/10</span></div>';
-    h+='<div class="reviewResultsRow"><b>Value</b><span>'+Number(v.scores&&v.scores[3]||0).toFixed(1)+'/10</span></div>';
-    if(v.createdAt)h+='<div class="reviewResultsRow"><b>Reviewed</b><span>'+esc(new Date(v.createdAt).toLocaleDateString())+'</span></div>';
-    if(v.ordered)h+='<div class="reviewResultsBlock"><b>What I Ordered</b><p>'+esc(v.ordered)+'</p></div>';
-    h+='<div class="reviewResultsBlock"><b>Would I Order It Again?</b><p>'+esc(v.orderAgain||'Not recorded')+'</p></div>';
-    if(foods.length)h+='<div class="reviewResultsBlock"><b>My Dishes & Drinks</b><div class="surveyGrid">'+foods.map(function(x){return '<div class="surveyItem"><div><b>'+esc(x.name)+'</b><div class="small">'+esc(x.category||'')+(x.notes?' • '+esc(x.notes):'')+'</div></div><strong>'+Number(x.rating||0).toFixed(1)+'/10</strong></div>'}).join('')+'</div></div>';
-    h+='</div><div class="actions"><button type="button" class="btn danger" onclick="closeModal()">Close</button></div>';
+    h+='<div class="reviewResultsScores">';
+    h+='<div class="reviewResultsScoreCard"><span>Food Quality</span><strong>'+Number(v.scores&&v.scores[1]||0).toFixed(1)+'<small>/10</small></strong></div>';
+    h+='<div class="reviewResultsScoreCard"><span>Service</span><strong>'+Number(v.scores&&v.scores[2]||0).toFixed(1)+'<small>/10</small></strong></div>';
+    h+='<div class="reviewResultsScoreCard"><span>Value</span><strong>'+Number(v.scores&&v.scores[3]||0).toFixed(1)+'<small>/10</small></strong></div>';
+    h+='</div>';
+    h+='<div class="reviewResultsDetails">';
+    if(v.createdAt)h+='<div class="reviewResultsDetailCard"><span>Reviewed</span><strong>'+esc(new Date(v.createdAt).toLocaleDateString(undefined,{year:'numeric',month:'long',day:'numeric'}))+'</strong></div>';
+    if(v.ordered)h+='<div class="reviewResultsDetailCard"><span>What I Ordered</span><strong>'+esc(v.ordered)+'</strong></div>';
+    h+='<div class="reviewResultsDetailCard"><span>Would I Order It Again?</span><strong>'+esc(v.orderAgain||'Not recorded')+'</strong></div>';
+    h+='</div>';
+    if(foods.length){
+      h+='<div class="reviewResultsFoods"><h3>My Dishes & Drinks</h3>';
+      h+=foods.map(function(x){
+        return '<div class="reviewResultsFoodCard"><div class="reviewResultsFoodInfo"><strong>'+esc(x.name)+'</strong><span>'+esc(x.category||'')+(x.notes?' • '+esc(x.notes):'')+'</span></div><div class="reviewResultsFoodScore"><strong>'+Number(x.rating||0).toFixed(1)</strong><span>/10</span></div></div>';
+      }).join('');
+      h+='</div>';
+    }
+    h+='<div class="actions"><button type="button" class="btn danger" onclick="closeModal()">Close</button></div>';
     modal.classList.add('show');modalBody.innerHTML=h;
   };
   window.showRankings=function(){
