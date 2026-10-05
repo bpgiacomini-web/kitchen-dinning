@@ -386,7 +386,7 @@ function meSpotlightMarkup(r){
     '<div class="restaurantSpotlightTitleRow"><div><h3>'+esc(r.name)+'</h3><div class="meta">'+esc(r.location||'')+(r.type?' • '+esc(r.type):'')+'</div></div><div class="restaurantSpotlightScore">'+score.toFixed(1)+'<small>/10</small></div></div>'+
     '<p class="restaurantSpotlightInsight"><strong>Critic insight:</strong> '+insight+esc(repeat)+'</p>'+
     (s.foodItems?.length?'<div class="restaurantSpotlightDishes"><b>Top dishes</b>'+meCriticTopFoods(s).map(x=>'<span>'+esc(x.name)+' <strong>'+Number(x.rating).toFixed(1)+'/10</strong></span>').join('')+'</div>':'')+
-    '<div class="actions"><button class="btn primary" onclick="showRankings()">View Rankings</button>'+(r.website?'<a class="btn" href="'+esc(r.website)+'" target="_blank" rel="noopener noreferrer">Official Website</a>':'')+'</div>'+
+    '<div class="actions"><button class="btn primary" onclick="showReviewResults(''+String(r.id).replace(/'/g,"&#39;")+'')">View Review Results</button>'+(r.website?'<a class="btn" href="'+esc(r.website)+'" target="_blank" rel="noopener noreferrer">Official Website</a>':'')+'</div>'+
     '</article>';
 }
 function renderRestaurantSpotlight(){
@@ -1146,6 +1146,25 @@ function showVisitHistory(id){
       return '<div class="surveyItem"><span class="rankBadge">#'+(rows.length-i)+'</span><div><b>'+Number(v.overall||0).toFixed(1)+'/10</b><div class="small">'+esc(v.ordered||'Order not recorded')+'</div>'+stamp('Reviewed',v.createdAt)+(v.foodItems&&v.foodItems.length?'<div class="small">Top: '+v.foodItems.filter(function(x){return x.name&&Number(x.rating)>0}).sort(function(a,b){return Number(b.rating)-Number(a.rating)}).slice(0,3).map(function(x){return esc(x.name)+' '+Number(x.rating).toFixed(1)+'/10'}).join(' • ')+'</div>':'')+'</div><button type="button" class="btn" onclick="meDiningReview(\''+String(r.id).replace(/'/g,"&#39;")+'\')">Review Again</button></div>';
     }).join(''):'<div class="empty">No visits saved yet.</div>';
     h+='<div class="actions"><button type="button" class="btn danger" onclick="closeModal()">Close</button></div>';
+    modal.classList.add('show');modalBody.innerHTML=h;
+  };
+  window.showReviewResults=function(id){
+    var r=(db.restaurants||[]).find(function(x){return String(x.id)===String(id)});
+    if(!r){alert('That restaurant could not be found in Metro Eats.');return}
+    var v=(Array.isArray(r.reviewHistory)&&r.reviewHistory.length)?r.reviewHistory[r.reviewHistory.length-1]:(r.survey||null);
+    if(!v){alert('No saved review results are available for this restaurant.');return}
+    var foods=Array.isArray(v.foodItems)?v.foodItems.filter(function(x){return x&&x.name}):[];
+    var h='<div class="eyebrow">Food Critic Results</div><h2>'+esc(r.name)+'</h2><p class="hint">Read-only copy of your saved review. Nothing on this screen can be edited.</p>';
+    h+='<div class="scoreHero"><div class="restaurantScore">'+Number(v.overall||0).toFixed(1)+'<span style="font-size:.45em"> / 10</span></div><div class="restaurantScoreLabel">Overall Experience</div></div>';
+    h+='<div class="reviewResultsReadOnly">';
+    h+='<div class="reviewResultsRow"><b>Food Quality</b><span>'+Number(v.scores&&v.scores[1]||0).toFixed(1)+'/10</span></div>';
+    h+='<div class="reviewResultsRow"><b>Service</b><span>'+Number(v.scores&&v.scores[2]||0).toFixed(1)+'/10</span></div>';
+    h+='<div class="reviewResultsRow"><b>Value</b><span>'+Number(v.scores&&v.scores[3]||0).toFixed(1)+'/10</span></div>';
+    if(v.createdAt)h+='<div class="reviewResultsRow"><b>Reviewed</b><span>'+esc(new Date(v.createdAt).toLocaleDateString())+'</span></div>';
+    if(v.ordered)h+='<div class="reviewResultsBlock"><b>What I Ordered</b><p>'+esc(v.ordered)+'</p></div>';
+    h+='<div class="reviewResultsBlock"><b>Would I Order It Again?</b><p>'+esc(v.orderAgain||'Not recorded')+'</p></div>';
+    if(foods.length)h+='<div class="reviewResultsBlock"><b>My Dishes & Drinks</b><div class="surveyGrid">'+foods.map(function(x){return '<div class="surveyItem"><div><b>'+esc(x.name)+'</b><div class="small">'+esc(x.category||'')+(x.notes?' • '+esc(x.notes):'')+'</div></div><strong>'+Number(x.rating||0).toFixed(1)+'/10</strong></div>'}).join('')+'</div></div>';
+    h+='</div><div class="actions"><button type="button" class="btn danger" onclick="closeModal()">Close</button></div>';
     modal.classList.add('show');modalBody.innerHTML=h;
   };
   window.showRankings=function(){
