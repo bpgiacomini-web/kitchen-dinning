@@ -79,8 +79,9 @@
 <section id="restaurants" class="section diningSection">
   <div class="toolbar"><input class="grow" id="restaurantSearch" aria-label="Search saved restaurants" placeholder="Search saved restaurants…" oninput="renderRestaurants()"><button type="button" class="btn primary" id="meAroundMeBtn">⌖ Restaurants Around Me</button><button type="button" class="btn" id="meAddRestaurantBtn">＋ Add Restaurant & Review</button></div>
   <div id="locationStatus" class="status">Use <b>Restaurants Around Me</b> to identify the restaurant nearest your current location.</div>
+  <div id="nearbyResults"></div>
   <div class="surveyCard"><div class="eyebrow">Dining Experience</div><h3>Restaurant Review</h3><p class="hint">Rate 10 dining categories, then record what you ate and whether you would order it again. Every visit is saved separately.</p><div class="actions"><button type="button" class="btn primary" id="meCreateRestaurantBtn">★ Create Restaurant & Review</button><button class="btn" onclick="showRankings()">View My Rankings</button></div></div>
-  <div id="nearbyResults"></div><div id="restaurantList" class="list"></div>
+  <div id="restaurantList" class="list"></div>
 </section>
 </div>
 <nav class="bottomNav" id="bottomNav" aria-label="Primary navigation"><button class="active" data-tab="home">⌂<br>Home</button><button data-tab="recipes">▱<br>Recipes</button><button data-tab="restaurants">◉<br>Dining</button></nav>
