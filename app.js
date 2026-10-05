@@ -434,9 +434,7 @@ async function findRestaurantAroundMe(){
         let name=String(t.name||'').trim();
         if(!name)return;
         let address=[t['addr:housenumber'],t['addr:street'],t['addr:city']||t['addr:town']||t['addr:village'],t['addr:state']].filter(Boolean).join(', ');
-        let type=restaurantTypeFromLookup(t);
-        let website=t.website||t['contact:website']||'';
-        add(name,address,la,lo,type,website);
+        add(name,address,la,lo,restaurantTypeFromLookup(t),t.website||t['contact:website']||'');
       });
     }
     let overpassQuery='[out:json][timeout:20];('+
@@ -447,60 +445,45 @@ async function findRestaurantAroundMe(){
       'nwr[amenity=pub](around:24140,'+lat+','+lon+');'+
       ');out center tags;';
     try{
-      let url='https://overpass-api.de/api/interpreter?data='+encodeURIComponent(overpassQuery);
-      let resp=await fetchWithTimeout(url,{headers:{'Accept':'application/json'}},12000);
-      if(resp.ok){
-        let data=await resp.json();
-        addOverpass(data);
-      }
-    }catch(e){console.warn('Primary Overpass unavailable',e)}
-    if(all.length<5){
-      try{
-        let url='https://overpass.kumi.systems/api/interpreter?data='+encodeURIComponent(overpassQuery);
-        let resp=await fetchWithTimeout(url,{headers:{'Accept':'application/json'}},12000);
-        if(resp.ok)addOverpass(await resp.json());
-      }catch(e){console.warn('Fallback Overpass unavailable',e)}
-    }
+      let resp=await fetchWithTimeout('https://overpass-api.de/api/interpreter?data='+encodeURIComponent(overpassQuery),{headers:{'Accept':'application/json'}},12000);
+      if(resp.ok)addOverpass(await resp.json());
+    }catch(e){}
     if(all.length<12){
       try{
-        let queries=['restaurant','fast food','cafe'];
-        await Promise.all(queries.map(async function(q){
+        let resp=await fetchWithTimeout('https://overpass.kumi.systems/api/interpreter?data='+encodeURIComponent(overpassQuery),{headers:{'Accept':'application/json'}},12000);
+        if(resp.ok)addOverpass(await resp.json());
+      }catch(e){}
+    }
+    let city='',state='';
+    try{
+      let rev='https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat='+encodeURIComponent(lat)+'&lon='+encodeURIComponent(lon)+'&zoom=10&addressdetails=1';
+      let rr=await fetchWithTimeout(rev,{headers:{'Accept':'application/json','Accept-Language':'en'}},6000);
+      if(rr.ok){
+        let d=await rr.json(),a=d.address||{};
+        city=a.city||a.town||a.village||a.municipality||'';
+        state=a.state||'';
+      }
+    }catch(e){}
+    let placeTerms=[];
+    if(city||state)placeTerms.push('restaurant '+[city,state].filter(Boolean).join(' '));
+    if(city||state)placeTerms.push('fast food '+[city,state].filter(Boolean).join(' '));
+    if(city||state)placeTerms.push('cafe '+[city,state].filter(Boolean).join(' '));
+    if(city||state)placeTerms.push('bar '+[city,state].filter(Boolean).join(' '));
+    if(city||state)placeTerms.push('pub '+[city,state].filter(Boolean).join(' '));
+    if(all.length<12){
+      try{
+        await Promise.all(placeTerms.map(async function(q){
           try{
-            let u='https://photon.komoot.io/api/?q='+encodeURIComponent(q)+'&lat='+encodeURIComponent(lat)+'&lon='+encodeURIComponent(lon)+'&limit=50&lang=en';
-            let resp=await fetchWithTimeout(u,{headers:{'Accept':'application/json'}},7000);
+            let u='https://nominatim.openstreetmap.org/search?format=jsonv2&addressdetails=1&limit=50&dedupe=1&q='+encodeURIComponent(q);
+            let resp=await fetchWithTimeout(u,{headers:{'Accept':'application/json','Accept-Language':'en'}},8000);
             if(resp.ok){
-              let data=await resp.json();
-              (data.features||[]).forEach(function(f){
-                let p=f.properties||{},g=f.geometry?.coordinates||[],la=Number(g[1]),lo=Number(g[0]),name=String(p.name||'').trim();
-                if(!name||!Number.isFinite(la)||!Number.isFinite(lo))return;
-                add(name,[p.housenumber,p.street,p.city||p.locality,p.state].filter(Boolean).join(', '),la,lo,restaurantTypeFromLookup({amenity:p.osm_value,cuisine:p.extra?.cuisine}),p.extra?.website||'');
+              (await resp.json()).forEach(function(x){
+                let a=x.address||{},la=Number(x.lat),lo=Number(x.lon),name=String(x.name||'').trim();
+                add(name,[a.house_number,a.road,a.city||a.town||a.village,a.state].filter(Boolean).join(', '),la,lo,restaurantTypeFromLookup(x),x.extratags?.website||x.extratags?.['contact:website']||'');
               });
             }
           }catch(e){}
         }));
-      }catch(e){}
-    }
-    if(all.length<5){
-      let city='',state='';
-      try{
-        let rev='https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat='+encodeURIComponent(lat)+'&lon='+encodeURIComponent(lon)+'&zoom=10&addressdetails=1';
-        let rr=await fetchWithTimeout(rev,{headers:{'Accept':'application/json','Accept-Language':'en'}},6000);
-        if(rr.ok){
-          let d=await rr.json(),a=d.address||{};
-          city=a.city||a.town||a.village||a.municipality||'';
-          state=a.state||'';
-        }
-      }catch(e){}
-      try{
-        let q='restaurant '+[city,state].filter(Boolean).join(', ');
-        let resp=await fetchWithTimeout('https://nominatim.openstreetmap.org/search?format=jsonv2&addressdetails=1&limit=50&dedupe=1&q='+encodeURIComponent(q),{headers:{'Accept':'application/json','Accept-Language':'en'}},8000);
-        if(resp.ok){
-          (await resp.json()).forEach(function(x){
-            let a=x.address||{},la=Number(x.lat),lo=Number(x.lon),name=String(x.name||'').trim();
-            let address=[a.house_number,a.road,a.city||a.town||a.village,a.state].filter(Boolean).join(', ');
-            add(name,address,la,lo,restaurantTypeFromLookup(x),x.extratags?.website||x.extratags?.['contact:website']||'');
-          });
-        }
       }catch(e){}
     }
     all.sort(function(a,b){return a.dist-b.dist});
