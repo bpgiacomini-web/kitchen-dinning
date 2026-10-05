@@ -1169,7 +1169,7 @@ function showVisitHistory(id){
     if(foods.length){
       h+='<div class="reviewResultsFoods"><h3>My Dishes & Drinks</h3>';
       h+=foods.map(function(x){
-        return '<div class="reviewResultsFoodCard"><div class="reviewResultsFoodInfo"><strong>'+esc(x.name)+'</strong><span>'+esc(x.category||'')+(x.notes?' • '+esc(x.notes):'')+'</span></div><div class="reviewResultsFoodScore"><strong>'+Number(x.rating||0).toFixed(1)</strong><span>/10</span></div></div>';
+        return '<div class="reviewResultsFoodCard"><div class="reviewResultsFoodInfo"><strong>'+esc(x.name)+'</strong><span>'+esc(x.category||'')+(x.notes?' • '+esc(x.notes):'')+'</span></div><div class="reviewResultsFoodScore"><strong>'+Number(x.rating||0).toFixed(1)+'</strong><span>/10</span></div></div>';
       }).join('');
       h+='</div>';
     }
