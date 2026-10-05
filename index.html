@@ -77,10 +77,11 @@
   <div id="recipeList" class="list"></div>
 </section>
 <section id="restaurants" class="section diningSection">
-  <div class="toolbar"><input class="grow" id="restaurantSearch" aria-label="Search saved restaurants" placeholder="Search saved restaurants…" oninput="renderRestaurants()"><button class="btn primary" onclick="findRestaurantAroundMe()">⌖ Restaurants Around Me</button><button type="button" class="btn" onclick="meDiningAction('create')">＋ Add Restaurant & Review</button></div>
+  <div class="toolbar"><input class="grow" id="restaurantSearch" aria-label="Search saved restaurants" placeholder="Search saved restaurants…" oninput="renderRestaurants()"><button type="button" class="btn primary" id="meAroundMeBtn">⌖ Restaurants Around Me</button><button type="button" class="btn" id="meAddRestaurantBtn">＋ Add Restaurant & Review</button></div>
   <div id="locationStatus" class="status">Use <b>Restaurants Around Me</b> to identify the restaurant nearest your current location.</div>
-  <div class="surveyCard"><div class="eyebrow">Dining Experience</div><h3>Restaurant Review</h3><p class="hint">Rate 10 dining categories, then record what you ate and whether you would order it again. Every visit is saved separately.</p><div class="actions"><button type="button" class="btn primary" onclick="meDiningAction('create')">★ Create Restaurant & Review</button><button class="btn" onclick="showRankings()">View My Rankings</button></div></div>
-  <div id="nearbyResults"></div><div id="restaurantList" class="list"></div>
+  <div id="nearbyResults"></div>
+  <div class="surveyCard"><div class="eyebrow">Dining Experience</div><h3>Restaurant Review</h3><p class="hint">Rate 10 dining categories, then record what you ate and whether you would order it again. Every visit is saved separately.</p><div class="actions"><button type="button" class="btn primary" id="meCreateRestaurantBtn">★ Create Restaurant & Review</button><button class="btn" onclick="showRankings()">View My Rankings</button></div></div>
+  <div id="restaurantList" class="list"></div>
 </section>
 </div>
 <nav class="bottomNav" id="bottomNav" aria-label="Primary navigation"><button class="active" data-tab="home">⌂<br>Home</button><button data-tab="recipes">▱<br>Recipes</button><button data-tab="restaurants">◉<br>Dining</button></nav>
@@ -100,6 +101,26 @@ document.addEventListener('DOMContentLoaded',function(){
   });
 });
 </script>
-<script src="app.js?v=20261005-57" defer></script>
+<script src="app.js?v=20261005-75" defer></script>
+<script>
+/* Dining controls fallback: run after the deferred app script has had a chance to initialize. */
+(function(){
+  function wire(){
+    var create=document.getElementById('meCreateRestaurantBtn');
+    var add=document.getElementById('meAddRestaurantBtn');
+    var around=document.getElementById('meAroundMeBtn');
+    function bind(el,fn){
+      if(!el)return;
+      el.onclick=function(e){e.preventDefault();e.stopPropagation();fn();};
+      el.ontouchend=function(e){e.preventDefault();e.stopPropagation();fn();};
+    }
+    bind(create,function(){ if(typeof window.meDiningAction==='function') window.meDiningAction('create'); });
+    bind(add,function(){ if(typeof window.meDiningAction==='function') window.meDiningAction('create'); });
+    bind(around,function(){ if(typeof window.findRestaurantAroundMe==='function') window.findRestaurantAroundMe(); });
+  }
+  setTimeout(wire,0);
+  document.addEventListener('DOMContentLoaded',wire);
+})();
+</script>
 </body>
 </html>
