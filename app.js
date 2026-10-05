@@ -278,8 +278,8 @@ function showImportedRecipeReview(data,source){
     <div class="status"><b>${esc(data.title||'Imported Recipe')}</b> • ${checked.ingredients.length} ingredients • ${checked.steps.length} directions</div>
     ${status}
     <div class="fields">
-      <div class="field full"><label for="importIngredients">Ingredients</label><textarea id="importIngredients" rows="9">${esc(checked.ingredients.join('\\n'))}</textarea></div>
-      <div class="field full"><label for="importDirections">Directions</label><textarea id="importDirections" rows="10">${esc(checked.steps.join('\\n'))}</textarea></div>
+      <div class="field full"><label for="importIngredients">Ingredients</label><textarea id="importIngredients" rows="9">${esc(checked.ingredients.join('\n'))}</textarea></div>
+      <div class="field full"><label for="importDirections">Directions</label><textarea id="importDirections" rows="10">${esc(checked.steps.join('\n'))}</textarea></div>
     </div>
     <div class="actions"><button class="btn primary" onclick="continueImportedRecipe()">Continue to Recipe Editor</button><button class="btn danger" onclick="window._pendingImportedRecipe=null;closeModal()">Discard</button></div>`;
 }
