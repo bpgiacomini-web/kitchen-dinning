@@ -456,13 +456,13 @@ async function findRestaurantAroundMe(){
     }
     async function overpassRadius(miles){
       let radius=Math.round(miles*1609.344);
-      let q='[out:json][timeout:25];nwr[amenity~"^(restaurant|fast_food|cafe|bar|pub)$",i][name](around:'+radius+','+lat+','+lon+');out center tags;';
+      let q='[out:json][timeout:25];(nwr[amenity~"^(restaurant|fast_food|cafe|bar|pub)$",i][name](around:'+radius+','+lat+','+lon+');nwr[cuisine~"^(mexican|pizza|american|italian|chinese|japanese|thai|indian|seafood|bbq)$",i][name](around:'+radius+','+lat+','+lon+'););out center tags;';
       try{
-        let resp=await fetchWithTimeout('https://overpass-api.de/api/interpreter?data='+encodeURIComponent(q),{headers:{'Accept':'application/json'}},10000);
+        let resp=await fetchWithTimeout('https://overpass-api.de/api/interpreter?data='+encodeURIComponent(q),{headers:{'Accept':'application/json'}},9000);
         if(resp.ok){addOverpass(await resp.json());return true}
       }catch(e){}
       try{
-        let resp=await fetchWithTimeout('https://overpass.kumi.systems/api/interpreter?data='+encodeURIComponent(q),{headers:{'Accept':'application/json'}},10000);
+        let resp=await fetchWithTimeout('https://overpass.kumi.systems/api/interpreter?data='+encodeURIComponent(q),{headers:{'Accept':'application/json'}},9000);
         if(resp.ok){addOverpass(await resp.json());return true}
       }catch(e){}
       return false;
@@ -473,39 +473,35 @@ async function findRestaurantAroundMe(){
       if(await overpassRadius(miles))hadSource=true;
     }
     /*
-      Photon is used as a second discovery source, not just a last-resort fallback.
-      The important difference is that we query by category and then calculate the
-      actual distance ourselves. This catches businesses that OSM's amenity tags
-      may classify differently or that Overpass misses.
+      Run a second discovery pass using Photon.  Photon can return businesses
+      whose OSM classification differs from the normal restaurant amenity tags.
     */
     for(const q of ['restaurant','Mexican restaurant','fast food','cafe','bar','pub']){
       try{
         let u='https://photon.komoot.io/api/?q='+encodeURIComponent(q)+'&lat='+encodeURIComponent(lat)+'&lon='+encodeURIComponent(lon)+'&limit=50&lang=en';
-        let resp=await fetchWithTimeout(u,{headers:{'Accept':'application/json','Accept-Language':'en'}},8000);
+        let resp=await fetchWithTimeout(u,{headers:{'Accept':'application/json','Accept-Language':'en'}},7000);
         if(resp.ok){addPhoton(await resp.json());hadSource=true}
       }catch(e){}
     }
-    let city='',state='';
-    try{
-      let rev='https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat='+encodeURIComponent(lat)+'&lon='+encodeURIComponent(lon)+'&zoom=10&addressdetails=1';
-      let rr=await fetchWithTimeout(rev,{headers:{'Accept':'application/json','Accept-Language':'en'}},6000);
-      if(rr.ok){
-        let d=await rr.json(),a=d.address||{};
-        city=a.city||a.town||a.village||a.municipality||'';
-        state=a.state||'';
+    /*
+      Nominatim gets explicit bounded searches at several radii.  This is
+      intentionally different from a city-wide search: it gives nearby
+      businesses a dedicated discovery opportunity instead of letting a
+      city-level relevance ranking crowd them out.  We query both general
+      restaurants and Mexican restaurants because cuisine-specific searches
+      catch legitimate restaurants that are categorized inconsistently.
+    */
+    for(const miles of [1,3,7,15]){
+      let dLat=miles/69.0;
+      let dLon=miles/(69.0*Math.max(0.2,Math.cos(lat*Math.PI/180)));
+      let box=[lon-dLon,lat+dLat,lon+dLon,lat-dLat].join(',');
+      for(const q of ['restaurant','Mexican restaurant']){
+        try{
+          let u='https://nominatim.openstreetmap.org/search?format=jsonv2&addressdetails=1&extratags=1&limit=50&dedupe=1&bounded=1&viewbox='+encodeURIComponent(box)+'&q='+encodeURIComponent(q);
+          let resp=await fetchWithTimeout(u,{headers:{'Accept':'application/json','Accept-Language':'en'}},7000);
+          if(resp.ok){addNominatim(await resp.json());hadSource=true}
+        }catch(e){}
       }
-    }catch(e){}
-    let terms=[];
-    if(city||state){
-      let area=[city,state].filter(Boolean).join(' ');
-      terms=['restaurant '+area,'Mexican restaurant '+area,'fast food '+area,'cafe '+area,'bar '+area,'pub '+area];
-    }
-    for(const q of terms){
-      try{
-        let u='https://nominatim.openstreetmap.org/search?format=jsonv2&addressdetails=1&extratags=1&limit=50&dedupe=1&q='+encodeURIComponent(q);
-        let resp=await fetchWithTimeout(u,{headers:{'Accept':'application/json','Accept-Language':'en'}},8000);
-        if(resp.ok){addNominatim(await resp.json());hadSource=true}
-      }catch(e){}
     }
     all.sort(function(a,b){return a.dist-b.dist});
     let places=all.slice(0,12);
