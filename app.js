@@ -409,7 +409,8 @@ async function fetchWithTimeout(url,options,timeoutMs){
   }finally{clearTimeout(timer)}
 }
 async function findRestaurantAroundMe(){
-  if(!window._restaurantCreateLookup)window._restaurantCreateLookup=false;
+  var createMode=!!window._restaurantCreateLookup;
+  window._restaurantCreateLookup=false;
   let status=document.getElementById('locationStatus');
   status.textContent='Requesting your location…';
   if(!navigator.geolocation){status.textContent='Location services are not available in this browser.';return}
@@ -485,15 +486,15 @@ async function findRestaurantAroundMe(){
     }
     all.sort(function(a,b){return a.dist-b.dist});
     let places=all.slice(0,12);
-    renderNearby(places);
+    renderNearby(places,createMode);
     status.textContent=places.length?'Select the restaurant that matches where you are.':'No named restaurants were found within 15 miles. You can add it manually.';
   },function(err){
     status.textContent=err&&err.code===1?'Location permission was denied. Please allow location access for Metro Eats in Safari settings.':'Location could not be determined. Please try again.';
   },{enableHighAccuracy:true,timeout:15000,maximumAge:30000});
 }
 function distanceMeters(a,b,c,d){if([a,b,c,d].some(x=>typeof x!=='number'))return 999999;let R=6371000,p=Math.PI/180,dLat=(c-a)*p,dLon=(d-b)*p,x=Math.sin(dLat/2)**2+Math.cos(a*p)*Math.cos(c*p)*Math.sin(dLon/2)**2;return 2*R*Math.asin(Math.sqrt(x))}
-function renderNearby(places){
-  var inCreate=!!window._restaurantCreateLookup;
+function renderNearby(places,createMode){
+  var inCreate=!!createMode;
   let box=document.getElementById(inCreate?'restaurantLookupResults':'nearbyResults');
   if(!box)return;
   var html=places.length?'<div class="'+(inCreate?'lookupResults':'locCard')+'"><div class="eyebrow">Choose your restaurant</div><h3>Restaurants Around Me</h3><div class="nearbyList">':'';
@@ -1131,7 +1132,7 @@ function showVisitHistory(id){
     var around=document.getElementById('meAroundMeBtn');
     if(create)create.onclick=function(e){e.preventDefault();e.stopPropagation();if(typeof meDiningAction==='function')meDiningAction('create');};
     if(add)add.onclick=function(e){e.preventDefault();e.stopPropagation();if(typeof meDiningAction==='function')meDiningAction('create');};
-    if(around)around.onclick=function(e){e.preventDefault();e.stopPropagation();if(typeof findRestaurantAroundMe==='function')findRestaurantAroundMe();};
+    if(around)around.onclick=function(e){e.preventDefault();e.stopPropagation();window._restaurantCreateLookup=false;if(typeof findRestaurantAroundMe==='function')findRestaurantAroundMe();};
   }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',wireMetroDiningButtons);else wireMetroDiningButtons();
 })();
@@ -1263,7 +1264,7 @@ function showVisitHistory(id){
     return '<div class="eyebrow">'+(editing?'Restaurant Review':'Food Critic')+'</div>'+
       '<h2>'+(editing?'Edit Restaurant & Review':'Create Restaurant & Review')+'</h2>'+
       '<div class="fields">'+
-      '<div class="field full"><label for="rName">Restaurant name</label><input id="rName" value="'+esc(r&&r.name||'')+'" autocomplete="organization" oninput="restaurantNameChanged(this.value)"><div id="restaurantLookupResults"></div>'<div class="actions"><button type="button" class="btn" onclick="findRestaurantAroundMeForCreate()">⌖ Restaurants Around Me</button></div>'+</div>'+
+      '<div class="field full"><label for="rName">Restaurant name</label><input id="rName" value="'+esc(r&&r.name||'')+'" autocomplete="organization" oninput="restaurantNameChanged(this.value)"><div id="restaurantLookupResults"></div><div class="actions"><button type="button" class="btn" onclick="findRestaurantAroundMeForCreate()">⌖ Restaurants Around Me</button></div></div>'+
       '<div class="field"><label for="rType">Restaurant type</label><select id="rType">'+opts+'</select></div>'+
       '<div class="field"><label for="rLoc">Street + city + state</label><input id="rLoc" value="'+esc(r&&r.location||'')+'" placeholder="123 Main St, Alton, IL"></div>'+
       '<div class="field full"><label for="rWebsite">Official website</label><input id="rWebsite" type="url" inputmode="url" value="'+esc(r&&r.website||'')+'" placeholder="https://…"></div>'+
