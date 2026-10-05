@@ -463,23 +463,21 @@ async function findRestaurantAroundMe(){
     }
     if(all.length<12){
       try{
-        let queries=['restaurants '+[city||'',state||''].filter(Boolean).join(' '),'fast food '+[city||'',state||''].filter(Boolean).join(' '),'cafes '+[city||'',state||''].filter(Boolean).join(' ')];
-        if(city||state){
-          await Promise.all(queries.map(async function(q){
-            try{
-              let u='https://photon.komoot.io/api/?q='+encodeURIComponent(q)+'&limit=50&lang=en';
-              let resp=await fetchWithTimeout(u,{headers:{'Accept':'application/json'}},7000);
-              if(resp.ok){
-                let data=await resp.json();
-                (data.features||[]).forEach(function(f){
-                  let p=f.properties||{},g=f.geometry?.coordinates||[],la=Number(g[1]),lo=Number(g[0]),name=String(p.name||'').trim();
-                  if(!name||!Number.isFinite(la)||!Number.isFinite(lo))return;
-                  add(name,[p.housenumber,p.street,p.city||p.locality,p.state].filter(Boolean).join(', '),la,lo,restaurantTypeFromLookup({amenity:p.osm_value,cuisine:p.extra?.cuisine}),p.extra?.website||'');
-                });
-              }
-            }catch(e){}
-          }));
-        }
+        let queries=['restaurant','fast food','cafe'];
+        await Promise.all(queries.map(async function(q){
+          try{
+            let u='https://photon.komoot.io/api/?q='+encodeURIComponent(q)+'&lat='+encodeURIComponent(lat)+'&lon='+encodeURIComponent(lon)+'&limit=50&lang=en';
+            let resp=await fetchWithTimeout(u,{headers:{'Accept':'application/json'}},7000);
+            if(resp.ok){
+              let data=await resp.json();
+              (data.features||[]).forEach(function(f){
+                let p=f.properties||{},g=f.geometry?.coordinates||[],la=Number(g[1]),lo=Number(g[0]),name=String(p.name||'').trim();
+                if(!name||!Number.isFinite(la)||!Number.isFinite(lo))return;
+                add(name,[p.housenumber,p.street,p.city||p.locality,p.state].filter(Boolean).join(', '),la,lo,restaurantTypeFromLookup({amenity:p.osm_value,cuisine:p.extra?.cuisine}),p.extra?.website||'');
+              });
+            }
+          }catch(e){}
+        }));
       }catch(e){}
     }
     if(all.length<5){
