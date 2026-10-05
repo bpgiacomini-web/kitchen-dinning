@@ -68,6 +68,24 @@ function parseData(){let raw=localStorage.getItem(KEY)||localStorage.getItem(OLD
 let db=parseData();
 function migrate(){const legacy={'Beef':['Main Dishes','Beef'],'Chicken':['Main Dishes','Chicken'],'Pork':['Main Dishes','Pork'],'Seafood':['Main Dishes','Seafood'],'Vegetables & Sides':['Side Dishes','Vegetables'],'Desserts':['Desserts','Cakes'],'Breakfast':['Breakfast & Brunch','Eggs']};db.recipes=(db.recipes||[]).map(r=>{let cat=categories[r.category]?r.category:(legacy[r.category]?.[0]||'Other'),sub=(categories[cat]||['Other']).includes(r.subcategory)?r.subcategory:(legacy[r.category]?.[1]||'Other');return {...r,id:(!r.id||String(r.id)==='new')?uid():String(r.id),category:cat,subcategory:sub,ingredients:r.ingredients||[],steps:r.steps||[],favorite:!!r.favorite,photos:r.photos||[],createdAt:r.createdAt||new Date().toISOString(),updatedAt:r.updatedAt||null}});db.restaurants=(db.restaurants||[]).map(r=>({...r,id:(!r.id||String(r.id)==='new')?uid():String(r.id),reviewHistory:r.reviewHistory||[],photos:r.photos||[],createdAt:r.createdAt||new Date().toISOString(),updatedAt:r.updatedAt||null}));db.cats=categories;save()}
 migrate();
+/* One-time repair for the restaurant record created before the lookup/save fix. */
+(function(){
+  try{
+    var repairKey='metroEatsJoeKsRepairV1';
+    if(localStorage.getItem(repairKey)==='1')return;
+    var unnamed=(db.restaurants||[]).find(function(r){
+      var n=String(r.name||'').trim().toLowerCase();
+      return !n||n==='unnamed restaurant';
+    });
+    if(unnamed){
+      unnamed.name="Joe K's";
+      unnamed.updatedAt=new Date().toISOString();
+      save();
+    }
+    localStorage.setItem(repairKey,'1');
+  }catch(e){console.warn('Metro Eats one-time restaurant repair skipped',e)}
+})();
+
 function tab(t){document.querySelectorAll('[data-tab]').forEach(b=>b.classList.toggle('active',b.dataset.tab===t));document.querySelectorAll('.section').forEach(s=>s.classList.toggle('active',s.id===t));if(t==='recipes')renderRecipes();if(t==='restaurants')renderRestaurants()}
 document.querySelectorAll('[data-tab]').forEach(b=>b.addEventListener('click',()=>tab(b.dataset.tab)));
 function renderCategoryFilter(){let e=document.getElementById('recipeCategoryFilter');if(!e)return;let v=e.value;e.innerHTML='<option value="">All Categories</option>'+Object.keys(categories).map(c=>`<option value="${esc(c)}">${esc(c)}</option>`).join('');e.value=categories[v]?v:''}
