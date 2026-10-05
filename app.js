@@ -886,7 +886,7 @@ function showVisitHistory(id){
     state={
       mode:mode,
       restaurantId:r&&r.id==='new'?'new':(r&&r.id)||null,
-      pending:mode==='new'?Object.assign({},r):null,
+      pending:Object.assign({},r),
       items:items,
       scores:{0:Number(sc[0]||0),2:Number(sc[2]||0),3:Number(sc[3]||0)},
       orderAgain:v&&v.orderAgain||'',
@@ -899,8 +899,7 @@ function showVisitHistory(id){
     window._editingPhotos=clonePhotos(r);
   }
   function current(){
-    if(state.mode==='new')return state.pending;
-    return (db.restaurants||[]).find(function(x){return String(x.id)===String(state.restaurantId)})||state.pending;
+    return state.pending || (db.restaurants||[]).find(function(x){return String(x.id)===String(state.restaurantId)}) || null;
   }
   function foodAverage(){
     var a=state.items.map(function(x){return Number(x.rating||0)}).filter(function(x){return x>0});
@@ -1089,6 +1088,28 @@ function showVisitHistory(id){
     if(i<0){alert('That restaurant could not be found in Metro Eats.');return}
     db.restaurants.splice(i,1);
     try{save();meV3Cancel();renderRestaurants();updateStory();}catch(e){alert('Metro Eats could not delete this restaurant. '+(e&&e.message||''))}
+  };
+  /* V3 lookup bridge: the legacy lookup renderer was re-rendering the form from stale state after selection. */
+  window.applyRestaurantLookup=function(x){
+    if(!x)return;
+    meReviewV3Capture();
+    var current=state.pending||{};
+    var rawName=x.name||fieldValue('rName')||current.name||'';
+    var rawAddress=x.address||fieldValue('rLoc')||current.location||'';
+    var details=knownRestaurantDetails(rawName,rawAddress);
+    var name=details.name||rawName;
+    var location=details.address||rawAddress;
+    var website=x.website||details.website||knownOfficialWebsite(name,location)||current.website||'';
+    var type=(x.type&&x.type!=='Other')?x.type:(details.type||current.type||'Other');
+    state.pending=Object.assign({},current,{name:name,location:location,website:website,type:type,lat:x.lat??current.lat??null,lon:x.lon??current.lon??null});
+    if(state.mode!=='new')state.restaurantId=state.pending.id;
+    render();
+    var box=document.getElementById('restaurantLookupResults');
+    if(box)box.innerHTML='<div class="notice" style="margin-top:8px">Restaurant selected. Name, address, type, and website were filled in.</div>';
+  };
+  window.applyRestaurantLookupByIndex=function(index){
+    var x=window._restaurantLookupResults?.[Number(index)];
+    if(x)window.applyRestaurantLookup(x);
   };
   window.meV3RunSelfCheck=function(){
     var problems=[];
