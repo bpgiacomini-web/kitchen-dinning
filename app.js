@@ -419,7 +419,7 @@ async function findRestaurantAroundMe(){
     let all=[],seen={};
     function add(name,address,la,lo,type,website){
       if(!name||!Number.isFinite(la)||!Number.isFinite(lo))return;
-      let dist=Math.round(distanceMeters(lat,lon,la,lo)); if(dist>8047)return;
+      let dist=Math.round(distanceMeters(lat,lon,la,lo)); if(dist>24140)return;
       let key=(name+'|'+Math.round(la*10000)+'|'+Math.round(lo*10000)).toLowerCase();
       if(seen[key])return;seen[key]=1;
       all.push({name:name,address:address||'',lat:la,lon:lo,type:type||'Other',website:website||'',dist:dist});
@@ -431,38 +431,49 @@ async function findRestaurantAroundMe(){
       if(rr.ok){let d=await rr.json(),a=d.address||{};city=a.city||a.town||a.village||a.municipality||'';state=a.state||''}
     }catch(e){}
     let place=[city,state].filter(Boolean).join(', ');
+    let searchTerms=[
+      'restaurant '+place,
+      'fast food '+place,
+      'cafe '+place,
+      'bar '+place,
+      'pub '+place,
+      'diner '+place,
+      'pizza '+place
+    ];
     try{
-      let queries=[(city?'restaurants '+city+' '+state:'restaurants'),(city?'fast food '+city+' '+state:'fast food')];
-      let responses=await Promise.all(queries.map(function(q){
-        let u='https://photon.komoot.io/api/?q='+encodeURIComponent(q)+'&limit=50&lang=en';
-        return fetchWithTimeout(u,{},8000).then(function(resp){return resp&&resp.ok?resp.json():null}).catch(function(){return null});
+      let results=await Promise.all(searchTerms.map(function(q){
+        let u='https://nominatim.openstreetmap.org/search?format=jsonv2&addressdetails=1&limit=50&dedupe=1&q='+encodeURIComponent(q);
+        return fetchWithTimeout(u,{headers:{'Accept':'application/json','Accept-Language':'en'}},7000).then(function(resp){return resp&&resp.ok?resp.json():[]}).catch(function(){return[]});
       }));
-      responses.forEach(function(data){
-        if(!data)return;
-        (data.features||[]).forEach(function(f){
-          let p=f.properties||{},g=f.geometry?.coordinates||[],la=Number(g[1]),lo=Number(g[0]),name=String(p.name||'').trim();
-          let address=[p.housenumber,p.street,p.city||p.town||p.village,p.state].filter(Boolean).join(', ');
-          add(name,address,la,lo,restaurantTypeFromLookup(p),'');
+      results.forEach(function(data){
+        (data||[]).forEach(function(x){
+          let a=x.address||{},la=Number(x.lat),lo=Number(x.lon),name=String(x.name||'').trim();
+          let address=[a.house_number,a.road,a.city||a.town||a.village,a.state].filter(Boolean).join(', ');
+          let type=x.type||a.amenity||'Other';
+          add(name,address,la,lo,restaurantTypeFromLookup(x),x.extratags?.website||x.extratags?.['contact:website']||'');
         });
       });
-    }catch(e){console.warn('Photon nearby search unavailable',e)}
-    if(all.length<5){
+    }catch(e){}
+    if(all.length<8){
       try{
-        let q='restaurant '+place;
-        let resp=await fetchWithTimeout('https://nominatim.openstreetmap.org/search?format=jsonv2&addressdetails=1&limit=50&dedupe=1&q='+encodeURIComponent(q),{headers:{'Accept':'application/json','Accept-Language':'en'}},8000);
-        if(resp.ok){
-          let data=await resp.json();
-          data.forEach(function(x){
-            let a=x.address||{},la=Number(x.lat),lo=Number(x.lon),name=String(x.name||'').trim();
-            let address=[a.house_number,a.road,a.city||a.town||a.village,a.state].filter(Boolean).join(', ');
-            add(name,address,la,lo,restaurantTypeFromLookup(x),x.extratags?.website||x.extratags?.['contact:website']||'');
+        let queries=['restaurants '+place,'fast food '+place,'cafes '+place,'bars '+place];
+        let results=await Promise.all(queries.map(function(q){
+          let u='https://photon.komoot.io/api/?q='+encodeURIComponent(q)+'&limit=50&lang=en';
+          return fetchWithTimeout(u,{},8000).then(function(resp){return resp&&resp.ok?resp.json():null}).catch(function(){return null});
+        }));
+        results.forEach(function(data){
+          if(!data)return;
+          (data.features||[]).forEach(function(f){
+            let p=f.properties||{},g=f.geometry?.coordinates||[],la=Number(g[1]),lo=Number(g[0]),name=String(p.name||'').trim();
+            let address=[p.housenumber,p.street,p.city||p.town||p.village,p.state].filter(Boolean).join(', ');
+            add(name,address,la,lo,restaurantTypeFromLookup(p),p.website||'');
           });
-        }
+        });
       }catch(e){}
     }
     all.sort(function(a,b){return a.dist-b.dist});
     renderNearby(all.slice(0,12));
-    status.textContent=all.length?'Select the restaurant that matches where you are.':'No named restaurants were found within 5 miles. You can add it manually.';
+    status.textContent=all.length?'Select the restaurant that matches where you are.':'No named restaurants were found within 15 miles. You can add it manually.';
   },function(err){
     status.textContent=err&&err.code===1?'Location permission was denied. Please allow location access for Metro Eats in Safari settings.':'Location could not be determined. Please try again.';
   },{enableHighAccuracy:true,timeout:15000,maximumAge:30000});
