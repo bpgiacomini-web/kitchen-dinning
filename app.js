@@ -759,7 +759,7 @@ function showRankings(){
       }else if(action==='edit'){
         meDiningOpen(id,null,false);
       }else if(action==='review'){
-        meDiningReview(id);
+        showReviewResults(id);
       }else if(action==='history'){
         showVisitHistory(id);
       }else if(action==='rankings'){
@@ -830,7 +830,7 @@ function meDiningAction(action,id){
       return;
     }
     if(action==='review'){
-      meDiningReview(String(id));
+      showReviewResults(String(id));
       return;
     }
     if(action==='history'){
@@ -1197,7 +1197,7 @@ function showVisitHistory(id){
   window.meDiningAction=function(action,id){
     if(action==='create')return meV3Open('new','new');
     if(action==='edit')return meV3Open(String(id),'edit');
-    if(action==='review')return meV3Open(String(id),'review');
+    if(action==='review')return showReviewResults(String(id));
     if(action==='history')return showVisitHistory(String(id));
     if(action==='rankings')return showRankings();
   };
