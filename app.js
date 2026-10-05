@@ -415,19 +415,7 @@ async function findRestaurantAroundMe(){
   navigator.geolocation.getCurrentPosition(async function(pos){
     let lat=pos.coords.latitude,lon=pos.coords.longitude;
     window._restaurantLookupLocation={lat,lon};
-    status.textContent='Finding your city…';
-    let city='',state='';
-    try{
-      let rev='https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat='+encodeURIComponent(lat)+'&lon='+encodeURIComponent(lon)+'&zoom=10&addressdetails=1';
-      let rr=await fetchWithTimeout(rev,{headers:{'Accept':'application/json','Accept-Language':'en'}},6000);
-      if(rr.ok){
-        let d=await rr.json(),a=d.address||{};
-        city=a.city||a.town||a.village||a.municipality||'';
-        state=a.state||'';
-      }
-    }catch(e){console.warn('Reverse geocode unavailable',e)}
-    let place=String([city,state].filter(Boolean).join(', ')).trim();
-    status.textContent=place?'Searching restaurants near '+place+'…':'Searching nearby restaurants…';
+    status.textContent='Finding restaurants near you…';
     let all=[],seen={};
     function add(name,address,la,lo,type,website){
       if(!name||!Number.isFinite(la)||!Number.isFinite(lo))return;
@@ -436,11 +424,34 @@ async function findRestaurantAroundMe(){
       if(seen[key])return;seen[key]=1;
       all.push({name:name,address:address||'',lat:la,lon:lo,type:type||'Other',website:website||'',dist:dist});
     }
-    if(place){
+    let city='',state='';
+    try{
+      let rev='https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat='+encodeURIComponent(lat)+'&lon='+encodeURIComponent(lon)+'&zoom=10&addressdetails=1';
+      let rr=await fetchWithTimeout(rev,{headers:{'Accept':'application/json','Accept-Language':'en'}},6000);
+      if(rr.ok){let d=await rr.json(),a=d.address||{};city=a.city||a.town||a.village||a.municipality||'';state=a.state||''}
+    }catch(e){}
+    let place=[city,state].filter(Boolean).join(', ');
+    try{
+      let queries=[(city?'restaurants '+city+' '+state:'restaurants'),(city?'fast food '+city+' '+state:'fast food')];
+      let responses=await Promise.all(queries.map(function(q){
+        return fetchWithTimeout('https://photon.komoot.io/api/?q='+encodeURIComponent(q)+'&limit=50&lang=en',{},8000).catch(function(){return null});
+      }));
+      responses.forEach(function(resp){
+        if(!resp||!resp.ok)return;
+        resp.json().then(function(data){
+          (data.features||[]).forEach(function(f){
+            let p=f.properties||{},g=f.geometry?.coordinates||[],la=Number(g[1]),lo=Number(g[0]),name=String(p.name||'').trim();
+            let address=[p.housenumber,p.street,p.city||p.town||p.village,p.state].filter(Boolean).join(', ');
+            add(name,address,la,lo,restaurantTypeFromLookup(p),'');
+          });
+        });
+      });
+      await new Promise(function(resolve){setTimeout(resolve,350)});
+    }catch(e){console.warn('Photon nearby search unavailable',e)}
+    if(all.length<3){
       try{
         let q='restaurant '+place;
-        let u='https://nominatim.openstreetmap.org/search?format=jsonv2&addressdetails=1&limit=50&dedupe=1&q='+encodeURIComponent(q);
-        let resp=await fetchWithTimeout(u,{headers:{'Accept':'application/json','Accept-Language':'en'}},8000);
+        let resp=await fetchWithTimeout('https://nominatim.openstreetmap.org/search?format=jsonv2&addressdetails=1&limit=50&dedupe=1&q='+encodeURIComponent(q),{headers:{'Accept':'application/json','Accept-Language':'en'}},8000);
         if(resp.ok){
           let data=await resp.json();
           data.forEach(function(x){
@@ -449,23 +460,7 @@ async function findRestaurantAroundMe(){
             add(name,address,la,lo,restaurantTypeFromLookup(x),x.extratags?.website||x.extratags?.['contact:website']||'');
           });
         }
-      }catch(e){console.warn('Nominatim place search unavailable',e)}
-    }
-    if(!all.length){
-      status.textContent='Using a backup restaurant search…';
-      try{
-        let q=encodeURIComponent('restaurant '+(place||'near me'));
-        let u='https://photon.komoot.io/api/?q='+q+'&limit=50&lang=en';
-        let resp=await fetchWithTimeout(u,{},8000);
-        if(resp.ok){
-          let data=await resp.json();
-          (data.features||[]).forEach(function(f){
-            let p=f.properties||{},g=f.geometry?.coordinates||[],la=Number(g[1]),lo=Number(g[0]),name=String(p.name||'').trim();
-            let address=[p.housenumber,p.street,p.city||p.town||p.village,p.state].filter(Boolean).join(', ');
-            add(name,address,la,lo,restaurantTypeFromLookup(p),'');
-          });
-        }
-      }catch(e){console.warn('Photon place search unavailable',e)}
+      }catch(e){}
     }
     all.sort(function(a,b){return a.dist-b.dist});
     let places=all.slice(0,12);
