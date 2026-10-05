@@ -1,29 +1,7 @@
 
 
-/* Responsive Metro Eats brand header */
-.top{
-  position:sticky;top:0;z-index:100;display:flex;align-items:flex-end;justify-content:space-between;gap:18px;
-  min-height:clamp(132px,17vw,190px);padding:calc(12px + env(safe-area-inset-top)) max(18px,calc((100vw - var(--max))/2 + 18px)) 10px;
-  margin:calc(-10px - env(safe-area-inset-top)) 0 18px;overflow:hidden;
-  background-color:#101418;background-image:linear-gradient(180deg,rgba(9,11,14,.08),rgba(9,11,14,.82)),url("metro-eats-logo.png");
-  background-size:cover;background-position:center 92%;border-bottom:1px solid #4b3821;box-shadow:0 10px 30px #0008;
-}
-.brand{display:flex;align-items:center;min-width:0;flex:1;position:relative;z-index:2}
-.metroBrand{display:flex;align-items:center;justify-content:center;width:min(100%,760px);min-width:0;filter:drop-shadow(0 7px 9px #000b)}
-.metroWord{
-  font-family:Georgia,"Times New Roman",serif;font-weight:900;font-size:clamp(31px,6.3vw,78px);line-height:.82;letter-spacing:-.065em;
-  color:#fff4d8;text-shadow:0 2px 0 #fff,0 5px 0 #9b5c12,0 8px 12px #000;
-  background:linear-gradient(180deg,#fff8e8 0%,#f3d28a 43%,#b86f19 100%);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;
-  white-space:nowrap;
-}
-.metroFleur{font-family:Georgia,"Times New Roman",serif;font-size:clamp(44px,8.4vw,104px);line-height:.65;color:#101114;margin:0 clamp(7px,1.5vw,18px);text-shadow:0 0 0 #0a0a0a,2px 2px 0 #d79a32,4px 6px 9px #000;filter:drop-shadow(0 2px 1px #fff1)}
-.srOnly{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
-.nav{display:flex;gap:6px;flex-wrap:wrap;position:relative;z-index:3;background:rgba(9,11,14,.72);border:1px solid #3a332a;border-radius:13px;padding:4px;backdrop-filter:blur(8px)}
-.nav button{border:0;background:transparent;color:#f0e9dd;padding:9px 11px;min-height:44px;border-radius:10px;font-weight:800;text-shadow:0 1px 3px #000}
-.nav button.active{background:#1a1f24;color:#fff;box-shadow:inset 0 0 0 1px #a77a3d}
-
 :root{--bg:#090b0e;--panel:#11151a;--panel2:#171c22;--text:#f4f1ea;--muted:#9aa3ad;--line:#29313a;--accent:#d6a85b;--accent2:#8fb7a6;--accent3:#b9785e;--good:#7fc89a;--danger:#e27979;--max:1120px;--shadow:0 18px 55px #0007}
-*{box-sizing:border-box}html{background:var(--bg);scroll-behavior:smooth}body{margin:0;background:radial-gradient(900px 420px at 85% -80px,#242b33 0%,var(--bg) 62%);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI",sans-serif;letter-spacing:-.01em}button,input,textarea,select{font:inherit}button{cursor:pointer}.app{max-width:var(--max);margin:auto;padding:calc(10px + env(safe-area-inset-top)) 18px calc(82px + env(safe-area-inset-bottom))}.top{position:sticky;top:0;z-index:100;display:flex;align-items:center;justify-content:space-between;gap:14px;padding:calc(8px + env(safe-area-inset-top)) max(18px,calc((100vw - var(--max))/2 + 18px)) 10px;margin:calc(-10px - env(safe-area-inset-top)) 0 18px;background:rgba(9,11,14,.95);backdrop-filter:blur(14px);border-bottom:1px solid var(--line);box-shadow:0 8px 24px #0005}.brandLogo{width:min(255px,55vw);height:auto;display:block;border-radius:12px}.nav{display:flex;gap:6px;flex-wrap:wrap}.nav button{border:0;background:transparent;color:#aeb5bc;padding:10px 11px;min-height:44px;border-radius:11px;font-weight:750}.nav button.active{background:#1a1f24;color:var(--text);box-shadow:inset 0 0 0 1px #313941}.bottomNav{display:none}
+*{box-sizing:border-box}html{background:var(--bg);scroll-behavior:smooth}body{margin:0;background:radial-gradient(900px 420px at 85% -80px,#242b33 0%,var(--bg) 62%);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI",sans-serif;letter-spacing:-.01em}button,input,textarea,select{font:inherit}button{cursor:pointer}.app{max-width:var(--max);margin:auto;padding:calc(10px + env(safe-area-inset-top)) 18px calc(82px + env(safe-area-inset-bottom))}.top{position:sticky;top:0;z-index:100;display:flex;align-items:center;justify-content:space-between;gap:14px;padding:calc(8px + env(safe-area-inset-top)) max(18px,calc((100vw - var(--max))/2 + 18px)) 10px;margin:calc(-10px - env(safe-area-inset-top)) 0 18px;background:rgba(9,11,14,.96);backdrop-filter:blur(14px);border-bottom:1px solid var(--line);box-shadow:0 8px 24px #0005}.brand{min-width:0;flex:1;display:flex;align-items:center}.brandLogo{width:clamp(190px,32vw,330px);max-width:100%;height:auto;display:block;border-radius:0}.nav{display:flex;gap:6px;flex-wrap:wrap}.nav button{border:0;background:transparent;color:#aeb5bc;padding:10px 11px;min-height:44px;border-radius:11px;font-weight:750}.nav button.active{background:#1a1f24;color:var(--text);box-shadow:inset 0 0 0 1px #313941}.bottomNav{display:none}
 .section{display:none}.section.active{display:block}
 /* Distinct Kitchen and Dining visual systems */
 .homeFeatureButtons{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:20px}.homeFeatureButton{width:100%;min-height:112px;border-radius:22px;padding:20px 22px;border:1px solid;display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:14px;text-align:left;transition:.15s;box-shadow:0 14px 32px #0004}.homeFeatureButton:hover{transform:translateY(-2px)}.homeFeatureButton:active{transform:translateY(0)}.homeFeatureButton strong{display:block;font-size:clamp(22px,4vw,30px);letter-spacing:-.025em}.homeFeatureButton small{display:block;margin-top:4px;font-size:12px;letter-spacing:.04em}.homeFeatureIcon{font-size:28px}.homeFeatureArrow{font-size:28px;font-weight:700}.recipeButton{background:linear-gradient(135deg,#2a2114,#171511);border-color:#6d552d;color:#f4ead7}.recipeButton .homeFeatureIcon,.recipeButton .homeFeatureArrow{color:#e0b563}.recipeButton small{color:#b9a47e}.diningButton{background:linear-gradient(135deg,#13231f,#11191a);border-color:#315b50;color:#e4f1ec}.diningButton .homeFeatureIcon,.diningButton .homeFeatureArrow{color:#8fc1af}.diningButton small{color:#91ada4}
