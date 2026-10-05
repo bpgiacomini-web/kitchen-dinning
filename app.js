@@ -377,7 +377,7 @@ function renderRestaurantSpotlight(){
   if(!ranked.length){box.hidden=true;box.innerHTML='';return}
   box.hidden=false;box.innerHTML=meSpotlightMarkup(ranked[0]);
 }
-const meOriginalUpdateStory=window.updateStory;
+var meOriginalUpdateStory=window.updateStory;
 function updateStory(){
   if(typeof meOriginalUpdateStory==='function')meOriginalUpdateStory();
   renderRestaurantSpotlight();
