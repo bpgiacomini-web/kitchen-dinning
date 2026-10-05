@@ -104,18 +104,198 @@ function renderRecipePhotoPreview(){let e=document.getElementById('recipePhotoPr
 function saveRecipe(id){let old=id==='new'?null:db.recipes.find(x=>x.id===id),now=new Date().toISOString(),r={id:id==='new'?uid():id,title:fieldValue('fTitle')||'Untitled Recipe',category:fieldValue('fCat'),subcategory:fieldValue('fSub'),servings:fieldValue('fServ'),time:fieldValue('fTime'),ingredients:fieldValue('fIng').split('\n').map(x=>x.trim()).filter(Boolean),steps:fieldValue('fSteps').split('\n').map(x=>x.trim()).filter(Boolean),favorite:old?.favorite||false,photos:window._recipePhoto?[window._recipePhoto]:[],createdAt:old?.createdAt||now,updatedAt:old?now:null};if(!r.ingredients.length||!r.steps.length)return alert('Please add ingredients and directions before saving.');if(id==='new')db.recipes.unshift(r);else db.recipes=db.recipes.map(x=>x.id===id?r:x);save();window._recipePhoto='';closeModal();renderRecipes();updateStory()}
 function openWebsiteImporter(){modal.classList.add('show');modalBody.innerHTML=`<div class="eyebrow">Recipe importer</div><h2>Import From Website</h2><p class="hint">Metro Eats looks first for recipe structured data, then for clearly labeled Ingredients and Directions sections. Nothing is saved until you review it.</p><div class="field"><label for="recipeUrl">Recipe URL</label><input id="recipeUrl" type="url" inputmode="url" autocomplete="url" placeholder="https://example.com/recipe…"></div><div class="actions"><button class="btn primary" onclick="fetchWebsiteForCreateRecipe()">Import Recipe</button><button class="btn" onclick="openRecipeChooser()">← Back</button></div><div class="notice">Stories, nutrition, equipment, tips, ads, comments and unrelated page text are intentionally excluded.</div>`}
 function openPasteImporter(){modal.classList.add('show');modalBody.innerHTML=`<div class="eyebrow">Recipe importer</div><h2>Paste Recipe</h2><p class="hint">Paste the recipe text. Metro Eats will look for the title, ingredients and directions and then let you review everything in the normal editor.</p><div class="field"><label for="rawRecipe">Recipe text</label><textarea id="rawRecipe" rows="15" placeholder="Paste the recipe here…"></textarea></div><div class="actions"><button class="btn primary" onclick="parsePastedRecipe()">Parse Recipe</button><button class="btn" onclick="openRecipeChooser()">← Back</button></div>`}
-function cleanImportedLine(s){return String(s??'').replace(/<[^>]+>/g,' ').replace(/\[([^\]]+)\]\([^)]+\)/g,'$1').replace(/https?:\/\/\S+/gi,'').replace(/^\s*[-*•]\s*/,'').replace(/^\s*\d+[.)]\s*/,'').replace(/\s+/g,' ').trim()}
-function isRecipeMetaLine(s){return /^(serves?|yield|yields|prep(?:aration)?\s*time|cook(?:ing)?\s*time|total\s*time|active\s*time|calories?|nutrition|author|by|jump to recipe|print recipe|save recipe|pin recipe|course|cuisine|keywords?)\b/i.test(String(s||'').trim())}
-function isRecipeStopHeading(s){return /^(notes?|nutrition|nutritional information|calories?|more recipes|related recipes|you may also like|recommended|about the author|comments?|leave a reply|video|watch|equipment|tools|storage|variations?|tips?|substitutions?)\b/i.test(String(s||'').replace(/^#+\s*/,'').trim())}
+function cleanImportedLine(s){
+  return String(s??'')
+    .replace(/<[^>]+>/g,' ')
+    .replace(/\[([^\]]+)\]\([^)]+\)/g,'$1')
+    .replace(/https?:\/\/\S+/gi,'')
+    .replace(/^\s*(?:[-*•]|\d+[.)])\s*/,'')
+    .replace(/^\s*(?:step\s*)?\d+\s*[:.-]\s*/i,'')
+    .replace(/\s+/g,' ')
+    .trim();
+}
+function isRecipeMetaLine(s){
+  return /^(serves?|yield|yields|prep(?:aration)?\s*time|cook(?:ing)?\s*time|total\s*time|active\s*time|calories?|nutrition|author|by|jump to recipe|print recipe|save recipe|pin recipe|course|cuisine|keywords?|recipe notes?)\b/i.test(String(s||'').trim());
+}
+function isRecipeStopHeading(s){
+  return /^(ingredients?|directions?|instructions?|method|steps?|notes?|nutrition|nutritional information|calories?|more recipes|related recipes|you may also like|recommended|about the author|comments?|leave a reply|video|watch|equipment|tools|storage|variations?|tips?|substitutions?|serving suggestions?|reviews?)\b/i.test(String(s||'').replace(/^#+\s*/,'').trim());
+}
+function isRecipeSectionHeading(s){
+  return /^(ingredients?|directions?|instructions?|method|steps?|notes?|nutrition|nutritional information|calories?|equipment|tools|storage|variations?|tips?|substitutions?|serving suggestions?|reviews?|comments?|more recipes|related recipes|you may also like|recommended|about the author)\s*:??$/i.test(String(s||'').replace(/^#+\s*/,'').trim());
+}
 function isBulletLine(s){return /^\s*(?:[-*•]|(?:\d+[.)]))\s+/.test(s)}
-function normalizeRecipeInstruction(x){if(x==null)return '';if(typeof x==='string')return cleanImportedLine(x);if(typeof x==='object')return cleanImportedLine(x.text||x.name||'');return cleanImportedLine(x)}
-function findRecipeJsonLd(html){let found=[];const re=/<script[^>]+type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi;let m;while((m=re.exec(html))){try{let raw=m[1].replace(/<!--|-->/g,'').trim();if(!raw)continue;let data=JSON.parse(raw);let walk=v=>{if(Array.isArray(v)){v.forEach(walk);return}if(v&&typeof v==='object'){let t=v['@type'];if((Array.isArray(t)?t:[t]).some(x=>String(x).toLowerCase()==='recipe'))found.push(v);if(v['@graph'])walk(v['@graph'])}};walk(data)}catch(e){}}return found[0]||null}
-function structuredRecipeFromHtml(html,url){let r=findRecipeJsonLd(html);if(!r)return null;let ingredients=(r.recipeIngredient||[]).map(cleanImportedLine).filter(Boolean),instructions=[];let walk=v=>{if(Array.isArray(v)){v.forEach(walk);return}if(typeof v==='string'){let x=cleanImportedLine(v);if(x)instructions.push(x);return}if(v&&typeof v==='object'){if(v.itemListElement)walk(v.itemListElement);else if(v.text)walk(v.text);else if(v.name&&/howto(step|section)/i.test(String(v['@type']||'')))walk(v.name)}};walk(r.recipeInstructions);instructions=instructions.filter(x=>x.length<700);let time=[];if(r.prepTime)time.push('Prep '+cleanImportedLine(r.prepTime));if(r.cookTime)time.push('Cook '+cleanImportedLine(r.cookTime));if(!time.length&&r.totalTime)time.push('Total '+cleanImportedLine(r.totalTime));let servings=Array.isArray(r.recipeYield)?cleanImportedLine(r.recipeYield.join(', ')):cleanImportedLine(r.recipeYield||'');return ingredients.length&&instructions.length?{title:cleanImportedLine(r.name||''),ingredients:ingredients.slice(0,60),steps:instructions.slice(0,60),servings,time:time.join(' • ')}:null}
-function collectSection(text,headingRegex){let lines=text.split(/\r?\n/).map(x=>x.trim()).filter(Boolean),start=lines.findIndex(x=>headingRegex.test(x.replace(/^#+\s*/,'')));if(start<0)return [];let out=[],seen=false;for(let i=start+1;i<lines.length;i++){let raw=lines[i];if(/^#+\s*/.test(raw)&&isRecipeStopHeading(raw))break;if(/^(ingredients?|directions?|instructions?|method|steps?)\s*:?$/i.test(raw))continue;if(isRecipeMetaLine(raw))continue;if(isBulletLine(raw))out.push(cleanImportedLine(raw));else if(out.length&&raw.length<500)out[out.length-1]+=' '+cleanImportedLine(raw);else if(!seen&&raw.length<250)out.push(cleanImportedLine(raw));seen=true}return out.filter(Boolean).slice(0,60)}
-function extractRecipeCore(text,url){let title=(text.match(/<title[^>]*>([\s\S]*?)<\/title>/i)?.[1]||'').replace(/\s+/g,' ').trim();let ingredients=collectSection(text,/^(ingredients?)$/i),steps=collectSection(text,/^(directions?|instructions?|method|steps?)$/i);if(!ingredients.length||!steps.length)return null;return{title:title.replace(/\s*[|–-].*$/,'').trim()||'Imported Recipe',ingredients,steps,servings:'',time:''}}
+function normalizeRecipeInstruction(x){
+  if(x==null)return '';
+  if(typeof x==='string')return cleanImportedLine(x);
+  if(typeof x==='object')return cleanImportedLine(x.text||'');
+  return cleanImportedLine(x);
+}
+function findRecipeJsonLd(html){
+  let found=[];
+  const re=/<script[^>]+type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi;
+  let m;
+  while((m=re.exec(html))){
+    try{
+      let raw=m[1].replace(/<!--|-->/g,'').trim();
+      if(!raw)continue;
+      let data=JSON.parse(raw);
+      let walk=v=>{
+        if(Array.isArray(v)){v.forEach(walk);return}
+        if(v&&typeof v==='object'){
+          let t=v['@type'];
+          if((Array.isArray(t)?t:[t]).some(x=>String(x).toLowerCase()==='recipe'))found.push(v);
+          if(v['@graph'])walk(v['@graph']);
+        }
+      };
+      walk(data);
+    }catch(e){}
+  }
+  found.sort((a,b)=>{
+    const ai=Array.isArray(a.recipeIngredient)?a.recipeIngredient.length:0, bi=Array.isArray(b.recipeIngredient)?b.recipeIngredient.length:0;
+    const as=a.recipeInstructions?1:0, bs=b.recipeInstructions?1:0;
+    return (bi+bs*20)-(ai+as*20);
+  });
+  return found[0]||null;
+}
+function recipeInstructionItems(value,out=[]){
+  if(Array.isArray(value)){value.forEach(x=>recipeInstructionItems(x,out));return out}
+  if(typeof value==='string'){
+    let x=cleanImportedLine(value);
+    if(x&&!isRecipeMetaLine(x))out.push(x);
+    return out;
+  }
+  if(value&&typeof value==='object'){
+    const type=String(value['@type']||'').toLowerCase();
+    if(type.includes('howtosection')&&value.itemListElement){recipeInstructionItems(value.itemListElement,out);return out}
+    if(value.itemListElement){recipeInstructionItems(value.itemListElement,out);return out}
+    if(value.text){recipeInstructionItems(value.text,out);return out}
+  }
+  return out;
+}
+function looksLikeRecipeIngredient(x){
+  const s=String(x||'').trim();
+  if(!s||s.length>260||/https?:\/\//i.test(s)||isRecipeMetaLine(s))return false;
+  if(/^(add|bake|boil|bring|broil|chop|combine|cook|cover|drain|heat|mix|place|pour|remove|serve|simmer|stir|whisk|preheat|reduce|season|transfer|set|let)\b/i.test(s))return false;
+  return true;
+}
+function looksLikeRecipeStep(x){
+  const s=String(x||'').trim();
+  if(!s||s.length>900||/https?:\/\//i.test(s)||isRecipeMetaLine(s))return false;
+  return true;
+}
+function validateRecipeExtraction(data){
+  const ingredients=(data.ingredients||[]).map(cleanImportedLine).filter(looksLikeRecipeIngredient);
+  const steps=(data.steps||[]).map(cleanImportedLine).filter(looksLikeRecipeStep);
+  const issues=[];
+  if(ingredients.length<2)issues.push('Not enough clearly identifiable ingredients were found.');
+  if(steps.length<2)issues.push('Not enough clearly identifiable cooking directions were found.');
+  return {ingredients:ingredients.slice(0,60),steps:steps.slice(0,60),issues};
+}
+function structuredRecipeFromHtml(html,url){
+  let r=findRecipeJsonLd(html);
+  if(!r)return null;
+  let ingredients=(Array.isArray(r.recipeIngredient)?r.recipeIngredient:[])
+    .map(cleanImportedLine).filter(looksLikeRecipeIngredient);
+  let instructions=recipeInstructionItems(r.recipeInstructions,[]);
+  let time=[];
+  if(r.prepTime)time.push('Prep '+cleanImportedLine(r.prepTime));
+  if(r.cookTime)time.push('Cook '+cleanImportedLine(r.cookTime));
+  if(!time.length&&r.totalTime)time.push('Total '+cleanImportedLine(r.totalTime));
+  let servings=Array.isArray(r.recipeYield)?cleanImportedLine(r.recipeYield.join(', ')):cleanImportedLine(r.recipeYield||'');
+  let checked=validateRecipeExtraction({ingredients,steps:instructions});
+  return checked.ingredients.length&&checked.steps.length?{
+    title:cleanImportedLine(r.name||'')||'Imported Recipe',
+    ingredients:checked.ingredients,
+    steps:checked.steps,
+    servings,
+    time:time.join(' • '),
+    extractionMethod:'Recipe structured data',
+    validationIssues:checked.issues
+  }:null;
+}
+function collectSection(text,headingRegex,kind){
+  const lines=text.split(/\r?\n/).map(x=>x.trim()).filter(Boolean);
+  const start=lines.findIndex(x=>headingRegex.test(x.replace(/^#+\s*/,'').replace(/:$/,'').trim()));
+  if(start<0)return [];
+  const out=[];
+  for(let i=start+1;i<lines.length;i++){
+    const raw=lines[i];
+    const normalized=raw.replace(/^#+\s*/,'').replace(/:$/,'').trim();
+    if(isRecipeSectionHeading(normalized)&&!headingRegex.test(normalized))break;
+    if(headingRegex.test(normalized))continue;
+    if(isRecipeMetaLine(raw))continue;
+    const cleaned=cleanImportedLine(raw);
+    if(!cleaned)continue;
+    out.push(cleaned);
+  }
+  return out.filter(Boolean).slice(0,60);
+}
+function extractRecipeCore(text,url){
+  let title=(text.match(/<title[^>]*>([\s\S]*?)<\/title>/i)?.[1]||'').replace(/\s+/g,' ').trim();
+  let ingredients=collectSection(text,/^(ingredients?)$/i,'ingredients');
+  let steps=collectSection(text,/^(directions?|instructions?|method|steps?)$/i,'steps');
+  let checked=validateRecipeExtraction({ingredients,steps});
+  if(!checked.ingredients.length||!checked.steps.length)return null;
+  return {
+    title:title.replace(/\s*[|–-].*$/,'').trim()||'Imported Recipe',
+    ingredients:checked.ingredients,
+    steps:checked.steps,
+    servings:'',
+    time:'',
+    extractionMethod:'Labeled recipe sections',
+    validationIssues:checked.issues
+  };
+}
 async function fetchWebsiteForCreateRecipe(){let url=fieldValue('recipeUrl');if(!url)return alert('Please enter a recipe URL.');if(!/^https?:\/\//i.test(url))return alert('Please enter a full http:// or https:// recipe URL.');modalBody.innerHTML=`<div class="eyebrow">Recipe importer</div><h2>Extracting recipe…</h2><div class="status">Looking for recipe-specific structured data first.</div>`;try{let html='';try{let r=await fetch(url,{cache:'no-store'});if(r.ok)html=await r.text()}catch{}if(!html){let r=await fetch('https://r.jina.ai/'+url,{cache:'no-store'});if(!r.ok)throw Error();html=await r.text()}let parsed=structuredRecipeFromHtml(html,url)||extractRecipeCore(html,url);if(!parsed)throw Error('No clear recipe structure found');showImportedRecipeReview(parsed,'Website import')}catch(e){modalBody.innerHTML=`<div class="eyebrow">Recipe importer</div><h2>Couldn’t extract a clean recipe</h2><p class="hint">Metro Eats did not find enough clearly separated recipe content to safely import. Nothing was saved.</p><div class="actions"><button class="btn primary" onclick="openPasteImporter()">Paste Recipe Instead</button><button class="btn" onclick="openRecipeChooser()">Back</button></div>`}}
-function parsePastedRecipe(){let text=fieldValue('rawRecipe');if(!text)return alert('Paste the recipe text first.');let lines=text.split(/\r?\n/).map(x=>x.trim()).filter(Boolean),title=lines[0]||'Pasted Recipe',ingredients=collectSection(text,/^(ingredients?)$/i),steps=collectSection(text,/^(directions?|instructions?|method|steps?)$/i);if(!ingredients.length||!steps.length){let mid=Math.max(1,Math.floor(lines.length/2));ingredients=ingredients.length?ingredients:lines.slice(1,mid).filter(x=>x.length<250).map(cleanImportedLine);steps=steps.length?steps:lines.slice(mid).filter(x=>x.length<500).map(cleanImportedLine)}showImportedRecipeReview({title,ingredients,steps,servings:'',time:''},'Pasted recipe')}
-function showImportedRecipeReview(data,source){window._pendingImportedRecipe=data;modalBody.innerHTML=`<div class="eyebrow">${esc(source)}</div><h2>Review Before Saving</h2><p class="hint">This is an import preview. Review the extracted content, then continue into the normal recipe editor.</p><div class="status"><b>${esc(data.title||'Imported Recipe')}</b> • ${data.ingredients.length} ingredients • ${data.steps.length} directions</div><div class="fields"><div class="field full"><label>Extracted ingredients</label><textarea rows="7" readonly>${esc(data.ingredients.join('\n'))}</textarea></div><div class="field full"><label>Extracted directions</label><textarea rows="7" readonly>${esc(data.steps.join('\n'))}</textarea></div></div><div class="actions"><button class="btn primary" onclick="openRecipe('new',window._pendingImportedRecipe)">Continue to Recipe Editor</button><button class="btn danger" onclick="window._pendingImportedRecipe=null;closeModal()">Discard</button></div>`}
+function parsePastedRecipe(){
+  let text=fieldValue('rawRecipe');
+  if(!text)return alert('Paste the recipe text first.');
+  let lines=text.split(/\r?\n/).map(x=>x.trim()).filter(Boolean);
+  let title=lines[0]||'Pasted Recipe';
+  let ingredients=collectSection(text,/^(ingredients?)$/i,'ingredients');
+  let steps=collectSection(text,/^(directions?|instructions?|method|steps?)$/i,'steps');
+  if(!ingredients.length||!steps.length){
+    let mid=Math.max(1,Math.floor(lines.length/2));
+    ingredients=ingredients.length?ingredients:lines.slice(1,mid).filter(x=>x.length<250).map(cleanImportedLine);
+    steps=steps.length?steps:lines.slice(mid).filter(x=>x.length<900).map(cleanImportedLine);
+  }
+  showImportedRecipeReview({title,ingredients,steps,servings:'',time:'',extractionMethod:'Pasted recipe'},'Pasted recipe');
+}
+function showImportedRecipeReview(data,source){
+  const checked=validateRecipeExtraction(data);
+  window._pendingImportedRecipe={
+    ...data,
+    ingredients:checked.ingredients,
+    steps:checked.steps,
+    validationIssues:checked.issues
+  };
+  const status=checked.issues.length
+    ? `<div class="notice"><strong>Needs your review</strong><div>${esc(checked.issues.join(' '))} The extracted text is editable below.</div></div>`
+    : `<div class="notice"><strong>✓ Recipe content passed Metro Eats' extraction checks.</strong><div>Only recipe ingredients and cooking directions were kept. You can still edit anything before saving.</div></div>`;
+  modalBody.innerHTML=`<div class="eyebrow">${esc(source)}</div>
+    <h2>Review Before Saving</h2>
+    <p class="hint">Metro Eats validates the extracted recipe content before it reaches the recipe editor. Review and correct the text below if needed.</p>
+    <div class="status"><b>${esc(data.title||'Imported Recipe')}</b> • ${checked.ingredients.length} ingredients • ${checked.steps.length} directions</div>
+    ${status}
+    <div class="fields">
+      <div class="field full"><label for="importIngredients">Ingredients</label><textarea id="importIngredients" rows="9">${esc(checked.ingredients.join('\\n'))}</textarea></div>
+      <div class="field full"><label for="importDirections">Directions</label><textarea id="importDirections" rows="10">${esc(checked.steps.join('\\n'))}</textarea></div>
+    </div>
+    <div class="actions"><button class="btn primary" onclick="continueImportedRecipe()">Continue to Recipe Editor</button><button class="btn danger" onclick="window._pendingImportedRecipe=null;closeModal()">Discard</button></div>`;
+}
+function continueImportedRecipe(){
+  const p=window._pendingImportedRecipe;
+  if(!p)return;
+  const ingredients=fieldValue('importIngredients').split(/\r?\n/).map(x=>x.trim()).filter(Boolean);
+  const steps=fieldValue('importDirections').split(/\r?\n/).map(x=>x.trim()).filter(Boolean);
+  const checked=validateRecipeExtraction({ingredients,steps});
+  if(checked.ingredients.length<2||checked.steps.length<2){
+    alert('Please keep at least two ingredients and two cooking directions before continuing.');
+    return;
+  }
+  window._pendingImportedRecipe={...p,ingredients:checked.ingredients,steps:checked.steps};
+  openRecipe('new',window._pendingImportedRecipe);
+}
 function openRestaurant(id,prefilling=null){let r=id==='new'?prefilling||{id:'new',name:'',type:'Other',location:'',website:'',menuUrl:'',notes:'',photos:[],survey:null,reviewHistory:[],createdAt:null,updatedAt:null}:db.restaurants.find(x=>String(x.id)===String(id));if(!r)return;if(id!=='new'&&!r.id){r.id=uid();save()}pendingRestaurant=id==='new'?{...r}:null;pendingReviewRestaurant=id==='new'?null:{...r,photos:[...(r.photos||[])]};restaurantEditMode=id!=='new';window._editingPhotos=[...(r.photos||[])];let latest=r.reviewHistory?.[r.reviewHistory.length-1]||r.survey||null;let scores=latest?.scores||{};surveyState={restaurantId:id==='new'?'new':r.id,scores:{},ordered:latest?.ordered||'',orderAgain:latest?.orderAgain||''};surveyQuestions.forEach((q,i)=>surveyState.scores[i]=Number((Array.isArray(scores)?scores[i]:scores[i])||0));renderSurvey()}
 function continueRestaurantReview(id){return}
 function cancelRestaurantWorkflow(){pendingRestaurant=null;pendingReviewRestaurant=null;restaurantEditMode=false;window._editingPhotos=[];closeModal()}
