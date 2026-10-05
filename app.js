@@ -377,10 +377,15 @@ function renderRestaurantSpotlight(){
   if(!ranked.length){box.hidden=true;box.innerHTML='';return}
   box.hidden=false;box.innerHTML=meSpotlightMarkup(ranked[0]);
 }
-var meOriginalUpdateStory=window.updateStory;
 function updateStory(){
-  if(typeof meOriginalUpdateStory==='function')meOriginalUpdateStory();
-  renderRestaurantSpotlight();
+  try{
+    let visits=(db.restaurants||[]).reduce((n,r)=>n+((r.reviewHistory&&r.reviewHistory.length)||0),0);
+    let favs=(db.recipes||[]).filter(r=>r.favorite).length;
+    let v=document.getElementById('storyVisits'),f=document.getElementById('storyFavorites');
+    if(v)v.textContent=visits;
+    if(f)f.textContent=favs;
+    if(typeof renderRestaurantSpotlight==='function')renderRestaurantSpotlight();
+  }catch(e){console.error('Metro Eats updateStory error',e)}
 }
 renderRestaurantSpotlight();
 
