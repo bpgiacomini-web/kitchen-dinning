@@ -492,17 +492,26 @@ async function findRestaurantAroundMe(){
 }
 function distanceMeters(a,b,c,d){if([a,b,c,d].some(x=>typeof x!=='number'))return 999999;let R=6371000,p=Math.PI/180,dLat=(c-a)*p,dLon=(d-b)*p,x=Math.sin(dLat/2)**2+Math.cos(a*p)*Math.cos(c*p)*Math.sin(dLon/2)**2;return 2*R*Math.asin(Math.sqrt(x))}
 function renderNearby(places){
-  let box=document.getElementById('nearbyResults');
+  var inCreate=!!window._restaurantCreateLookup;
+  let box=document.getElementById(inCreate?'restaurantLookupResults':'nearbyResults');
   if(!box)return;
-  var html=places.length?'<div class="locCard"><div class="eyebrow">Choose your restaurant</div><h3>Restaurants Around Me</h3><div class="nearbyList">':'';
+  var html=places.length?'<div class="'+(inCreate?'lookupResults':'locCard')+'"><div class="eyebrow">Choose your restaurant</div><h3>Restaurants Around Me</h3><div class="nearbyList">':'';
   if(places.length) places.forEach(function(x){
     var dist=x.dist<1609?(Math.round(x.dist*3.28084)+' ft'):(x.dist/1609.34).toFixed(1)+' mi';
     var payload=JSON.stringify(x).replace(/'/g,'&#39;');
-    html+='<div class="nearbyItem"><strong>'+esc(x.name)+'</strong><div class="meta">'+dist+(x.address?' • '+esc(x.address):'')+(x.type?' • '+esc(x.type):'')+'</div><div class="actions"><button class="btn primary" onclick="useNearby('+payload+')">Select This Restaurant</button></div></div>';
+    html+='<div class="nearbyItem"><strong>'+esc(x.name)+'</strong><div class="meta">'+dist+(x.address?' • '+esc(x.address):'')+(x.type?' • '+esc(x.type):'')+'</div><div class="actions"><button type="button" class="btn primary" onclick="useNearby('+payload+')">Select This Restaurant</button></div></div>';
   });
-  if(places.length) html+='</div></div>';
+  if(places.length)html+='</div></div>';
   box.innerHTML=html;
+  if(inCreate&&places.length)box.scrollIntoView({behavior:'smooth',block:'nearest'});
 }
+function findRestaurantAroundMeForCreate(){
+  window._restaurantCreateLookup=true;
+  var box=document.getElementById('restaurantLookupResults');
+  if(box)box.innerHTML='<div class="notice" style="margin-top:8px">Finding restaurants near you…</div>';
+  findRestaurantAroundMe();
+}
+
 function meCriticSuggestions(type){return ME_CRITIC_SUGGESTIONS[type]||ME_CRITIC_SUGGESTIONS[ME_CRITIC_ALIASES[type]]||ME_CRITIC_SUGGESTIONS.Other}
 function meCriticCategory(name){
   let n=normalizeRestaurantName(name);
@@ -1253,7 +1262,7 @@ function showVisitHistory(id){
     return '<div class="eyebrow">'+(editing?'Restaurant Review':'Food Critic')+'</div>'+
       '<h2>'+(editing?'Edit Restaurant & Review':'Create Restaurant & Review')+'</h2>'+
       '<div class="fields">'+
-      '<div class="field full"><label for="rName">Restaurant name</label><input id="rName" value="'+esc(r&&r.name||'')+'" autocomplete="organization" oninput="restaurantNameChanged(this.value)"><div id="restaurantLookupResults"></div></div>'+
+      '<div class="field full"><label for="rName">Restaurant name</label><input id="rName" value="'+esc(r&&r.name||'')+'" autocomplete="organization" oninput="restaurantNameChanged(this.value)"><div id="restaurantLookupResults"></div>'<div class="actions"><button type="button" class="btn" onclick="findRestaurantAroundMeForCreate()">⌖ Restaurants Around Me</button></div>'+</div>'+
       '<div class="field"><label for="rType">Restaurant type</label><select id="rType">'+opts+'</select></div>'+
       '<div class="field"><label for="rLoc">Street + city + state</label><input id="rLoc" value="'+esc(r&&r.location||'')+'" placeholder="123 Main St, Alton, IL"></div>'+
       '<div class="field full"><label for="rWebsite">Official website</label><input id="rWebsite" type="url" inputmode="url" value="'+esc(r&&r.website||'')+'" placeholder="https://…"></div>'+
