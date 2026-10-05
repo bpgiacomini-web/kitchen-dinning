@@ -417,22 +417,29 @@ async function findRestaurantAroundMe(){
     window._restaurantLookupLocation={lat,lon};
     status.textContent='Looking for restaurants near your location…';
     let all=[],seen={};
-    function addPlace(x){
-      let t=x.tags||{},la=x.lat??x.center?.lat,lo=x.lon??x.center?.lon,name=String(t.name||'').trim();
-      if(!name||typeof la!=='number'||typeof lo!=='number')return;
+    function add(name,address,la,lo,type,website){
+      if(!name||!Number.isFinite(la)||!Number.isFinite(lo))return;
+      let dist=Math.round(distanceMeters(lat,lon,la,lo)); if(dist>8047)return;
       let key=(name+'|'+Math.round(la*10000)+'|'+Math.round(lo*10000)).toLowerCase();
       if(seen[key])return;seen[key]=1;
-      let address=[t['addr:housenumber'],t['addr:street'],t['addr:city']||t['addr:town']||t['addr:village'],t['addr:state']].filter(Boolean).join(', ');
-      all.push({name:name,website:t.website||t['contact:website']||'',address:address,lat:la,lon:lo,type:restaurantTypeFromLookup(t),dist:Math.round(distanceMeters(lat,lon,la,lo))});
+      all.push({name:name,address:address||'',lat:la,lon:lo,type:type||'Other',website:website||'',dist:dist});
     }
     try{
-      let radius=8047;
-      let q='[out:json][timeout:8];nwr["amenity"~"restaurant|fast_food|cafe|bar|pub"](around:'+radius+','+lat+','+lon+');out center tags;';
-      let resp=await fetchWithTimeout('https://overpass-api.de/api/interpreter?data='+encodeURIComponent(q),{method:'GET'},9000);
-      if(resp.ok){let data=await resp.json();(data.elements||[]).forEach(addPlace)}
-    }catch(e){console.warn('Primary nearby search unavailable',e)}
+      let d=0.075;
+      let view=[lon-d,lat-d,lon+d,lat+d].join(',');
+      let u='https://nominatim.openstreetmap.org/search?format=jsonv2&addressdetails=1&limit=50&bounded=1&viewbox='+encodeURIComponent(view)+'&q='+encodeURIComponent('restaurant');
+      let resp=await fetchWithTimeout(u,{headers:{'Accept':'application/json','Accept-Language':'en'}},8000);
+      if(resp.ok){
+        let data=await resp.json();
+        data.forEach(function(x){
+          let a=x.address||{},name=String(x.name||'').trim(),la=Number(x.lat),lo=Number(x.lon);
+          let address=[a.house_number,a.road,a.city||a.town||a.village,a.state].filter(Boolean).join(', ');
+          add(name,address,la,lo,restaurantTypeFromLookup(x),x.extratags?.website||x.extratags?.['contact:website']||'');
+        });
+      }
+    }catch(e){console.warn('Nominatim nearby search unavailable',e)}
     if(!all.length){
-      status.textContent='Using a backup restaurant search…';
+      status.textContent='Trying a backup restaurant search…';
       try{
         let u='https://photon.komoot.io/api/?q=restaurant&lat='+encodeURIComponent(lat)+'&lon='+encodeURIComponent(lon)+'&limit=30&lang=en';
         let resp=await fetchWithTimeout(u,{},7000);
@@ -440,17 +447,14 @@ async function findRestaurantAroundMe(){
           let data=await resp.json();
           (data.features||[]).forEach(function(f){
             let p=f.properties||{},g=f.geometry?.coordinates||[],la=Number(g[1]),lo=Number(g[0]),name=String(p.name||'').trim();
-            if(!name||!Number.isFinite(la)||!Number.isFinite(lo))return;
-            let key=(name+'|'+Math.round(la*10000)+'|'+Math.round(lo*10000)).toLowerCase();
-            if(seen[key])return;seen[key]=1;
             let address=[p.housenumber,p.street,p.city||p.town||p.village,p.state].filter(Boolean).join(', ');
-            all.push({name:name,website:'',address:address,lat:la,lon:lo,type:restaurantTypeFromLookup(p),dist:Math.round(distanceMeters(lat,lon,la,lo))});
+            add(name,address,la,lo,restaurantTypeFromLookup(p),'');
           });
         }
-      }catch(e){console.warn('Backup nearby search unavailable',e)}
+      }catch(e){console.warn('Photon nearby search unavailable',e)}
     }
     all.sort(function(a,b){return a.dist-b.dist});
-    let places=all.filter(function(x){return x.dist<=8047}).slice(0,12);
+    let places=all.slice(0,12);
     renderNearby(places);
     status.textContent=places.length?'Select the restaurant that matches where you are.':'No named restaurants were found within 5 miles. You can add it manually.';
   },function(err){
