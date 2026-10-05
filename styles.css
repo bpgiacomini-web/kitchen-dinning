@@ -55,3 +55,31 @@
 .restaurantSpotlightDishes span{padding:7px 10px;border:1px solid #315047;border-radius:999px;background:#14201c;color:#d5eee3;font-size:12px}
 .restaurantSpotlightDishes span strong{color:#8fb7a6}
 @media(max-width:760px){.restaurantSpotlightCard{padding:20px}}
+
+/* Read-only Food Critic Results */
+.reviewResultsScores{display:grid;gap:10px;margin:16px 0}
+.reviewResultsScoreCard{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:15px 16px;border:1px solid #29343a;border-radius:15px;background:#0d1317}
+.reviewResultsScoreCard span{text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-size:12px;font-weight:850}
+.reviewResultsScoreCard strong{font-size:25px;line-height:1;color:var(--text);white-space:nowrap}
+.reviewResultsScoreCard small{font-size:12px;color:var(--muted);margin-left:2px}
+.reviewResultsDetails{display:grid;gap:10px;margin:4px 0 18px}
+.reviewResultsDetailCard{display:grid;gap:6px;padding:15px 16px;border:1px solid #29343a;border-radius:15px;background:#11181d}
+.reviewResultsDetailCard span{text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-size:10px;font-weight:850}
+.reviewResultsDetailCard strong{font-size:17px;line-height:1.35;color:var(--text);overflow-wrap:anywhere}
+.reviewResultsFoods{margin-top:4px}
+.reviewResultsFoods h3{margin:0 0 10px;font-size:20px}
+.reviewResultsFoodCard{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:15px 16px;margin-bottom:10px;border:1px solid #29343a;border-radius:15px;background:#0d1317}
+.reviewResultsFoodInfo{min-width:0;display:grid;gap:5px}
+.reviewResultsFoodInfo strong{font-size:17px;line-height:1.2;overflow-wrap:anywhere}
+.reviewResultsFoodInfo span{font-size:12px;color:var(--muted);line-height:1.35;overflow-wrap:anywhere}
+.reviewResultsFoodScore{display:flex;align-items:baseline;gap:2px;flex:0 0 auto;white-space:nowrap}
+.reviewResultsFoodScore strong{font-size:24px;line-height:1;color:var(--accent)}
+.reviewResultsFoodScore span{font-size:12px;color:var(--muted);font-weight:800}
+@media(max-width:560px){
+  .reviewResultsScoreCard{padding:14px 15px}
+  .reviewResultsScoreCard strong{font-size:23px}
+  .reviewResultsDetailCard{padding:14px 15px}
+  .reviewResultsFoodCard{padding:14px 15px;gap:10px}
+  .reviewResultsFoodInfo strong{font-size:16px}
+  .reviewResultsFoodScore strong{font-size:22px}
+}
