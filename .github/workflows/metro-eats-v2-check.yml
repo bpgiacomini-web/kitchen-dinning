@@ -1,0 +1,29 @@
+name: Metro Eats 2.0 checks
+
+on:
+  push:
+    branches:
+      - metro-eats-2.0-foundation
+  pull_request:
+
+jobs:
+  validate-v2:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: v2
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check JavaScript syntax
+        run: |
+          node --check src/app.js
+          node --check src/store.js
+      - name: Check required foundation files
+        run: |
+          test -f index.html
+          test -f styles.css
+          test -f src/app.js
+          test -f src/store.js
+          test -f ../metro-eats-logo.png
+      - name: Check approved logo reference
+        run: grep -q 'metro-eats-logo.png' src/app.js
