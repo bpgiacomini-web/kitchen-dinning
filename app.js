@@ -496,7 +496,7 @@ function meCriticFinalEditor(r){
     '<div class="field full"><label for="rNotes">Notes</label><textarea id="rNotes" rows="3">'+esc(r?.notes||'')+'</textarea></div>'+
     '<div class="field full"><label for="rPhoto">Meal photos</label><input id="rPhoto" type="file" accept="image/*" multiple onchange="meCriticFinalPhotos(this)"><div id="photoPreview" class="photos">'+(window._editingPhotos||[]).map(function(p,i){return '<div><img src="'+esc(p)+'" alt="Meal photo '+(i+1)+'"><button type="button" class="btn" onclick="meCriticFinalRemovePhoto('+i+')">Remove</button></div>'}).join('')+'</div></div>'+
     '</div><div class="actions"><button type="button" class="btn secondary" onclick="useCurrentLocationForAddress()">⌖ Use My Location</button><button type="button" class="btn" onclick="findWebsiteForCurrentRestaurant()">Find Official Website</button><button type="button" class="btn" onclick="findOfficialMenu()">Find Official Menu</button>'+
-    (editing?'<button type="button" class="btn danger" onclick="deleteCurrentSurvey()">Delete Survey & Restaurant</button>':'')+'</div>';
+    (editing?'<button type="button" class="btn danger" onclick="deleteCurrentSurvey()">Delete Restaurant</button>':'')+'</div>';
 }
 function meCriticFinalPhotos(input){
   let files=[...(input?.files||[])];
