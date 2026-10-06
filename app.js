@@ -18,7 +18,7 @@ function esc(value) {
 }
 
 function shell(active, body) {
-  return '<div class="app-shell"><header class="topbar"><div class="topbar-inner"><a class="brand" href="#home"><img src="./metro-eats-logo.png" alt="Metro Eats"></a><div class="top-actions"><button class="icon-button" data-action="search" aria-label="Search">âŒ•</button><button class="icon-button" data-action="settings" aria-label="Settings">âš™</button></div></div><div class="nav-wrap"><nav class="nav">' +
+  return '<div class="app-shell"><header class="topbar"><div class="topbar-inner"><a class="brand" href="#home"><img src="./metro-eats-logo.png" alt="Metro Eats"></a><div class="top-actions"><button class="icon-button" data-action="search" aria-label="Search";§uçâçU</button><button class="icon-button" data-action="settings" aria-label="Settings">éİyø§yÙ</button></div><div class="nav-wrap"><nav class="nav">' +
     nav.map(function (item) { return '<button class="nav-button ' + (active === item[0] ? "active" : "") + '" data-nav="' + item[0] + '">' + item[1] + "</button>"; }).join("") +
     '</nav></div></header><main>' + body + '</main><div id="modal-root"></div></div>';
 }
@@ -37,7 +37,7 @@ function home() {
 
 function visitRow(visit) {
   const restaurant = getState().restaurants.find(function (item) { return item.id === visit.restaurantId; });
-  return '<div class="list-row"><div><strong>' + esc(restaurant ? restaurant.name : "Restaurant") + '</strong><div class="muted">' + esc(visit.meal || "Visit") + '</div></div><span class="score">' + (Number.isFinite(Number(visit.overall)) ? Number(visit.overall).toFixed(1) : "â€”") + '<small>/10</small></span></div>';
+  return '<div class="list-row"><div><strong>' + esc(restaurant ? restaurant.name : "Restaurant") + '</strong><div class="muted">' + esc(visit.meal || "Visit") + '</div></div><span class="score">' + (Number.isFinite(Number(visit.overall)) ? Number(visit.overall).toFixed(1) : "éİyø§yÔ") + '<small>/10</small></span></div>';
 }
 
 function restaurants() {
@@ -49,7 +49,7 @@ function restaurants() {
     '<section class="card"><div class="list">' +
     (list.length ? list.map(function (restaurant) {
       const score = restaurantScore(restaurant.id);
-      return '<button class="list-row restaurant-row" data-restaurant="' + esc(restaurant.id) + '"><div><strong>' + esc(restaurant.name) + '</strong><div class="muted">' + esc([restaurant.street, restaurant.city, restaurant.state].filter(Boolean).join(", ")) + '</div></div><span class="score">' + (score ? score.toFixed(1) : "â€”") + '<small>/10</small></span></button>';
+      return '<button class="list-row restaurant-row" data-restaurant="' + esc(restaurant.id) + '"><div><strong>' + esc(restaurant.name) + '</strong><div class="muted">' + esc([restaurant.street, restaurant.city, restaurant.state].filter(Boolean).join(", ")) + '</div></div><span class="score">' + (score ? score.toFixed(1) : "éİyø§yÔ") + '<small>/10</small></span></button>';
     }).join("") : '<div class="empty">No restaurants yet. Start with your next meal.</div>') +
     "</div></section>"
   );
@@ -62,7 +62,7 @@ function recipes() {
     '<div class="section-head"><h2>Recipes</h2><button class="btn gold" data-action="recipe">Add Recipe</button></div>' +
     '<section class="card"><div class="list">' +
     (list.length ? list.map(function (recipe) {
-      return '<button class="list-row recipe-row" data-recipe="' + esc(recipe.id) + '"><div><strong>' + esc(recipe.name) + '</strong><div class="muted">' + esc(recipe.category || "Uncategorized") + '</div></div><span>â€º</span></button>';
+      return '<button class="list-row recipe-row" data-recipe="' + esc(recipe.id) + '"><div><strong>' + esc(recipe.name) + '</strong><div class="muted">' + esc(recipe.category || "Uncategorized") + '</div></div><span;§uçâçz</span></button>';
     }).join("") : '<div class="empty">No recipes yet.</div>') +
     "</div></section>"
   );
@@ -73,7 +73,7 @@ function insights() {
   const state = getState();
   return shell("insights",
     '<section class="hero"><div class="eyebrow">My Insights</div><h1>See your food story.</h1><p class="muted">Your data stays personal and separate from outside ratings.</p></section>' +
-    '<div class="grid grid-3"><div class="card"><div class="eyebrow">Visits</div><div class="score">' + state.visits.length + '</div></div><div class="card"><div class="eyebrow">Restaurants</div><div class="score">' + state.restaurants.length + '</div></div><div class="card"><div class="eyebrow">Average Visit</div><div class="score">' + (average(values) === null ? "â€”" : average(values).toFixed(1)) + '<small>/10</small></div></div></div>'
+    '<div class="grid grid-3"><div class="card"><div class="eyebrow">Visits</div><div class="score">' + state.visits.length + '</div></div><div class="card"><div class="eyebrow">Restaurants</div><div class="score">' + state.restaurants.length + '</div></div><div class="card"><div class="eyebrow">Average Visit</div><div class="score">' + (average(values) === null ? +§uçâçT" : average(values).toFixed(1)) + '<small>/10</small></div></div></div>'
   );
 }
 
@@ -84,26 +84,26 @@ function modal(body) {
 
 function reviewModal(prefill) {
   const fields = scores.map(function (item) {
-    return '<div class="field"><label>' + item[1] + '</label><select name="' + item[0] + '"><option value="">Select 1â€“10</option>' +
+    return '<div class="field"><label>' + item[1] + '</label><select name="' + item[0] + '"><option value="">Select ;§uçâçS10</option>' +
       Array.from({length: 10}, function (_, index) { return '<option value="' + (index + 1) + '">' + (index + 1) + "</option>"; }).join("") +
       "</select></div>";
   }).join("");
-  return '<div class="modal-head"><h2>Rate This Restaurant</h2><button class="icon-button" data-action="close">Ã—</button></div><form id="review-form" class="form"><div class="field"><label>Restaurant</label><input name="restaurantName" required value="' + esc(prefill || "") + '"></div><div class="grid grid-2">' + fields + '</div><div class="field"><label>What Did You Order?</label><textarea name="order" placeholder="Food items only"></textarea></div><div class="field"><label>Would You Order It Again?</label><select name="again"><option value="">Select</option><option>Yes</option><option>No</option></select></div><div class="form-actions"><button type="button" class="btn secondary" data-action="close">Cancel</button><button class="btn gold">Save Review</button></div></form>';
+  return '<div class="modal-head"><h2>Rate This Restaurant</h2><button class="icon-button" data-action="close">×</button></div><form id="review-form" class="form"><div class="field"><label>Restaurant</label><input name="restaurantName" required value="' + esc(prefill || "") + '"></div><div class="grid grid-2">' + fields + '</div><div class="field"><label>What Did You Order?</label><textarea name="order" placeholder="Food items only"></textarea></div><div class="field"><label>Would You Order It Again?</label><select name="again"><option value="">Select</option><option>Yes</option><option>No</option></select></div><div class="form-actions"><button type="button" class="btn secondary" data-action="close">Cancel</button><button class="btn gold">Save Review</button></div></form>';
 }
 
 function recipeModal(recipe) {
   const r = recipe || {};
-  return '<div class="modal-head"><h2>' + (r.id ? "Edit" : "Add") + ' Recipe</h2><button class="icon-button" data-action="close">Ã—</button></div><form id="recipe-form" class="form"><input type="hidden" name="id" value="' + esc(r.id || "") + '"><div class="field"><label>Recipe Name</label><input name="name" required value="' + esc(r.name || "") + '"></div><div class="grid grid-2"><div class="field"><label>Category</label><select name="category"><option value="">Select category</option>' +
+  return '<div class="modal-head"><h2>' + (r.id ? "Edit" : "Add") + ' Recipe</h2><button class="icon-button" data-action="close">×</button></div><form id="recipe-form" class="form"><input type="hidden" name="id" value="' + esc(r.id || "") + '"><div class="field"><label>Recipe Name</label><input name="name" required value="' + esc(r.name || "") + '"></div><div class="grid grid-2"><div class="field"><label>Category</label><select name="category"><option value="">Select category</option>' +
     categories.map(function (category) { return '<option value="' + esc(category) + '"' + (r.category === category ? " selected" : "") + ">" + esc(category) + "</option>"; }).join("") +
     '</select></div><div class="field"><label>Subcategory</label><input name="subcategory" value="' + esc(r.subcategory || "") + '"></div></div><div class="grid grid-2"><div class="field"><label>Servings</label><input name="servings" value="' + esc(r.servings || "") + '"></div><div class="field"><label>Total Time</label><input name="time" value="' + esc(r.time || "") + '"></div></div><div class="field"><label>Ingredients</label><textarea name="ingredients" required>' + esc(r.ingredients || "") + '</textarea></div><div class="field"><label>Directions</label><textarea name="directions" required>' + esc(r.directions || "") + '</textarea></div><div class="field"><label>Notes</label><textarea name="notes">' + esc(r.notes || "") + '</textarea></div><div class="form-actions"><button type="button" class="btn secondary" data-action="close">Cancel</button><button class="btn gold">Save Recipe</button></div></form>';
 }
 
 function searchModal() {
-  modal('<div class="modal-head"><h2>Search Metro Eats</h2><button class="icon-button" data-action="close">Ã—</button></div><div class="field"><label>Search everything</label><input id="global-search" autofocus placeholder="Restaurants, visits, recipes"></div><div id="search-results" class="list"></div>');
+  modal('<div class="modal-head"><h2>Search Metro Eats</h2><button class="icon-button" data-action="close">×</button></div><div class="field"><label>Search everything</label><input id="global-search" autofocus placeholder="Restaurants, visits, recipes"></div><div id="search-results" class="list"></div>');
 }
 
 function settingsModal() {
-  modal('<div class="modal-head"><h2>Settings</h2><button class="icon-button" data-action="close">Ã—</button></div><p class="muted">Private by default. Backup, export and migration remain isolated services.</p><div class="form-actions"><button class="btn secondary" data-action="close">Close</button></div>');
+  modal('<div class="modal-head"><h2>Settings</h2><button class="icon-button" data-action="close">×</button></div><p class="muted">Private by default. Backup, export and migration remain isolated services.</p><div class="form-actions"><button class="btn secondary" data-action="close">Close</button></div>');
 }
 
 function closeModal() {
