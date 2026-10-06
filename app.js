@@ -18,7 +18,7 @@ function esc(value) {
 }
 
 function shell(active, body) {
-  return '<div class="app-shell"><header class="topbar"><div class="topbar-inner"><a class="brand" href="#home"><img src="./metro-eats-logo.png" alt="Metro Eats"></a><div class="top-actions"><button class="icon-button" data-action="search" aria-label="Search">⌕</button><button class="icon-button" data-action="settings" aria-label="Settings">⚙</button></div></div><div class="nav-wrap"><nav class="nav">' +
+  return '<div class="app-shell"><header class="topbar"><div class="topbar-inner"><a class="brand" href="#home"><img src="./metro-eats-logo.webp" alt="Metro Eats"></a><div class="top-actions"><button class="icon-button" data-action="search" aria-label="Search">⌕</button><button class="icon-button" data-action="settings" aria-label="Settings">⚙</button></div></div><div class="nav-wrap"><nav class="nav">' +
     nav.map(function (item) { return '<button class="nav-button ' + (active === item[0] ? "active" : "") + '" data-nav="' + item[0] + '">' + item[1] + "</button>"; }).join("") +
     '</nav></div></header><main>' + body + '</main><div id="modal-root"></div></div>';
 }
