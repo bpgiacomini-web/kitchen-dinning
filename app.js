@@ -82,6 +82,37 @@ new MutationObserver(function(){
 function uid(){return 'me-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,10)}
 function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 function save(){localStorage.setItem(KEY,JSON.stringify(db))}
+function openBackup(){
+  const payload=JSON.stringify(db,null,2);
+  const size=Math.round(new Blob([payload]).size/1024);
+  modal.classList.add('show');
+  modalBody.innerHTML='<div class="eyebrow">Metro Eats Data</div><h2>Backup & Restore</h2><p class="hint">Create a complete backup of your recipes and restaurants, or restore a backup on this device.</p><div class="notice" style="margin:12px 0"><strong>Current data</strong><div class="small">'+(db.recipes||[]).length+' recipes • '+(db.restaurants||[]).length+' restaurants • '+size+' KB</div></div><div class="actions"><button type="button" class="btn primary" id="meDownloadBackup">Download Backup</button><button type="button" class="btn" id="meRestoreBackup">Restore Backup</button></div><div class="small" style="margin-top:12px">Restoring replaces the current local data on this device. Your backup file is not uploaded anywhere.</div><div class="actions"><button type="button" class="btn danger" onclick="closeModal()">Close</button></div>';
+  document.getElementById('meDownloadBackup').onclick=function(){
+    const blob=new Blob([payload],{type:'application/json'});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a'); a.href=url; a.download='metro-eats-backup-'+new Date().toISOString().slice(0,10)+'.json';
+    document.body.appendChild(a); a.click(); a.remove(); setTimeout(function(){URL.revokeObjectURL(url)},1000);
+  };
+  document.getElementById('meRestoreBackup').onclick=function(){
+    const input=document.getElementById('restoreFile'); if(input) input.click();
+  };
+}
+document.getElementById('restoreFile')?.addEventListener('change',function(e){
+  const file=e.target.files&&e.target.files[0]; if(!file)return;
+  const reader=new FileReader();
+  reader.onload=function(){
+    try{
+      const restored=JSON.parse(reader.result);
+      if(!restored||!Array.isArray(restored.recipes)||!Array.isArray(restored.restaurants))throw new Error('Invalid Metro Eats backup file.');
+      if(!confirm('Restore this backup? Your current local Metro Eats data will be replaced.'))return;
+      localStorage.setItem(KEY,JSON.stringify(restored));
+      db=parseData(); migrate(); renderRecipes(); renderRestaurants(); updateStory(); closeModal();
+      alert('Metro Eats backup restored successfully.');
+    }catch(err){alert('Metro Eats could not restore that backup.\n\n'+(err.message||'Invalid backup file.'))}
+    finally{e.target.value='';}
+  };
+  reader.readAsText(file);
+});
 function compressDataUrl(dataUrl,maxSide=1280,quality=.72){return new Promise(resolve=>{if(!/^data:image\//i.test(dataUrl||'')){resolve(dataUrl);return}let img=new Image();img.onload=()=>{let scale=Math.min(1,maxSide/Math.max(img.naturalWidth||img.width,img.naturalHeight||img.height)),w=Math.max(1,Math.round((img.naturalWidth||img.width)*scale)),h=Math.max(1,Math.round((img.naturalHeight||img.height)*scale)),canvas=document.createElement('canvas');canvas.width=w;canvas.height=h;let ctx=canvas.getContext('2d');ctx.drawImage(img,0,0,w,h);resolve(canvas.toDataURL('image/jpeg',quality))};img.onerror=()=>resolve(dataUrl);img.src=dataUrl})}
 async function saveWithQuotaRecovery(){try{save();return}catch(e){if(e?.name!=='QuotaExceededError'&&e?.code!==22)throw e}let original=db.restaurants.map(r=>({...r,photos:[...(r.photos||[])]}));for(const r of db.restaurants){if(r.photos?.length)r.photos=await Promise.all(r.photos.map(p=>compressDataUrl(p,1280,.72)))}try{save();return}catch(e){db.restaurants=original;for(const r of db.restaurants){if(r.photos?.length)r.photos=await Promise.all(r.photos.map(p=>compressDataUrl(p,960,.58)))}try{save();return}catch(e2){db.restaurants=original;throw e2}}}
 
@@ -130,14 +161,18 @@ function saveRecipe(id){let old=id==='new'?null:db.recipes.find(x=>x.id===id),no
 function openWebsiteImporter(){modal.classList.add('show');modalBody.innerHTML=`<div class="eyebrow">Recipe importer</div><h2>Import From Website</h2><p class="hint">Metro Eats looks first for recipe structured data, then for clearly labeled Ingredients and Directions sections. Nothing is saved until you review it.</p><div class="field"><label for="recipeUrl">Recipe URL</label><input id="recipeUrl" type="url" inputmode="url" autocomplete="url" placeholder="https://example.com/recipe…"></div><div class="actions"><button class="btn primary" onclick="fetchWebsiteForCreateRecipe()">Import Recipe</button><button class="btn" onclick="openRecipeChooser()">← Back</button></div><div class="notice">Stories, nutrition, equipment, tips, ads, comments and unrelated page text are intentionally excluded.</div>`}
 function openPasteImporter(){modal.classList.add('show');modalBody.innerHTML=`<div class="eyebrow">Recipe importer</div><h2>Paste Recipe</h2><p class="hint">Paste the recipe text. Metro Eats will look for the title, ingredients and directions and then let you review everything in the normal editor.</p><div class="field"><label for="rawRecipe">Recipe text</label><textarea id="rawRecipe" rows="15" placeholder="Paste the recipe here…"></textarea></div><div class="actions"><button class="btn primary" onclick="parsePastedRecipe()">Parse Recipe</button><button class="btn" onclick="openRecipeChooser()">← Back</button></div>`}
 function cleanImportedLine(s){
-  return String(s??'')
+  let x=String(s??'')
     .replace(/<[^>]+>/g,' ')
     .replace(/\[([^\]]+)\]\([^)]+\)/g,'$1')
     .replace(/https?:\/\/\S+/gi,'')
+    .replace(/^\s*(?:(?:\[[ xX]\]|☐|☑|□|✓|✔)\s*)+/,'')
+    .replace(/^\s*#+\s*/,'')
     .replace(/^\s*(?:[-*•]|\d+[.)])\s*/,'')
     .replace(/^\s*(?:step\s*)?\d+\s*[:.-]\s*/i,'')
     .replace(/\s+/g,' ')
     .trim();
+  x=x.replace(/\b( teaspoons?| tablespoons?| cups?| pounds?| ounces?| oz\.?|lbs?\.?|cloves?|cans?)\s*(?=[A-Za-z])/gi,'$1 ');
+  return x.replace(/\s+/g,' ').trim();
 }
 function isRecipeMetaLine(s){
   return /^(serves?|yield|yields|prep(?:aration)?\s*time|cook(?:ing)?\s*time|total\s*time|active\s*time|calories?|nutrition|author|by|jump to recipe|print recipe|save recipe|pin recipe|course|cuisine|keywords?|recipe notes?)\b/i.test(String(s||'').trim());
@@ -199,7 +234,7 @@ function recipeInstructionItems(value,out=[]){
 }
 function looksLikeRecipeIngredient(x){
   const s=String(x||'').trim();
-  if(!s||s.length>260||/https?:\/\//i.test(s)||isRecipeMetaLine(s))return false;
+  if(!s||s.length>260||/https?:\/\//i.test(s)||isRecipeMetaLine(s)||isRecipeSectionHeading(s))return false;
   if(/^(add|bake|boil|bring|broil|chop|combine|cook|cover|drain|heat|mix|place|pour|remove|serve|simmer|stir|whisk|preheat|reduce|season|transfer|set|let)\b/i.test(s))return false;
   return true;
 }
