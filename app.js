@@ -165,6 +165,8 @@ function cleanImportedLine(s){
     .replace(/<[^>]+>/g,' ')
     .replace(/\[([^\]]+)\]\([^)]+\)/g,'$1')
     .replace(/https?:\/\/\S+/gi,'')
+    .replace(/^\s*(?:\[[ xX]\]|☐|☑|□|✓|✔)\s*/,'')
+    .replace(/^\s*#+\s*/,'')
     .replace(/^\s*(?:[-*•]|\d+[.)])\s*/,'')
     .replace(/^\s*(?:step\s*)?\d+\s*[:.-]\s*/i,'')
     .replace(/\s+/g,' ')
@@ -230,7 +232,7 @@ function recipeInstructionItems(value,out=[]){
 }
 function looksLikeRecipeIngredient(x){
   const s=String(x||'').trim();
-  if(!s||s.length>260||/https?:\/\//i.test(s)||isRecipeMetaLine(s))return false;
+  if(!s||s.length>260||/https?:\/\//i.test(s)||isRecipeMetaLine(s)||isRecipeSectionHeading(s))return false;
   if(/^(add|bake|boil|bring|broil|chop|combine|cook|cover|drain|heat|mix|place|pour|remove|serve|simmer|stir|whisk|preheat|reduce|season|transfer|set|let)\b/i.test(s))return false;
   return true;
 }
