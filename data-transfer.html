@@ -1,0 +1,56 @@
+<!doctype html>
+<html><head><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Metro Eats Data Transfer</title>
+<style>
+body{background:#090b0d;color:#f4f1e8;font-family:-apple-system,BlinkMacSystemFont,sans-serif;padding:20px}
+.card{background:#12171a;border:1px solid #394248;border-radius:18px;padding:20px;margin:14px 0}
+h1{font-size:30px;margin:0 0 12px}h2{font-size:20px;margin:0 0 8px}
+p{line-height:1.45}.good{color:#9fe3ad;font-weight:700}.warn{color:#ffd27d}
+button{width:100%;padding:15px;margin:7px 0;border:0;border-radius:12px;background:#f4f1e8;color:#111;font-weight:700;font-size:16px}
+textarea{width:100%;box-sizing:border-box;min-height:180px;background:#080a0c;color:#dfe5e8;border:1px solid #394248;border-radius:10px;padding:10px;font:12px ui-monospace,SFMono-Regular,monospace}
+.small{font-size:13px;color:#b9c1c5}
+</style></head><body>
+<div class="card"><h1>Metro Eats Data Transfer</h1>
+<p class="good" id="status">Scanning this Safari storage…</p>
+<p>This page is read-only. It does <strong>not</strong> change or delete your Metro Eats data.</p></div>
+<div class="card" id="summary"></div>
+<div class="card">
+<h2>Combined backup</h2>
+<p class="small">This includes both Metro Eats storage versions so we can preserve everything before merging it into the current Vercel app.</p>
+<button id="copyAll">COPY ALL METRO EATS DATA</button>
+<textarea id="all" readonly></textarea>
+</div>
+<div class="card">
+<h2>Individual backups</h2>
+<button id="copyV1">COPY metro_eats_v1</button>
+<textarea id="v1" readonly></textarea>
+<button id="copyV2">COPY metro_eats_v2</button>
+<textarea id="v2" readonly></textarea>
+</div>
+<script>
+(function(){
+var found={v1:null,v2:null};
+function read(k){try{var v=localStorage.getItem(k);return v?JSON.parse(v):null}catch(e){return null}}
+found.v1=read('metro_eats_v1'); found.v2=read('metro_eats_v2');
+var s=document.getElementById('summary'), status=document.getElementById('status');
+function desc(k,d){return d?'metro_eats_'+k+': '+(d.recipes||[]).length+' recipes, '+(d.restaurants||[]).length+' restaurants, '+JSON.stringify(d).length+' bytes':'metro_eats_'+k+': not found'}
+s.innerHTML='<h2>Data found</h2><p>'+desc('v1',found.v1)+'<br>'+desc('v2',found.v2)+'</p>';
+if(!found.v1&&!found.v2){status.textContent='No Metro Eats data was found in this Safari storage context.';return}
+status.textContent='Metro Eats data found. Nothing has been changed.';
+var payload={app:'Metro Eats',version:2,exportedAt:new Date().toISOString(),sources:{}};
+if(found.v1)payload.sources.metro_eats_v1=found.v1;
+if(found.v2)payload.sources.metro_eats_v2=found.v2;
+var allText=JSON.stringify(payload,null,2);
+document.getElementById('all').value=allText;
+document.getElementById('v1').value=found.v1?JSON.stringify(found.v1,null,2):'Not found';
+document.getElementById('v2').value=found.v2?JSON.stringify(found.v2,null,2):'Not found';
+function copy(id){
+ var ta=document.getElementById(id);ta.focus();ta.select();ta.setSelectionRange(0,ta.value.length);
+ try{navigator.clipboard.writeText(ta.value).then(function(){alert('Copied.');}).catch(function(){alert('The backup is selected. Tap Copy in the iPhone menu.');})}
+ catch(e){alert('The backup is selected. Tap Copy in the iPhone menu.')}
+}
+document.getElementById('copyAll').onclick=function(){copy('all')};
+document.getElementById('copyV1').onclick=function(){copy('v1')};
+document.getElementById('copyV2').onclick=function(){copy('v2')};
+})();
+</script></body></html>
