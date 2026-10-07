@@ -82,6 +82,37 @@ new MutationObserver(function(){
 function uid(){return 'me-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,10)}
 function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 function save(){localStorage.setItem(KEY,JSON.stringify(db))}
+function openBackup(){
+  const payload=JSON.stringify(db,null,2);
+  const size=Math.round(new Blob([payload]).size/1024);
+  modal.classList.add('show');
+  modalBody.innerHTML='<div class="eyebrow">Metro Eats Data</div><h2>Backup & Restore</h2><p class="hint">Create a complete backup of your recipes and restaurants, or restore a backup on this device.</p><div class="notice" style="margin:12px 0"><strong>Current data</strong><div class="small">'+(db.recipes||[]).length+' recipes • '+(db.restaurants||[]).length+' restaurants • '+size+' KB</div></div><div class="actions"><button type="button" class="btn primary" id="meDownloadBackup">Download Backup</button><button type="button" class="btn" id="meRestoreBackup">Restore Backup</button></div><div class="small" style="margin-top:12px">Restoring replaces the current local data on this device. Your backup file is not uploaded anywhere.</div><div class="actions"><button type="button" class="btn danger" onclick="closeModal()">Close</button></div>';
+  document.getElementById('meDownloadBackup').onclick=function(){
+    const blob=new Blob([payload],{type:'application/json'});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a'); a.href=url; a.download='metro-eats-backup-'+new Date().toISOString().slice(0,10)+'.json';
+    document.body.appendChild(a); a.click(); a.remove(); setTimeout(function(){URL.revokeObjectURL(url)},1000);
+  };
+  document.getElementById('meRestoreBackup').onclick=function(){
+    const input=document.getElementById('restoreFile'); if(input) input.click();
+  };
+}
+document.getElementById('restoreFile')?.addEventListener('change',function(e){
+  const file=e.target.files&&e.target.files[0]; if(!file)return;
+  const reader=new FileReader();
+  reader.onload=function(){
+    try{
+      const restored=JSON.parse(reader.result);
+      if(!restored||!Array.isArray(restored.recipes)||!Array.isArray(restored.restaurants))throw new Error('Invalid Metro Eats backup file.');
+      if(!confirm('Restore this backup? Your current local Metro Eats data will be replaced.'))return;
+      localStorage.setItem(KEY,JSON.stringify(restored));
+      db=parseData(); migrate(); renderRecipes(); renderRestaurants(); updateStory(); closeModal();
+      alert('Metro Eats backup restored successfully.');
+    }catch(err){alert('Metro Eats could not restore that backup.\n\n'+(err.message||'Invalid backup file.'))}
+    finally{e.target.value='';}
+  };
+  reader.readAsText(file);
+});
 function compressDataUrl(dataUrl,maxSide=1280,quality=.72){return new Promise(resolve=>{if(!/^data:image\//i.test(dataUrl||'')){resolve(dataUrl);return}let img=new Image();img.onload=()=>{let scale=Math.min(1,maxSide/Math.max(img.naturalWidth||img.width,img.naturalHeight||img.height)),w=Math.max(1,Math.round((img.naturalWidth||img.width)*scale)),h=Math.max(1,Math.round((img.naturalHeight||img.height)*scale)),canvas=document.createElement('canvas');canvas.width=w;canvas.height=h;let ctx=canvas.getContext('2d');ctx.drawImage(img,0,0,w,h);resolve(canvas.toDataURL('image/jpeg',quality))};img.onerror=()=>resolve(dataUrl);img.src=dataUrl})}
 async function saveWithQuotaRecovery(){try{save();return}catch(e){if(e?.name!=='QuotaExceededError'&&e?.code!==22)throw e}let original=db.restaurants.map(r=>({...r,photos:[...(r.photos||[])]}));for(const r of db.restaurants){if(r.photos?.length)r.photos=await Promise.all(r.photos.map(p=>compressDataUrl(p,1280,.72)))}try{save();return}catch(e){db.restaurants=original;for(const r of db.restaurants){if(r.photos?.length)r.photos=await Promise.all(r.photos.map(p=>compressDataUrl(p,960,.58)))}try{save();return}catch(e2){db.restaurants=original;throw e2}}}
 
