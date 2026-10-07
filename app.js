@@ -161,16 +161,18 @@ function saveRecipe(id){let old=id==='new'?null:db.recipes.find(x=>x.id===id),no
 function openWebsiteImporter(){modal.classList.add('show');modalBody.innerHTML=`<div class="eyebrow">Recipe importer</div><h2>Import From Website</h2><p class="hint">Metro Eats looks first for recipe structured data, then for clearly labeled Ingredients and Directions sections. Nothing is saved until you review it.</p><div class="field"><label for="recipeUrl">Recipe URL</label><input id="recipeUrl" type="url" inputmode="url" autocomplete="url" placeholder="https://example.com/recipe…"></div><div class="actions"><button class="btn primary" onclick="fetchWebsiteForCreateRecipe()">Import Recipe</button><button class="btn" onclick="openRecipeChooser()">← Back</button></div><div class="notice">Stories, nutrition, equipment, tips, ads, comments and unrelated page text are intentionally excluded.</div>`}
 function openPasteImporter(){modal.classList.add('show');modalBody.innerHTML=`<div class="eyebrow">Recipe importer</div><h2>Paste Recipe</h2><p class="hint">Paste the recipe text. Metro Eats will look for the title, ingredients and directions and then let you review everything in the normal editor.</p><div class="field"><label for="rawRecipe">Recipe text</label><textarea id="rawRecipe" rows="15" placeholder="Paste the recipe here…"></textarea></div><div class="actions"><button class="btn primary" onclick="parsePastedRecipe()">Parse Recipe</button><button class="btn" onclick="openRecipeChooser()">← Back</button></div>`}
 function cleanImportedLine(s){
-  return String(s??'')
+  let x=String(s??'')
     .replace(/<[^>]+>/g,' ')
     .replace(/\[([^\]]+)\]\([^)]+\)/g,'$1')
     .replace(/https?:\/\/\S+/gi,'')
-    .replace(/^\s*(?:\[[ xX]\]|☐|☑|□|✓|✔)\s*/,'')
+    .replace(/^\s*(?:(?:\[[ xX]\]|☐|☑|□|✓|✔)\s*)+/,'')
     .replace(/^\s*#+\s*/,'')
     .replace(/^\s*(?:[-*•]|\d+[.)])\s*/,'')
     .replace(/^\s*(?:step\s*)?\d+\s*[:.-]\s*/i,'')
     .replace(/\s+/g,' ')
     .trim();
+  x=x.replace(/\b( teaspoons?| tablespoons?| cups?| pounds?| ounces?| oz\.?|lbs?\.?|cloves?|cans?)\s*(?=[A-Za-z])/gi,'$1 ');
+  return x.replace(/\s+/g,' ').trim();
 }
 function isRecipeMetaLine(s){
   return /^(serves?|yield|yields|prep(?:aration)?\s*time|cook(?:ing)?\s*time|total\s*time|active\s*time|calories?|nutrition|author|by|jump to recipe|print recipe|save recipe|pin recipe|course|cuisine|keywords?|recipe notes?)\b/i.test(String(s||'').trim());
