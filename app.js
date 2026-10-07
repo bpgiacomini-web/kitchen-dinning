@@ -368,6 +368,45 @@ async function fetchOverpassRestaurants(query){
   }
   throw new Error('Nearby restaurant search service unavailable');
 }
+async function resolveRestaurantWebsite(name,location,lat,lon){
+  let candidates=[];
+  const wanted=normalizeRestaurantName(name);
+  try{
+    if(lat!=null&&lon!=null){
+      const safe=String(name||'').replace(/\\/g,'\\\\').replace(/"/g,'\\\"');
+      const query='[out:json][timeout:12];nwr["name"~="'+safe+'",i](around:16000,'+Number(lat)+','+Number(lon)+');out center tags;';
+      const data=await fetchOverpassRestaurants(query);
+      candidates=(data.elements||[]).map(x=>{
+        const t=x.tags||{};
+        return{name:t.name||'',website:t.website||t['contact:website']||''};
+      }).filter(x=>x.name&&x.website);
+    }
+  }catch(e){}
+  if(!candidates.length){
+    try{
+      const u='https://photon.komoot.io/api/?q='+encodeURIComponent(String(name||'')+' '+String(location||''))+'&limit=12&lang=en';
+      const resp=await fetchWithTimeout(u,{},7000);
+      if(resp.ok){
+        const data=await resp.json();
+        candidates=(data.features||[]).map(f=>{
+          const p=f.properties||{};
+          return{name:p.name||'',website:p.extra?.website||p.website||''};
+        }).filter(x=>x.name&&x.website);
+      }
+    }catch(e){}
+  }
+  candidates=candidates.map(x=>({...x,website:normalizeExternalUrl(x.website)})).filter(x=>x.website);
+  candidates.sort((a,b)=>{
+    const ae=normalizeRestaurantName(a.name)===wanted?0:1;
+    const be=normalizeRestaurantName(b.name)===wanted?0:1;
+    if(ae!==be)return ae-be;
+    return restaurantNameSimilarity(b.name,name)-restaurantNameSimilarity(a.name,name);
+  });
+  const best=candidates[0];
+  if(!best)return '';
+  const exact=normalizeRestaurantName(best.name)===wanted;
+  return exact||restaurantNameSimilarity(best.name,name)>=.82?best.website:'';
+}
 function findRestaurantAroundMe(){let status=document.getElementById('locationStatus');status.textContent='Requesting your location…';if(!navigator.geolocation){status.textContent='Location services are not available in this browser.';return}navigator.geolocation.getCurrentPosition(async pos=>{let lat=pos.coords.latitude,lon=pos.coords.longitude;window._restaurantLookupLocation={lat,lon};status.textContent='Looking for restaurants near your location…';let hadSuccess=false,places=[];try{for(const miles of [1,2,5]){let radius=Math.round(miles*1609.344),q='[out:json][timeout:25];nwr["amenity"~"^(restaurant|fast_food|cafe|bar|pub)$",i]["name"](around:'+radius+','+lat+','+lon+');out center tags;';try{let data=await fetchOverpassRestaurants(q);hadSuccess=true;let batch=(data.elements||[]).map(x=>{let t=x.tags||{},la=x.lat??x.center?.lat,lo=x.lon??x.center?.lon;return{name:t.name||'',website:t.website||t['contact:website']||'',address:[t['addr:housenumber'],t['addr:street'],t['addr:city'],t['addr:state']].filter(Boolean).join(', '),type:restaurantTypeFromLookup(t),lat:la,lon:lo,dist:Math.round(distanceMeters(lat,lon,la,lo))}}).filter(x=>x.name);places=dedupeRestaurantLookup(places.concat(batch));if(places.length>=12)break}catch(e){}}places=places.sort((a,b)=>a.dist-b.dist).slice(0,12);renderNearby(places);if(places.length)status.textContent='Select the restaurant that matches where you are.';else if(hadSuccess)status.textContent='No named restaurants or food establishments were found nearby.';else status.textContent='Could not query nearby restaurants right now. Please try again.'}catch(e){status.textContent='Could not query nearby restaurants right now. Please try again.'}},()=>{status.textContent='Location permission was denied or unavailable.'},{enableHighAccuracy:true,timeout:12000,maximumAge:30000})}
 function distanceMeters(a,b,c,d){if([a,b,c,d].some(x=>typeof x!=='number'))return 999999;let R=6371000,p=Math.PI/180,dLat=(c-a)*p,dLon=(d-b)*p,x=Math.sin(dLat/2)**2+Math.cos(a*p)*Math.cos(c*p)*Math.sin(dLon/2)**2;return 2*R*Math.asin(Math.sqrt(x))}
 function renderNearby(places){let box=document.getElementById('nearbyResults');box.innerHTML=places.length?`<div class="locCard"><div class="eyebrow">Choose your restaurant</div><h3>Restaurants Around Me</h3><div class="nearbyList">${places.map((x,i)=>`<div class="nearbyItem"><strong>${esc(x.name)}</strong><div class="meta">${x.dist<1609?(Math.round(x.dist*3.28084)+' ft'):(x.dist/1609.34).toFixed(1)+' mi'} ${x.address?'• '+esc(x.address):''}</div><div class="actions"><button class="btn primary" onclick='useNearby(${JSON.stringify(x).replace(/'/g,"&#39;")})'>Select This Restaurant</button></div></div>`).join('')}</div></div>`:''}
@@ -1407,8 +1446,20 @@ function showVisitHistory(id){
   window.openRestaurant=function(id,prefilling){meV3Open(id,id==='new'?'new':'edit',prefilling)};
   window.startSurvey=function(id){meV3Open(id,'review')};
   window.useNearby=function(x){
-    var r={id:'new',name:x&&x.name||'',type:x&&x.type||'Other',location:x&&x.address||'',website:x&&x.website||'',menuUrl:'',notes:'',photos:[],survey:null,reviewHistory:[],createdAt:new Date().toISOString(),updatedAt:null,lat:x&&x.lat||null,lon:x&&x.lon||null};
+    var rawName=x&&x.name||'',rawAddress=x&&x.address||'',details=knownRestaurantDetails(rawName,rawAddress);
+    var name=details.name||rawName,location=details.address||rawAddress,website=x&&x.website||details.website||knownOfficialWebsite(name,location)||'';
+    var r={id:'new',name:name,type:(x&&x.type&&x.type!=='Other')?x.type:(details.type||'Other'),location:location,website:website,menuUrl:'',notes:'',photos:[],survey:null,reviewHistory:[],createdAt:new Date().toISOString(),updatedAt:null,lat:x&&x.lat||null,lon:x&&x.lon||null};
     meV3Open('new','new',r);
+    if(!website){
+      var lookupName=normalizeRestaurantName(name),lookupAddress=normalizeRestaurantName(location);
+      resolveRestaurantWebsite(name,location,x&&x.lat,x&&x.lon).then(function(found){
+        var input=document.getElementById('rWebsite');
+        if(found&&input&&!input.value.trim()&&normalizeRestaurantName(fieldValue('rName'))===lookupName&&normalizeRestaurantName(fieldValue('rLoc'))===lookupAddress){
+          input.value=found;
+          if(state.pending){state.pending.website=found;render();}
+        }
+      }).catch(function(){});
+    }
   };
   window.renderSurvey=function(){render()};
   window.saveSurvey=function(){return window.meV3Save()};
@@ -1599,7 +1650,20 @@ function showVisitHistory(id){
     if(state.mode!=='new')state.restaurantId=state.pending.id;
     render();
     var box=document.getElementById('restaurantLookupResults');
-    if(box)box.innerHTML='<div class="notice" style="margin-top:8px">Restaurant selected. Name, address, and type were filled in.</div>';
+    if(box)box.innerHTML='<div class="notice" style="margin-top:8px"><strong>Restaurant selected.</strong> Name, address, and type were filled in. Finding the official website…</div>';
+    if(!website){
+      var lookupName=normalizeRestaurantName(name),lookupAddress=normalizeRestaurantName(location);
+      resolveRestaurantWebsite(name,location,x.lat,x.lon).then(function(found){
+        var input=document.getElementById('rWebsite');
+        if(!found||!input||input.value.trim()||normalizeRestaurantName(fieldValue('rName'))!==lookupName||normalizeRestaurantName(fieldValue('rLoc'))!==lookupAddress)return;
+        if(state.pending){state.pending.website=found;render();}
+        var note=document.getElementById('restaurantLookupResults');
+        if(note)note.innerHTML='<div class="notice" style="margin-top:8px"><strong>Restaurant selected.</strong> Official website filled automatically.</div>';
+      }).catch(function(){});
+    }else{
+      var note=document.getElementById('restaurantLookupResults');
+      if(note)note.innerHTML='<div class="notice" style="margin-top:8px"><strong>Restaurant selected.</strong> Name, address, type, and available official website were filled in.</div>';
+    }
   };
   window.applyRestaurantLookupByIndex=function(index){
     var x=window._restaurantLookupResults?.[Number(index)];
