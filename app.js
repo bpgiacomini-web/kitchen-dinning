@@ -53,7 +53,32 @@ const fallbackNews=[
  {title:'Alton restaurant owner serves free steaks to striking public works union members',source:'The Telegraph',date:'October 2, 2026',url:'https://www.thetelegraph.com/news/article/alton-teamsters-strike-free-steaks-macs-downtown-22457126.php'},
  {title:'Vote now for your favorite local metro-east breakfast restaurant: Round 1',source:'Belleville News-Democrat',date:'September 29, 2026',url:'https://www.bnd.com/news/local/'}
 ];
-const modal=document.getElementById('modal'),modalBody=document.getElementById('modalBody');let pendingRestaurant=null,pendingReviewRestaurant=null,restaurantEditMode=false,activeCat='',surveyState={restaurantId:null,scores:{},ordered:'',orderAgain:''};
+const modal=document.getElementById('modal'),modalBody=document.getElementById('modalBody');
+let modalHistoryActive=false,modalHistorySuppress=false;
+function closeModal(){
+  modal.classList.remove('show');
+  modalBody.innerHTML='';
+  if(modalHistoryActive){
+    modalHistoryActive=false;
+    modalHistorySuppress=true;
+    history.back();
+  }
+}
+window.closeModal=closeModal;
+window.addEventListener('popstate',function(){
+  if(modalHistoryActive){
+    modalHistoryActive=false;
+    modal.classList.remove('show');
+    modalBody.innerHTML='';
+  }
+});
+new MutationObserver(function(){
+  if(modal.classList.contains('show')&&!modalHistoryActive&&!modalHistorySuppress){
+    history.pushState({metroEatsModal:true},'',location.href);
+    modalHistoryActive=true;
+  }
+  modalHistorySuppress=false;
+}).observe(modal,{attributes:true,attributeFilter:['class']});let pendingRestaurant=null,pendingReviewRestaurant=null,restaurantEditMode=false,activeCat='',surveyState={restaurantId:null,scores:{},ordered:'',orderAgain:''};
 function uid(){return 'me-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,10)}
 function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 function save(){localStorage.setItem(KEY,JSON.stringify(db))}
