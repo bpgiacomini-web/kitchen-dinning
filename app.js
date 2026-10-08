@@ -162,35 +162,35 @@ function openWebsiteImporter(){modal.classList.add('show');modalBody.innerHTML=`
 function openPasteImporter(){modal.classList.add('show');modalBody.innerHTML=`<div class="eyebrow">Recipe importer</div><h2>Paste Recipe</h2><p class="hint">Paste the recipe text. Metro Eats will look for the title, ingredients and directions and then let you review everything in the normal editor.</p><div class="field"><label for="rawRecipe">Recipe text</label><textarea id="rawRecipe" rows="15" placeholder="Paste the recipe here…"></textarea></div><div class="actions"><button class="btn primary" onclick="parsePastedRecipe()">Parse Recipe</button><button class="btn" onclick="openRecipeChooser()">← Back</button></div>`}
 function normalizeRecipeFractionText(value){
   return String(value??'')
-    .replace(/(\\d)\\s*([½⅓¼⅕⅙⅛⅜⅖⅗⅝⅞])/g,'$1 $2')
-    .replace(/\\^\\{(1|2|3|5|7)\\}⁄_\\{(2|3|4|5|6|8)\\}/g,'$1/$2')
-    .replace(/([0-9])\\s*⁄\\s*([0-9])/g,'$1/$2')
+    .replace(/(\d)\s*([½⅓¼⅕⅙⅛⅜⅖⅗⅝⅞])/g,'$1 $2')
+    .replace(/\^\{(1|2|3|5|7)\}⁄_\{(2|3|4|5|6|8)\}/g,'$1/$2')
+    .replace(/([0-9])\s*⁄\s*([0-9])/g,'$1/$2')
     .replace(/½/g,'1/2').replace(/⅓/g,'1/3').replace(/¼/g,'1/4').replace(/⅕/g,'1/5')
     .replace(/⅙/g,'1/6').replace(/⅛/g,'1/8').replace(/⅜/g,'3/8').replace(/⅖/g,'2/5')
     .replace(/⅗/g,'3/5').replace(/⅝/g,'5/8').replace(/⅞/g,'7/8');
 }
 function cleanImportedLine(s){
   let x=normalizeRecipeFractionText(String(s??''))
-    .replace(/[\\u200B-\\u200D\\uFEFF]/g,'')
+    .replace(/[\u200B-\u200D\uFEFF]/g,'')
     .replace(/<[^>]+>/g,' ')
-    .replace(/\\[([^\\]]+)\\]\\([^)]+\\)/g,'$1')
-    .replace(/https?:\\/\\/\\S+/gi,'')
-    .replace(/^\\s*(?:(?:\\[[ xX]\\]|☐|☑|□|✓|✔)\\s*)+/,'')
-    .replace(/^\\s*#+\\s*/,'')
-    .replace(/^\\s*(?:[-*•]|\\d+[.)])\\s*/,'')
-    .replace(/^\\s*(?:step\\s*)?\\d+\\s*[:.-]\\s*/i,'')
-    .replace(/\\s+/g,' ')
+    .replace(/\[([^\]]+)\]\([^)]+\)/g,'$1')
+    .replace(/https?:\/\/\S+/gi,'')
+    .replace(/^\s*(?:(?:\[[ xX]\]|☐|☑|□|✓|✔)\s*)+/,'')
+    .replace(/^\s*#+\s*/,'')
+    .replace(/^\s*(?:[-*•]|\d+[.)])\s*/,'')
+    .replace(/^\s*(?:step\s*)?\d+\s*[:.-]\s*/i,'')
+    .replace(/\s+/g,' ')
     .trim();
   x=x
-    .replace(/\\b(\\d+)\\s*\\/\\s*(\\d+)\\b/g,'$1/$2')
-    .replace(/\\b(\\d+)\\s+(\\d+)\\s*\\/\\s*(\\d+)\\b/g,'$1 $2/$3')
-    .replace(/\\b(cup|tablespoon|teaspoon)\\s*([sS])\\b/g,'$1$2')
-    .replace(/\\b(tablespoon)\\s+s\\b/gi,'$1s')
-    .replace(/\\b(teaspoon)\\s+s\\b/gi,'$1s')
-    .replace(/(teaspoons?|tablespoons?|cups?|pounds?|ounces?|oz\\.?|lbs?\\.?|cloves?|cans?)(?=[A-Za-z])/gi,'$1 ')
-    .replace(/\\s*([,;])\\s*\\1+/g,'$1')
-    .replace(/(\\d)\\s*(\\()/g,'$1 $2')
-    .replace(/\\s+/g,' ')
+    .replace(/\b(\d+)\s*\/\s*(\d+)\b/g,'$1/$2')
+    .replace(/\b(\d+)\s+(\d+)\s*\/\s*(\d+)\b/g,'$1 $2/$3')
+    .replace(/\b(cup|tablespoon|teaspoon)\s*([sS])\b/g,'$1$2')
+    .replace(/\b(tablespoon)\s+s\b/gi,'$1s')
+    .replace(/\b(teaspoon)\s+s\b/gi,'$1s')
+    .replace(/(teaspoons?|tablespoons?|cups?|pounds?|ounces?|oz\.?|lbs?\.?|cloves?|cans?)(?=[A-Za-z])/gi,'$1 ')
+    .replace(/\s*([,;])\s*\1+/g,'$1')
+    .replace(/(\d)\s*(\()/g,'$1 $2')
+    .replace(/\s+/g,' ')
     .trim();
   return x;
 }
@@ -320,25 +320,25 @@ function collectSection(text,headingRegex,kind){
 }
 function htmlToRecipeText(html){
   let x=String(html||'')
-    .replace(/<!--[\\s\\S]*?-->/g,' ')
-    .replace(/<(script|style|noscript|template|svg|canvas)[^>]*>[\\s\\S]*?<\\/\\1>/gi,' ')
-    .replace(/<(nav|footer|aside|form)[^>]*>[\\s\\S]*?<\\/\\1>/gi,' ')
-    .replace(/<(br|\\/p|\\/div|\\/section|\\/article|\\/li|\\/h[1-6]|\\/tr|\\/td|\\/th)\\s*\\/?>/gi,'\\n')
+    .replace(/<!--[\s\S]*?-->/g,' ')
+    .replace(/<(script|style|noscript|template|svg|canvas)[^>]*>[\s\S]*?<\/\1>/gi,' ')
+    .replace(/<(nav|footer|aside|form)[^>]*>[\s\S]*?<\/\1>/gi,' ')
+    .replace(/<(br|\/p|\/div|\/section|\/article|\/li|\/h[1-6]|\/tr|\/td|\/th)\s*\/?>/gi,'\n')
     .replace(/<[^>]+>/g,' ')
     .replace(/&nbsp;/gi,' ')
     .replace(/&amp;/gi,'&').replace(/&quot;/gi,'\"').replace(/&#39;/gi,"'")
     .replace(/&#x27;/gi,"'").replace(/&lt;/gi,'<').replace(/&gt;/gi,'>');
-  return x.split(/\\r?\\n/).map(x=>x.replace(/\\s+/g,' ').trim()).filter(Boolean).join('\\n');
+  return x.split(/\r?\n/).map(x=>x.replace(/\s+/g,' ').trim()).filter(Boolean).join('\n');
 }
 function extractRecipeCore(text,url){
-  const source=/<[a-z][\\s\\S]*>/i.test(String(text||''))?htmlToRecipeText(text):String(text||'');
-  let title=(String(text||'').match(/<title[^>]*>([\\s\\S]*?)<\\/title>/i)?.[1]||'').replace(/<[^>]+>/g,' ').replace(/\\s+/g,' ').trim();
+  const source=/<[a-z][\s\S]*>/i.test(String(text||''))?htmlToRecipeText(text):String(text||'');
+  let title=(String(text||'').match(/<title[^>]*>([\s\S]*?)<\/title>/i)?.[1]||'').replace(/<[^>]+>/g,' ').replace(/\s+/g,' ').trim();
   let ingredients=collectSection(source,/^(ingredients?)$/i,'ingredients');
   let steps=collectSection(source,/^(directions?|instructions?|method|steps?)$/i,'steps');
   let checked=validateRecipeExtraction({ingredients,steps});
   if(!checked.ingredients.length||!checked.steps.length)return null;
   return {
-    title:cleanImportedLine(title.replace(/\\s*[|–-].*$/,'').trim()||'Imported Recipe'),
+    title:cleanImportedLine(title.replace(/\s*[|–-].*$/,'').trim()||'Imported Recipe'),
     ingredients:checked.ingredients,
     steps:checked.steps,
     servings:'',
@@ -350,7 +350,7 @@ function extractRecipeCore(text,url){
 async function fetchWebsiteForCreateRecipe(){
   let url=fieldValue('recipeUrl');
   if(!url)return alert('Please enter a recipe URL.');
-  if(!/^https?:\\/\\//i.test(url))return alert('Please enter a full http:// or https:// recipe URL.');
+  if(!/^https?:\/\//i.test(url))return alert('Please enter a full http:// or https:// recipe URL.');
   modalBody.innerHTML=\`<div class="eyebrow">Recipe importer</div><h2>Extracting recipe…</h2><div class="status">Looking for recipe-specific structured data first.</div>\`;
   try{
     let parsed=null;
