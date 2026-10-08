@@ -354,13 +354,26 @@ async function fetchWebsiteForCreateRecipe(){
   modalBody.innerHTML=`<div class="eyebrow">Recipe importer</div><h2>Extracting recipe…</h2><div class="status">Looking for recipe-specific structured data first.</div>`;
   try{
     let parsed=null;
-    let html='';
+    let sources=[];
     try{
-      let r=await fetch(url,{cache:'no-store'});
-      if(r.ok)html=await r.text();
+      let proxy=await fetch('/api/recipe-import?url='+encodeURIComponent(url),{cache:'no-store'});
+      if(proxy.ok){
+        let payload=await proxy.json();
+        sources=Array.isArray(payload.sources)?payload.sources:[];
+      }
     }catch{}
-    if(html){
-      parsed=structuredRecipeFromHtml(html,url)||extractRecipeCore(html,url);
+    for(const source of sources){
+      if(parsed)break;
+      parsed=structuredRecipeFromHtml(source,url)||extractRecipeCore(source,url);
+    }
+    if(!parsed){
+      try{
+        let r=await fetch(url,{cache:'no-store'});
+        if(r.ok){
+          let html=await r.text();
+          parsed=structuredRecipeFromHtml(html,url)||extractRecipeCore(html,url);
+        }
+      }catch{}
     }
     if(!parsed){
       let r=await fetch('https://r.jina.ai/'+url,{cache:'no-store'});
