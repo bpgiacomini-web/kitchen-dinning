@@ -4,6 +4,7 @@ module.exports = async function handler(req,res){
     return res.status(400).json({error:'A valid http:// or https:// recipe URL is required.'});
   }
   const sources=[];
+  const seen=new Set();
   const addSource=async target=>{
     try{
       const response=await fetch(target,{
@@ -15,13 +16,16 @@ module.exports = async function handler(req,res){
       });
       if(response.ok){
         const text=await response.text();
-        if(text&&text.length>100)sources.push(text);
+        if(text&&text.length>100&&!seen.has(text)){
+          seen.add(text);
+          sources.push(text);
+        }
       }
     }catch{}
   };
-  await addSource(url);
-  if(sources.length===0||sources.every(x=>!/<(?:script|html|h[1-6]|section|article)\b/i.test(x))){
-    await addSource('https://r.jina.ai/'+url);
-  }
-  return res.status(200).json({sources:sources.slice(0,2)});
+  await Promise.all([
+    addSource(url),
+    addSource('https://r.jina.ai/'+url)
+  ]);
+  return res.status(200).json({sources:sources.slice(0,4)});
 };
