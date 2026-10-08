@@ -311,6 +311,7 @@ function structuredRecipeFromHtml(html,url){
   if(!time.length&&r.totalTime)time.push('Total '+formatRecipeDuration(r.totalTime));
   let servings=Array.isArray(r.recipeYield)?cleanImportedLine(r.recipeYield.join(', ')):cleanImportedLine(r.recipeYield||'');
   let checked=validateRecipeExtraction({ingredients,steps:instructions});
+  const inferred=inferImportedRecipeCategory(r.name||'',checked.ingredients);
   return checked.ingredients.length&&checked.steps.length?{
     title:cleanImportedLine(r.name||'')||'Imported Recipe',
     ingredients:checked.ingredients,
