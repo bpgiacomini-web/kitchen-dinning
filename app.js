@@ -162,6 +162,7 @@ function openWebsiteImporter(){modal.classList.add('show');modalBody.innerHTML=`
 function openPasteImporter(){modal.classList.add('show');modalBody.innerHTML=`<div class="eyebrow">Recipe importer</div><h2>Paste Recipe</h2><p class="hint">Paste the recipe text. Metro Eats will look for the title, ingredients and directions and then let you review everything in the normal editor.</p><div class="field"><label for="rawRecipe">Recipe text</label><textarea id="rawRecipe" rows="15" placeholder="Paste the recipe here…"></textarea></div><div class="actions"><button class="btn primary" onclick="parsePastedRecipe()">Parse Recipe</button><button class="btn" onclick="openRecipeChooser()">← Back</button></div>`}
 function cleanImportedLine(s){
   let x=String(s??'')
+    .replace(/[\u200B-\u200D\uFEFF]/g,'')
     .replace(/<[^>]+>/g,' ')
     .replace(/\[([^\]]+)\]\([^)]+\)/g,'$1')
     .replace(/https?:\/\/\S+/gi,'')
@@ -177,11 +178,12 @@ function cleanImportedLine(s){
   x=x
     .replace(/\b(\d+)\s*\/\s*(\d+)\b/g,'$1/$2')
     .replace(/\b(\d+)\s+(\d+)\s*\/\s*(\d+)\b/g,'$1 $2/$3')
-    .replace(/\b(cup)\s+s\b/gi,'$1s')
+    .replace(/\b(cup|tablespoon|teaspoon)\s*([sS])\b/g,'$1$2')
     .replace(/\b(tablespoon)\s+s\b/gi,'$1s')
     .replace(/\b(teaspoon)\s+s\b/gi,'$1s')
     .replace(/(teaspoons?|tablespoons?|cups?|pounds?|ounces?|oz\.?|lbs?\.?|cloves?|cans?)(?=[A-Za-z])/gi,'$1 ')
     .replace(/\s*([,;])\s*\1+/g,'$1')
+    .replace(/(\d)\s*(\()/g,'$1 $2')
     .replace(/\s+/g,' ')
     .trim();
   return x;
