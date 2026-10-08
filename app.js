@@ -171,8 +171,16 @@ function cleanImportedLine(s){
     .replace(/^\s*(?:step\s*)?\d+\s*[:.-]\s*/i,'')
     .replace(/\s+/g,' ')
     .trim();
-  x=x.replace(/\b( teaspoons?| tablespoons?| cups?| pounds?| ounces?| oz\.?|lbs?\.?|cloves?|cans?)\s*(?=[A-Za-z])/gi,'$1 ');
-  return x.replace(/\s+/g,' ').trim();
+  /* Normalize common recipe-unit OCR/HTML extraction errors.
+     Examples: "1 /2" -> "1/2", "teaspooncayenne" -> "teaspoon cayenne",
+     and "tablespoonbutter" -> "tablespoon butter". */
+  x=x
+    .replace(/\b(\d+)\s*\/\s*(\d+)\b/g,'$1/$2')
+    .replace(/\b(\d+)\s+(\d+)\s*\/\s*(\d+)\b/g,'$1 $2/$3')
+    .replace(/(teaspoons?|tablespoons?|cups?|pounds?|ounces?|oz\.?|lbs?\.?|cloves?|cans?)(?=[A-Za-z])/gi,'$1 ')
+    .replace(/\s+/g,' ')
+    .trim();
+  return x;
 }
 function isRecipeMetaLine(s){
   return /^(serves?|yield|yields|prep(?:aration)?\s*time|cook(?:ing)?\s*time|total\s*time|active\s*time|calories?|nutrition|author|by|jump to recipe|print recipe|save recipe|pin recipe|course|cuisine|keywords?|recipe notes?)\b/i.test(String(s||'').trim());
