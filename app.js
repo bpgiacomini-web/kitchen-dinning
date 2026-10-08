@@ -351,7 +351,7 @@ async function fetchWebsiteForCreateRecipe(){
   let url=fieldValue('recipeUrl');
   if(!url)return alert('Please enter a recipe URL.');
   if(!/^https?:\/\//i.test(url))return alert('Please enter a full http:// or https:// recipe URL.');
-  modalBody.innerHTML=\`<div class="eyebrow">Recipe importer</div><h2>Extracting recipe…</h2><div class="status">Looking for recipe-specific structured data first.</div>\`;
+  modalBody.innerHTML=`<div class="eyebrow">Recipe importer</div><h2>Extracting recipe…</h2><div class="status">Looking for recipe-specific structured data first.</div>`;
   try{
     let parsed=null;
     let html='';
@@ -371,7 +371,7 @@ async function fetchWebsiteForCreateRecipe(){
     if(!parsed)throw Error('No clear recipe structure found');
     showImportedRecipeReview(parsed,'Website import');
   }catch(e){
-    modalBody.innerHTML=\`<div class="eyebrow">Recipe importer</div><h2>Couldn’t extract a clean recipe</h2><p class="hint">Metro Eats did not find enough clearly separated recipe content to safely import. Nothing was saved.</p><div class="actions"><button class="btn primary" onclick="openPasteImporter()">Paste Recipe Instead</button><button class="btn" onclick="openRecipeChooser()">Back</button></div>\`
+    modalBody.innerHTML=`<div class="eyebrow">Recipe importer</div><h2>Couldn’t extract a clean recipe</h2><p class="hint">Metro Eats did not find enough clearly separated recipe content to safely import. Nothing was saved.</p><div class="actions"><button class="btn primary" onclick="openPasteImporter()">Paste Recipe Instead</button><button class="btn" onclick="openRecipeChooser()">Back</button></div>`
   }
 }
 function parsePastedRecipe(){
