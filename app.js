@@ -173,11 +173,15 @@ function cleanImportedLine(s){
     .trim();
   /* Normalize common recipe-unit OCR/HTML extraction errors.
      Examples: "1 /2" -> "1/2", "teaspooncayenne" -> "teaspoon cayenne",
-     and "tablespoonbutter" -> "tablespoon butter". */
+     "tablespoonbutter" -> "tablespoon butter", and "cup s" -> "cups". */
   x=x
     .replace(/\b(\d+)\s*\/\s*(\d+)\b/g,'$1/$2')
     .replace(/\b(\d+)\s+(\d+)\s*\/\s*(\d+)\b/g,'$1 $2/$3')
+    .replace(/\b(cup)\s+s\b/gi,'$1s')
+    .replace(/\b(tablespoon)\s+s\b/gi,'$1s')
+    .replace(/\b(teaspoon)\s+s\b/gi,'$1s')
     .replace(/(teaspoons?|tablespoons?|cups?|pounds?|ounces?|oz\.?|lbs?\.?|cloves?|cans?)(?=[A-Za-z])/gi,'$1 ')
+    .replace(/\s*([,;])\s*\1+/g,'$1')
     .replace(/\s+/g,' ')
     .trim();
   return x;
