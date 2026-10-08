@@ -237,6 +237,26 @@ function findRecipeJsonLd(html){
   });
   return found[0]||null;
 }
+function inferImportedRecipeCategory(title,ingredients=[]){
+  const text=(String(title||'')+' '+ingredients.join(' ')).toLowerCase();
+  if(/\b(chicken|chicken breast|chicken thigh|chicken tender|chicken wing)\b/.test(text))return {category:'Main Dishes',subcategory:'Chicken'};
+  if(/\b(beef|steak|ground beef|sirloin|ribeye|brisket)\b/.test(text))return {category:'Main Dishes',subcategory:'Beef'};
+  if(/\b(pork|pork chop|pork loin|bacon|sausage|ham)\b/.test(text))return {category:'Main Dishes',subcategory:'Pork'};
+  if(/\b(turkey)\b/.test(text))return {category:'Main Dishes',subcategory:'Turkey'};
+  if(/\b(shrimp|salmon|tuna|cod|tilapia|crab|lobster|seafood|fish)\b/.test(text))return {category:'Main Dishes',subcategory:'Seafood'};
+  if(/\b(pasta|spaghetti|fettuccine|linguine|penne|macaroni|alfredo)\b/.test(text))return {category:'Main Dishes',subcategory:'Pasta'};
+  return {category:'Main Dishes',subcategory:'Other'};
+}
+function formatRecipeDuration(value){
+  const s=String(value||'').trim();
+  const m=s.match(/^PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?$/i);
+  if(!m)return cleanImportedLine(s);
+  const parts=[];
+  if(m[1])parts.push(m[1]+' hr');
+  if(m[2])parts.push(m[2]+' min');
+  if(m[3]&&!m[1]&&!m[2])parts.push(m[3]+' sec');
+  return parts.join(' ')||s;
+}
 function recipeInstructionItems(value,out=[]){
   if(Array.isArray(value)){value.forEach(x=>recipeInstructionItems(x,out));return out}
   if(typeof value==='string'){
@@ -286,9 +306,9 @@ function structuredRecipeFromHtml(html,url){
   let ingredients=recipeIngredientItems(r.recipeIngredient,[]).filter(looksLikeRecipeIngredient);
   let instructions=recipeInstructionItems(r.recipeInstructions,[]);
   let time=[];
-  if(r.prepTime)time.push('Prep '+cleanImportedLine(r.prepTime));
-  if(r.cookTime)time.push('Cook '+cleanImportedLine(r.cookTime));
-  if(!time.length&&r.totalTime)time.push('Total '+cleanImportedLine(r.totalTime));
+  if(r.prepTime)time.push('Prep '+formatRecipeDuration(r.prepTime));
+  if(r.cookTime)time.push('Cook '+formatRecipeDuration(r.cookTime));
+  if(!time.length&&r.totalTime)time.push('Total '+formatRecipeDuration(r.totalTime));
   let servings=Array.isArray(r.recipeYield)?cleanImportedLine(r.recipeYield.join(', ')):cleanImportedLine(r.recipeYield||'');
   let checked=validateRecipeExtraction({ingredients,steps:instructions});
   return checked.ingredients.length&&checked.steps.length?{
@@ -298,7 +318,9 @@ function structuredRecipeFromHtml(html,url){
     servings,
     time:time.join(' • '),
     extractionMethod:'Recipe structured data',
-    validationIssues:checked.issues
+    validationIssues:checked.issues,
+    category:inferred.category,
+    subcategory:inferred.subcategory
   }:null;
 }
 function collectSection(text,headingRegex,kind){
@@ -337,6 +359,7 @@ function extractRecipeCore(text,url){
   let steps=collectSection(source,/^(directions?|instructions?|method|steps?)$/i,'steps');
   let checked=validateRecipeExtraction({ingredients,steps});
   if(!checked.ingredients.length||!checked.steps.length)return null;
+  const inferred=inferImportedRecipeCategory(title,checked.ingredients);
   return {
     title:cleanImportedLine(title.replace(/\s*[|–-].*$/,'').trim()||'Imported Recipe'),
     ingredients:checked.ingredients,
@@ -344,7 +367,9 @@ function extractRecipeCore(text,url){
     servings:'',
     time:'',
     extractionMethod:'Labeled recipe sections',
-    validationIssues:checked.issues
+    validationIssues:checked.issues,
+    category:inferred.category,
+    subcategory:inferred.subcategory
   };
 }
 async function fetchWebsiteForCreateRecipe(){
