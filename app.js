@@ -387,9 +387,14 @@ async function fetchWebsiteForCreateRecipe(){
         sources=Array.isArray(payload.sources)?payload.sources:[];
       }
     }catch{}
+    const candidates=[];
     for(const source of sources){
-      if(parsed)break;
-      parsed=structuredRecipeFromHtml(source,url)||extractRecipeCore(source,url);
+      const candidate=structuredRecipeFromHtml(source,url)||extractRecipeCore(source,url);
+      if(candidate)candidates.push(candidate);
+    }
+    if(candidates.length){
+      candidates.sort((a,b)=>(b.ingredients?.length||0)+(b.steps?.length||0)-(a.ingredients?.length||0)-(a.steps?.length||0));
+      parsed=candidates[0];
     }
     if(!parsed){
       try{
