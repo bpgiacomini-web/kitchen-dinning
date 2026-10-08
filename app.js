@@ -278,9 +278,18 @@ function normalizeImportedTime(value){
   return x;
 }
 function inferImportedCategory(title,ingredients,steps){
+  const titleText=String(title||'').toLowerCase();
   const hay=[title,...(ingredients||[]),...(steps||[])].join(' ').toLowerCase();
-  if(/\b(dip|spread)\b/.test(String(title||'').toLowerCase()))return {category:'Appetizers & Snacks',subcategory:'Dips & Spreads'};
+  if(/\b(dip|spread)\b/.test(titleText))return {category:'Appetizers & Snacks',subcategory:'Dips & Spreads'};
   if(/\b(dip|spread)\b/.test(hay)&&/\b(chips|cracker|appetizer|party|serve)\b/.test(hay))return {category:'Appetizers & Snacks',subcategory:'Dips & Spreads'};
+  if(/\b(soup|soups|bisque|chowder|broth)\b/.test(titleText))return {category:'Soups, Salads & Sandwiches',subcategory:'Soups'};
+  if(/\b(stew|stews)\b/.test(titleText))return {category:'Soups, Salads & Sandwiches',subcategory:'Stews'};
+  if(/\b(chili)\b/.test(titleText))return {category:'Soups, Salads & Sandwiches',subcategory:'Chili'};
+  if(/\b(salad|salads)\b/.test(titleText))return {category:'Soups, Salads & Sandwiches',subcategory:'Salads'};
+  if(/\b(sandwich|sandwiches)\b/.test(titleText))return {category:'Soups, Salads & Sandwiches',subcategory:'Sandwiches'};
+  if(/\b(burger|burgers)\b/.test(titleText))return {category:'Soups, Salads & Sandwiches',subcategory:'Burgers'};
+  if(/\b(taco|tacos)\b/.test(titleText))return {category:'Mexican & Latin',subcategory:'Tacos'};
+  if(/\b(pizza)\b/.test(titleText))return {category:'Italian',subcategory:'Pizza'};
   return {category:'Main Dishes',subcategory:'Beef'};
 }
 function structuredRecipeFromHtml(html,url){
