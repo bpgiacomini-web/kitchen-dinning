@@ -18,7 +18,7 @@ export default async function handler(req, res) {
         const data = await response.json();
         return res.status(200).json(data);
       } catch (e) {
-        if (e?.statusCode === 404 || e?.status === 404 || e?.code === 'BLOB_NOT_FOUND' || e?.code === 'not_found') {
+        if (e?.name === 'BlobNotFoundError' || e?.constructor?.name === 'BlobNotFoundError' || e?.statusCode === 404 || e?.status === 404 || e?.code === 'BLOB_NOT_FOUND' || e?.code === 'not_found') {
           return res.status(200).json({ recipes: [], restaurants: [] });
         }
         throw e;
