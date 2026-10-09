@@ -22,11 +22,16 @@ CREATE TABLE IF NOT EXISTS public.recipe_categories (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   owner_user_id text NOT NULL,
   name text NOT NULL CHECK (length(trim(name)) > 0),
-  parent_id uuid REFERENCES public.recipe_categories(id) ON DELETE SET NULL,
+  parent_id uuid,
   sort_order integer NOT NULL DEFAULT 0,
   created_at timestamptz NOT NULL DEFAULT now(),
   updated_at timestamptz NOT NULL DEFAULT now(),
-  UNIQUE (owner_user_id, parent_id, name)
+  UNIQUE (owner_user_id, id),
+  UNIQUE (owner_user_id, parent_id, name),
+  CONSTRAINT recipe_categories_parent_same_owner_fk
+    FOREIGN KEY (owner_user_id, parent_id)
+    REFERENCES public.recipe_categories(owner_user_id, id)
+    ON DELETE SET NULL (parent_id)
 );
 
 CREATE TABLE IF NOT EXISTS public.recipes (
@@ -71,14 +76,15 @@ CREATE TABLE IF NOT EXISTS public.restaurant_visits (
   ordered_items_json jsonb NOT NULL DEFAULT '[]'::jsonb,
   personal_notes text,
   created_at timestamptz NOT NULL DEFAULT now(),
-  updated_at timestamptz NOT NULL DEFAULT now()
+  updated_at timestamptz NOT NULL DEFAULT now(),
+  UNIQUE (owner_user_id, restaurant_id, id)
 );
 
 CREATE TABLE IF NOT EXISTS public.restaurant_reviews (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   owner_user_id text NOT NULL,
   restaurant_id uuid NOT NULL REFERENCES public.restaurants(id) ON DELETE RESTRICT,
-  visit_id uuid REFERENCES public.restaurant_visits(id) ON DELETE SET NULL,
+  visit_id uuid,
   overall_rating numeric(3,2) CHECK (overall_rating IS NULL OR overall_rating BETWEEN 0 AND 5),
   category_ratings_json jsonb NOT NULL DEFAULT '{}'::jsonb,
   answers_json jsonb NOT NULL DEFAULT '{}'::jsonb,
@@ -86,7 +92,11 @@ CREATE TABLE IF NOT EXISTS public.restaurant_reviews (
   published_at timestamptz,
   created_at timestamptz NOT NULL DEFAULT now(),
   updated_at timestamptz NOT NULL DEFAULT now(),
-  deleted_at timestamptz
+  deleted_at timestamptz,
+  CONSTRAINT reviews_visit_same_owner_restaurant_fk
+    FOREIGN KEY (owner_user_id, restaurant_id, visit_id)
+    REFERENCES public.restaurant_visits(owner_user_id, restaurant_id, id)
+    ON DELETE SET NULL (visit_id)
 );
 
 CREATE TABLE IF NOT EXISTS public.media_assets (
