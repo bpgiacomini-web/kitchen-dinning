@@ -15,8 +15,10 @@ export default async function handler(req, res) {
           headers: { Authorization: `Bearer ${process.env.BLOB_READ_WRITE_TOKEN}` }
         });
         if (!response.ok) throw new Error(`Blob read failed: ${response.status}`);
-        const data = await response.json();
-        return res.status(200).json(data);
+        // A single shared Blob is not a safe account store. Never expose its contents
+        // until this endpoint is replaced with authenticated, per-user authorization.
+        await response.json();
+        return res.status(503).json({ error: 'Authenticated cloud storage is not configured.' });
       } catch (e) {
         if (e?.name === 'BlobNotFoundError' || e?.constructor?.name === 'BlobNotFoundError' || e?.statusCode === 404 || e?.status === 404 || e?.code === 'BLOB_NOT_FOUND' || e?.code === 'not_found') {
           return res.status(200).json({ recipes: [], restaurants: [] });
@@ -26,6 +28,9 @@ export default async function handler(req, res) {
     }
 
     if (req.method === 'PUT') {
+      // Deliberately disable writes to the legacy shared path until auth is enforced.
+      return res.status(503).json({ error: 'Authenticated cloud storage is not configured.' });
+      /* Legacy shared-store write path retained temporarily for review only.
       const data = req.body;
       if (!data || !Array.isArray(data.recipes) || !Array.isArray(data.restaurants)) {
         return res.status(400).json({ error: 'Invalid Metro Eats data.' });
@@ -37,6 +42,7 @@ export default async function handler(req, res) {
         token: process.env.BLOB_READ_WRITE_TOKEN
       });
       return res.status(200).json({ ok: true, url: blob.url });
+      */
     }
 
     res.setHeader('Allow', 'GET, PUT');
