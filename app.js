@@ -125,8 +125,8 @@ document.getElementById('restoreFile')?.addEventListener('change',function(e){
       if(!restored||!Array.isArray(restored.recipes)||!Array.isArray(restored.restaurants))throw new Error('Invalid Metro Eats backup file.');
       if(!confirm('Restore this backup? Your current local Metro Eats data will be replaced.'))return;
       localStorage.setItem(KEY,JSON.stringify(restored));
-      db=parseData(); migrate();
-
+      db=parseData(); migrate(); renderRecipes(); renderRestaurants(); updateStory(); closeModal();
+      alert('Metro Eats backup restored successfully.');
     }catch(err){alert('Metro Eats could not restore that backup.\n\n'+(err.message||'Invalid backup file.'))}
     finally{e.target.value='';}
   };
@@ -165,8 +165,7 @@ migrate();
     window.metroEatsCloudStatus='offline';
     const status=document.getElementById('metroCloudStatus');if(status)status.textContent='Cloud backup unavailable — data remains on this device';
   }
-})(); renderRecipes(); renderRestaurants(); updateStory(); closeModal();
-      alert('Metro Eats backup restored successfully.');
+})();
 /* One-time repair for the restaurant record created before the lookup/save fix. */
 (function(){
   try{
