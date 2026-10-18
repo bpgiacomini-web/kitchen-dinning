@@ -10,12 +10,12 @@
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="icon-180.png">
 <title>Metro Eats</title>
-<link rel="stylesheet" href="styles.css?v=20261005-6">
+<link rel="stylesheet" href="styles.css?v=20261018-cloud-status-5">
 </head>
 <body>
 <div class="app">
+<div id="metroCloudStatus" role="status" aria-live="polite" style="display:block!important;visibility:visible!important;opacity:1!important;position:relative;z-index:100000;box-sizing:border-box;width:100%;margin:0 0 12px;padding:10px 12px;border:2px solid #e7c17a;border-radius:12px;background:#171511;color:#fff;text-align:center;font-size:14px;font-weight:800;line-height:1.35">Cloud backup: checking…</div>
 <header class="top">
-  <div id="metroCloudStatus" role="status" aria-live="polite" style="display:block!important;visibility:visible!important;opacity:1!important;position:relative;z-index:100000;box-sizing:border-box;width:100%;margin:0 0 12px;padding:10px 12px;border:2px solid #e7c17a;border-radius:12px;background:#171511;color:#fff;text-align:center;font-size:14px;font-weight:800;line-height:1.35">Cloud backup: checking…</div>
   <div class="brand"><img class="brandLogo" src="metro-eats-logo.png" alt="Metro Eats — Recipes, Restaurants, Good Food, Local Flavor"></div>
   <div class="nav" id="desktopNav"><button class="active" data-tab="home">Home</button><button data-tab="recipes">Recipes</button><button data-tab="restaurants">Dining</button></div>
 </header>
@@ -102,7 +102,7 @@ document.addEventListener('DOMContentLoaded',function(){
   });
 });
 </script>
-<script src="app.js?v=20261018-cloud-persistence-4" defer></script>
+<script src="app.js?v=20261018-cloud-persistence-5" defer></script>
 <script>
 /* Dining controls fallback: run after the deferred app script has had a chance to initialize. */
 (function(){
