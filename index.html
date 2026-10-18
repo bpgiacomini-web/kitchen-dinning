@@ -10,7 +10,7 @@
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="icon-180.png">
 <title>Metro Eats</title>
-<link rel="stylesheet" href="styles.css?v=20261005-6">
+<link rel="stylesheet" href="styles.css?v=20261018-cloud-status-2">
 </head>
 <body>
 <div class="app">
@@ -18,8 +18,10 @@
   <div class="brand"><img class="brandLogo" src="metro-eats-logo.png" alt="Metro Eats — Recipes, Restaurants, Good Food, Local Flavor"></div>
   <div class="nav" id="desktopNav"><button class="active" data-tab="home">Home</button><button data-tab="recipes">Recipes</button><button data-tab="restaurants">Dining</button></div>
 </header>
+
 <section id="home" class="section active">
-  <div class="hero"><div class="heroIn"><div class="eyebrow">St. Louis • Metro East</div><h2>Metro Eats<br><span class="fl">⚜</span> Recipes & Dining</h2><p>Your personal recipe book and restaurant journal — built around the food you actually love.</p><div class="homeFeatureButtons"><button class="homeFeatureButton recipeButton" onclick="tab('recipes')"><span class="homeFeatureIcon">✦</span><span><strong>Recipes</strong><small>Your Kitchen</small></span><span class="homeFeatureArrow">→</span></button><button class="homeFeatureButton diningButton" onclick="tab('restaurants')"><span class="homeFeatureIcon">⚜</span><span><strong>Dining Experience</strong><small>Your Restaurants & Reviews</small></span><span class="homeFeatureArrow">→</span></button></div>
+  <div class="hero"><div class="heroIn">
+<div id="metroCloudStatus" role="status" aria-live="polite" style="position:relative;z-index:9999;display:block!important;visibility:visible!important;opacity:1!important;margin:0 0 16px;padding:12px 14px;border:2px solid #e7c17a;border-radius:10px;background:#171511;color:#fff;text-align:center;font-size:15px;font-weight:700;line-height:1.4;min-height:22px">METRO EATS CLOUD STATUS: checking…</div><div class="eyebrow">St. Louis • Metro East</div><h2>Metro Eats<br><span class="fl">⚜</span> Recipes & Dining</h2><p>Your personal recipe book and restaurant journal — built around the food you actually love.</p><div class="homeFeatureButtons"><button class="homeFeatureButton recipeButton" onclick="tab('recipes')"><span class="homeFeatureIcon">✦</span><span><strong>Recipes</strong><small>Your Kitchen</small></span><span class="homeFeatureArrow">→</span></button><button class="homeFeatureButton diningButton" onclick="tab('restaurants')"><span class="homeFeatureIcon">⚜</span><span><strong>Dining Experience</strong><small>Your Restaurants & Reviews</small></span><span class="homeFeatureArrow">→</span></button></div>
 <div id="restaurantSpotlight" class="restaurantSpotlight" hidden></div>
 <script>
 (function(){
@@ -101,7 +103,27 @@ document.addEventListener('DOMContentLoaded',function(){
   });
 });
 </script>
-<script src="app.js?v=20261008-1" defer></script>
+<script src="app.js?v=20261018-cloud-status-3" defer></script>
+<script>
+/* Visible cloud status fallback: create the bar at runtime even if the home panel is re-rendered. */
+(function(){
+  function ensureMetroCloudStatus(){
+    var bar=document.getElementById('metroCloudStatus');
+    if(!bar){
+      bar=document.createElement('div');
+      bar.id='metroCloudStatus';
+      bar.setAttribute('role','status');
+      bar.setAttribute('aria-live','polite');
+      bar.textContent='METRO EATS CLOUD STATUS: checking…';
+    }
+    bar.style.cssText='display:block!important;visibility:visible!important;opacity:1!important;position:fixed;top:calc(env(safe-area-inset-top, 0px) + 6px);left:10px;right:10px;z-index:100000;box-sizing:border-box;width:auto;margin:0;padding:10px 12px;border:2px solid #e7c17a;border-radius:12px;background:#171511;color:#fff;text-align:center;font-size:14px;font-weight:800;line-height:1.35;min-height:20px;box-shadow:0 4px 18px #0009';
+    if(!bar.isConnected)document.body.appendChild(bar);
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',ensureMetroCloudStatus);
+  else ensureMetroCloudStatus();
+  window.addEventListener('load',ensureMetroCloudStatus);
+})();
+</script>
 <script>
 /* Dining controls fallback: run after the deferred app script has had a chance to initialize. */
 (function(){

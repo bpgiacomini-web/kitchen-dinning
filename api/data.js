@@ -1,42 +1,67 @@
 import { put, head } from '@vercel/blob';
 
 const PATH = 'metro-eats/data.json';
+const EMPTY = { recipes: [], restaurants: [] };
+
+function isMissingBlob(error) {
+  return error?.statusCode === 404 ||
+    error?.status === 404 ||
+    error?.code === 'BLOB_NOT_FOUND' ||
+    error?.code === 'not_found';
+}
+
+function isValidData(data) {
+  return !!data &&
+    typeof data === 'object' &&
+    Array.isArray(data.recipes) &&
+    Array.isArray(data.restaurants);
+}
 
 export default async function handler(req, res) {
+  res.setHeader('Cache-Control', 'no-store, max-age=0');
+
   try {
-    if (!process.env.BLOB_READ_WRITE_TOKEN) {
+    const token = process.env.BLOB_READ_WRITE_TOKEN;
+    if (!token) {
       return res.status(500).json({ error: 'Blob storage is not configured.' });
     }
 
     if (req.method === 'GET') {
       try {
-        const blob = await head(PATH, { token: process.env.BLOB_READ_WRITE_TOKEN });
+        const blob = await head(PATH, { token });
         const response = await fetch(blob.url, {
-          headers: { Authorization: `Bearer ${process.env.BLOB_READ_WRITE_TOKEN}` }
+          headers: { Authorization: `Bearer ${token}` },
+          cache: 'no-store'
         });
         if (!response.ok) throw new Error(`Blob read failed: ${response.status}`);
         const data = await response.json();
-        return res.status(200).json(data);
-      } catch (e) {
-        if (e?.statusCode === 404 || e?.status === 404 || e?.code === 'BLOB_NOT_FOUND' || e?.code === 'not_found') {
-          return res.status(200).json({ recipes: [], restaurants: [] });
+        if (!isValidData(data)) {
+          return res.status(502).json({ error: 'Stored Metro Eats data is invalid.' });
         }
-        throw e;
+        return res.status(200).json(data);
+      } catch (error) {
+        if (isMissingBlob(error)) return res.status(200).json(EMPTY);
+        throw error;
       }
     }
 
     if (req.method === 'PUT') {
       const data = req.body;
-      if (!data || !Array.isArray(data.recipes) || !Array.isArray(data.restaurants)) {
+      if (!isValidData(data)) {
         return res.status(400).json({ error: 'Invalid Metro Eats data.' });
       }
+
+      // Keep the stable pathname, but explicitly permit updating the existing file.
+      // Short cache lifetime reduces stale reads after a successful save.
       const blob = await put(PATH, JSON.stringify(data), {
         access: 'private',
         addRandomSuffix: false,
+        allowOverwrite: true,
+        cacheControlMaxAge: 60,
         contentType: 'application/json',
-        token: process.env.BLOB_READ_WRITE_TOKEN
+        token
       });
-      return res.status(200).json({ ok: true, url: blob.url });
+      return res.status(200).json({ ok: true, etag: blob.etag || null });
     }
 
     res.setHeader('Allow', 'GET, PUT');
