@@ -81,7 +81,26 @@ new MutationObserver(function(){
 }).observe(modal,{attributes:true,attributeFilter:['class']});let pendingRestaurant=null,pendingReviewRestaurant=null,restaurantEditMode=false,activeCat='',surveyState={restaurantId:null,scores:{},ordered:'',orderAgain:''};
 function uid(){return 'me-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,10)}
 function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
-function save(){localStorage.setItem(KEY,JSON.stringify(db))}
+let metroCloudReady=false,metroCloudTimer=null,metroCloudBusy=false,metroCloudQueued=false;
+function save(){localStorage.setItem(KEY,JSON.stringify(db));if(metroCloudReady){clearTimeout(metroCloudTimer);metroCloudTimer=setTimeout(metroCloudPush,700)}}
+function metroCloudMerge(local,remote){
+  function rows(a,b){const map=new Map();(b||[]).forEach(x=>{if(x&&x.id)map.set(String(x.id),x)});(a||[]).forEach(x=>{if(x&&x.id)map.set(String(x.id),x)});return Array.from(map.values())}
+  return {recipes:rows(local.recipes,remote.recipes),restaurants:rows(local.restaurants,remote.restaurants),cats:local.cats||remote.cats||categories};
+}
+async function metroCloudPush(){
+  if(!metroCloudReady){metroCloudQueued=true;return}
+  if(metroCloudBusy){metroCloudQueued=true;return}
+  metroCloudBusy=true;metroCloudQueued=false;
+  try{
+    const response=await fetch('/api/data',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({recipes:db.recipes||[],restaurants:db.restaurants||[]})});
+    if(!response.ok)throw new Error('Cloud save returned '+response.status);
+    window.metroEatsCloudStatus='saved';
+    const status=document.getElementById('metroCloudStatus');if(status)status.textContent='Cloud backup: saved';
+  }catch(error){
+    window.metroEatsCloudStatus='error';console.warn('Metro Eats cloud save failed; local data remains saved on this device.',error);
+    const status=document.getElementById('metroCloudStatus');if(status)status.textContent='Cloud backup unavailable — data remains on this device';
+  }finally{metroCloudBusy=false;if(metroCloudQueued){metroCloudQueued=false;clearTimeout(metroCloudTimer);metroCloudTimer=setTimeout(metroCloudPush,300)}}
+}
 function openBackup(){
   const payload=JSON.stringify(db,null,2);
   const size=Math.round(new Blob([payload]).size/1024);
@@ -124,6 +143,30 @@ function parseData(){let raw=localStorage.getItem(KEY)||localStorage.getItem(OLD
 let db=parseData();
 function migrate(){const legacy={'Beef':['Main Dishes','Beef'],'Chicken':['Main Dishes','Chicken'],'Pork':['Main Dishes','Pork'],'Seafood':['Main Dishes','Seafood'],'Vegetables & Sides':['Side Dishes','Vegetables'],'Desserts':['Desserts','Cakes'],'Breakfast':['Breakfast & Brunch','Eggs']};db.recipes=(db.recipes||[]).map(r=>{let cat=categories[r.category]?r.category:(legacy[r.category]?.[0]||'Other'),sub=(categories[cat]||['Other']).includes(r.subcategory)?r.subcategory:(legacy[r.category]?.[1]||'Other');return {...r,id:(!r.id||String(r.id)==='new')?uid():String(r.id),category:cat,subcategory:sub,ingredients:r.ingredients||[],steps:r.steps||[],favorite:!!r.favorite,photos:r.photos||[],createdAt:r.createdAt||new Date().toISOString(),updatedAt:r.updatedAt||null}});db.restaurants=(db.restaurants||[]).map(r=>({...r,id:(!r.id||String(r.id)==='new')?uid():String(r.id),reviewHistory:r.reviewHistory||[],photos:r.photos||[],createdAt:r.createdAt||new Date().toISOString(),updatedAt:r.updatedAt||null}));db.cats=categories;save()}
 migrate();
+/* Cloud persistence: local data stays usable if the network is unavailable. */
+(async function metroCloudHydrate(){
+  try{
+    const response=await fetch('/api/data',{cache:'no-store'});
+    if(!response.ok)throw new Error('Cloud load returned '+response.status);
+    const remote=await response.json();
+    if(!remote||!Array.isArray(remote.recipes)||!Array.isArray(remote.restaurants))throw new Error('Cloud data format is invalid');
+    const local=JSON.parse(localStorage.getItem(KEY)||'{"recipes":[],"restaurants":[]}');
+    const merged=metroCloudMerge(local,remote);
+    db={...db,...merged};
+    localStorage.setItem(KEY,JSON.stringify(db));
+    renderRecipes();renderRestaurants();updateStory();
+    metroCloudReady=true;
+    window.metroEatsCloudStatus='connected';
+    const status=document.getElementById('metroCloudStatus');if(status)status.textContent='Cloud backup: connected';
+    if((db.recipes||[]).length||(db.restaurants||[]).length)await metroCloudPush();
+  }catch(error){
+    console.warn('Metro Eats cloud unavailable; keeping local data intact.',error);
+    metroCloudReady=true;
+    window.metroEatsCloudStatus='offline';
+    const status=document.getElementById('metroCloudStatus');if(status)status.textContent='Cloud backup unavailable — data remains on this device';
+  }
+})();
+
 /* One-time repair for the restaurant record created before the lookup/save fix. */
 (function(){
   try{
