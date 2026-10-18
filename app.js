@@ -126,6 +126,23 @@ document.getElementById('restoreFile')?.addEventListener('change',function(e){
       if(!confirm('Restore this backup? Your current local Metro Eats data will be replaced.'))return;
       localStorage.setItem(KEY,JSON.stringify(restored));
       db=parseData(); migrate();
+
+    }catch(err){alert('Metro Eats could not restore that backup.\n\n'+(err.message||'Invalid backup file.'))}
+    finally{e.target.value='';}
+  };
+  reader.readAsText(file);
+});
+function compressDataUrl(dataUrl,maxSide=1280,quality=.72){return new Promise(resolve=>{if(!/^data:image\//i.test(dataUrl||'')){resolve(dataUrl);return}let img=new Image();img.onload=()=>{let scale=Math.min(1,maxSide/Math.max(img.naturalWidth||img.width,img.naturalHeight||img.height)),w=Math.max(1,Math.round((img.naturalWidth||img.width)*scale)),h=Math.max(1,Math.round((img.naturalHeight||img.height)*scale)),canvas=document.createElement('canvas');canvas.width=w;canvas.height=h;let ctx=canvas.getContext('2d');ctx.drawImage(img,0,0,w,h);resolve(canvas.toDataURL('image/jpeg',quality))};img.onerror=()=>resolve(dataUrl);img.src=dataUrl})}
+async function saveWithQuotaRecovery(){try{save();return}catch(e){if(e?.name!=='QuotaExceededError'&&e?.code!==22)throw e}let original=db.restaurants.map(r=>({...r,photos:[...(r.photos||[])]}));for(const r of db.restaurants){if(r.photos?.length)r.photos=await Promise.all(r.photos.map(p=>compressDataUrl(p,1280,.72)))}try{save();return}catch(e){db.restaurants=original;for(const r of db.restaurants){if(r.photos?.length)r.photos=await Promise.all(r.photos.map(p=>compressDataUrl(p,960,.58)))}try{save();return}catch(e2){db.restaurants=original;throw e2}}}
+
+function fmtDateTime(v){if(!v)return '';let d=new Date(v);return Number.isNaN(d.getTime())?'':d.toLocaleString([], {year:'numeric',month:'short',day:'numeric',hour:'numeric',minute:'2-digit'})}
+function stamp(label,v){return v?`<span class="timestamp"><strong>${esc(label)}:</strong> ${esc(fmtDateTime(v))}</span>`:''}
+function fieldValue(id){return document.getElementById(id)?.value?.trim()||''}
+function readFileAsDataUrl(file){return new Promise((resolve,reject)=>{let r=new FileReader();r.onload=()=>resolve(r.result);r.onerror=reject;r.readAsDataURL(file)})}
+function parseData(){let raw=localStorage.getItem(KEY)||localStorage.getItem(OLD_KEY);if(!raw)return {recipes:[],restaurants:[]};try{return JSON.parse(raw)}catch{return {recipes:[],restaurants:[]}}}
+let db=parseData();
+function migrate(){const legacy={'Beef':['Main Dishes','Beef'],'Chicken':['Main Dishes','Chicken'],'Pork':['Main Dishes','Pork'],'Seafood':['Main Dishes','Seafood'],'Vegetables & Sides':['Side Dishes','Vegetables'],'Desserts':['Desserts','Cakes'],'Breakfast':['Breakfast & Brunch','Eggs']};db.recipes=(db.recipes||[]).map(r=>{let cat=categories[r.category]?r.category:(legacy[r.category]?.[0]||'Other'),sub=(categories[cat]||['Other']).includes(r.subcategory)?r.subcategory:(legacy[r.category]?.[1]||'Other');return {...r,id:(!r.id||String(r.id)==='new')?uid():String(r.id),category:cat,subcategory:sub,ingredients:r.ingredients||[],steps:r.steps||[],favorite:!!r.favorite,photos:r.photos||[],createdAt:r.createdAt||new Date().toISOString(),updatedAt:r.updatedAt||null}});db.restaurants=(db.restaurants||[]).map(r=>({...r,id:(!r.id||String(r.id)==='new')?uid():String(r.id),reviewHistory:r.reviewHistory||[],photos:r.photos||[],createdAt:r.createdAt||new Date().toISOString(),updatedAt:r.updatedAt||null}));db.cats=categories;save()}
+migrate();
 /* Cloud persistence: local data stays usable if the network is unavailable. */
 (async function metroCloudHydrate(){
   try{
@@ -150,22 +167,6 @@ document.getElementById('restoreFile')?.addEventListener('change',function(e){
   }
 })(); renderRecipes(); renderRestaurants(); updateStory(); closeModal();
       alert('Metro Eats backup restored successfully.');
-    }catch(err){alert('Metro Eats could not restore that backup.\n\n'+(err.message||'Invalid backup file.'))}
-    finally{e.target.value='';}
-  };
-  reader.readAsText(file);
-});
-function compressDataUrl(dataUrl,maxSide=1280,quality=.72){return new Promise(resolve=>{if(!/^data:image\//i.test(dataUrl||'')){resolve(dataUrl);return}let img=new Image();img.onload=()=>{let scale=Math.min(1,maxSide/Math.max(img.naturalWidth||img.width,img.naturalHeight||img.height)),w=Math.max(1,Math.round((img.naturalWidth||img.width)*scale)),h=Math.max(1,Math.round((img.naturalHeight||img.height)*scale)),canvas=document.createElement('canvas');canvas.width=w;canvas.height=h;let ctx=canvas.getContext('2d');ctx.drawImage(img,0,0,w,h);resolve(canvas.toDataURL('image/jpeg',quality))};img.onerror=()=>resolve(dataUrl);img.src=dataUrl})}
-async function saveWithQuotaRecovery(){try{save();return}catch(e){if(e?.name!=='QuotaExceededError'&&e?.code!==22)throw e}let original=db.restaurants.map(r=>({...r,photos:[...(r.photos||[])]}));for(const r of db.restaurants){if(r.photos?.length)r.photos=await Promise.all(r.photos.map(p=>compressDataUrl(p,1280,.72)))}try{save();return}catch(e){db.restaurants=original;for(const r of db.restaurants){if(r.photos?.length)r.photos=await Promise.all(r.photos.map(p=>compressDataUrl(p,960,.58)))}try{save();return}catch(e2){db.restaurants=original;throw e2}}}
-
-function fmtDateTime(v){if(!v)return '';let d=new Date(v);return Number.isNaN(d.getTime())?'':d.toLocaleString([], {year:'numeric',month:'short',day:'numeric',hour:'numeric',minute:'2-digit'})}
-function stamp(label,v){return v?`<span class="timestamp"><strong>${esc(label)}:</strong> ${esc(fmtDateTime(v))}</span>`:''}
-function fieldValue(id){return document.getElementById(id)?.value?.trim()||''}
-function readFileAsDataUrl(file){return new Promise((resolve,reject)=>{let r=new FileReader();r.onload=()=>resolve(r.result);r.onerror=reject;r.readAsDataURL(file)})}
-function parseData(){let raw=localStorage.getItem(KEY)||localStorage.getItem(OLD_KEY);if(!raw)return {recipes:[],restaurants:[]};try{return JSON.parse(raw)}catch{return {recipes:[],restaurants:[]}}}
-let db=parseData();
-function migrate(){const legacy={'Beef':['Main Dishes','Beef'],'Chicken':['Main Dishes','Chicken'],'Pork':['Main Dishes','Pork'],'Seafood':['Main Dishes','Seafood'],'Vegetables & Sides':['Side Dishes','Vegetables'],'Desserts':['Desserts','Cakes'],'Breakfast':['Breakfast & Brunch','Eggs']};db.recipes=(db.recipes||[]).map(r=>{let cat=categories[r.category]?r.category:(legacy[r.category]?.[0]||'Other'),sub=(categories[cat]||['Other']).includes(r.subcategory)?r.subcategory:(legacy[r.category]?.[1]||'Other');return {...r,id:(!r.id||String(r.id)==='new')?uid():String(r.id),category:cat,subcategory:sub,ingredients:r.ingredients||[],steps:r.steps||[],favorite:!!r.favorite,photos:r.photos||[],createdAt:r.createdAt||new Date().toISOString(),updatedAt:r.updatedAt||null}});db.restaurants=(db.restaurants||[]).map(r=>({...r,id:(!r.id||String(r.id)==='new')?uid():String(r.id),reviewHistory:r.reviewHistory||[],photos:r.photos||[],createdAt:r.createdAt||new Date().toISOString(),updatedAt:r.updatedAt||null}));db.cats=categories;save()}
-migrate();
 /* One-time repair for the restaurant record created before the lookup/save fix. */
 (function(){
   try{
