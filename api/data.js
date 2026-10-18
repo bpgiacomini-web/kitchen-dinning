@@ -3,6 +3,7 @@ import { put, head } from '@vercel/blob';
 const PATH = 'metro-eats/data.json';
 
 export default async function handler(req, res) {
+  res.setHeader('Cache-Control', 'no-store, max-age=0');
   try {
     if (!process.env.BLOB_READ_WRITE_TOKEN) {
       return res.status(500).json({ error: 'Blob storage is not configured.' });
@@ -33,6 +34,8 @@ export default async function handler(req, res) {
       const blob = await put(PATH, JSON.stringify(data), {
         access: 'private',
         addRandomSuffix: false,
+        allowOverwrite: true,
+        cacheControlMaxAge: 60,
         contentType: 'application/json',
         token: process.env.BLOB_READ_WRITE_TOKEN
       });
