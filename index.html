@@ -116,9 +116,8 @@ document.addEventListener('DOMContentLoaded',function(){
       bar.setAttribute('aria-live','polite');
       bar.textContent='METRO EATS CLOUD STATUS: checking…';
     }
-    bar.style.cssText='display:block!important;visibility:visible!important;opacity:1!important;position:relative;z-index:10000;box-sizing:border-box;width:100%;margin:0 0 16px;padding:12px 14px;border:2px solid #e7c17a;border-radius:10px;background:#171511;color:#fff;text-align:center;font-size:15px;font-weight:700;line-height:1.4;min-height:22px';
-    var hero=document.querySelector('.hero .heroIn')||document.querySelector('.hero')||document.querySelector('main');
-    if(hero&&bar.parentNode!==hero)hero.insertBefore(bar,hero.firstChild);
+    bar.style.cssText='display:block!important;visibility:visible!important;opacity:1!important;position:fixed;top:calc(env(safe-area-inset-top, 0px) + 6px);left:10px;right:10px;z-index:100000;box-sizing:border-box;width:auto;margin:0;padding:10px 12px;border:2px solid #e7c17a;border-radius:12px;background:#171511;color:#fff;text-align:center;font-size:14px;font-weight:800;line-height:1.35;min-height:20px;box-shadow:0 4px 18px #0009';
+    if(!bar.isConnected)document.body.appendChild(bar);
   }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',ensureMetroCloudStatus);
   else ensureMetroCloudStatus();
