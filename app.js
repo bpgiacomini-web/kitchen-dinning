@@ -94,8 +94,20 @@ async function metroCloudPush(){
   try{
     const response=await fetch('/api/data',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({recipes:db.recipes||[],restaurants:db.restaurants||[]})});
     if(!response.ok)throw new Error('Cloud save returned '+response.status);
+    // Verify the exact write by reading the cloud copy back before reporting success.
+    const verifyResponse=await fetch('/api/data?verify='+Date.now(),{cache:'no-store'});
+    if(!verifyResponse.ok)throw new Error('Cloud verification returned '+verifyResponse.status);
+    const verified=await verifyResponse.json();
+    const expectedRecipes=db.recipes||[], expectedRestaurants=db.restaurants||[];
+    const verifiedRecipes=verified.recipes||[], verifiedRestaurants=verified.restaurants||[];
+    const matches=(expected,actual)=>expected.length===actual.length&&expected.every(item=>{
+      const saved=actual.find(row=>row&&row.id===item.id);
+      return !!saved&&JSON.stringify(saved)===JSON.stringify(item);
+    });
+    if(!matches(expectedRecipes,verifiedRecipes)||!matches(expectedRestaurants,verifiedRestaurants))
+      throw new Error('Cloud write returned success, but read-back data did not match the latest local data.');
     window.metroEatsCloudStatus='saved';
-    const status=document.getElementById('metroCloudStatus');if(status)status.textContent='Cloud backup: saved';
+    const status=document.getElementById('metroCloudStatus');if(status)status.textContent='Cloud backup: saved and verified';
   }catch(error){
     window.metroEatsCloudStatus='error';console.warn('Metro Eats cloud save failed; local data remains saved on this device.',error);
     const status=document.getElementById('metroCloudStatus');if(status)status.textContent='Cloud backup unavailable — data remains on this device';
