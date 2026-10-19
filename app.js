@@ -350,9 +350,17 @@ function inferImportedCategory(title,ingredients,steps){
   if(/\b(salad|salads)\b/.test(titleText))return {category:'Soups, Salads & Sandwiches',subcategory:'Salads'};
   if(/\b(sandwich|sandwiches)\b/.test(titleText))return {category:'Soups, Salads & Sandwiches',subcategory:'Sandwiches'};
   if(/\b(burger|burgers)\b/.test(titleText))return {category:'Soups, Salads & Sandwiches',subcategory:'Burgers'};
-  if(/\b(taco|tacos)\b/.test(titleText))return {category:'Mexican & Latin',subcategory:'Tacos'};
-  if(/\b(pizza)\b/.test(titleText))return {category:'Italian',subcategory:'Pizza'};
-  return {category:'Main Dishes',subcategory:'Beef'};
+  if(/\b(taco|tacos|enchilada|burrito|quesadilla)\b/.test(titleText))return {category:'Mexican & Latin',subcategory:'Other'};
+  if(/\b(pizza|pasta|alfredo|lasagna|spaghetti|fettuccine|ravioli|risotto)\b/.test(titleText))return {category:'Italian',subcategory:'Other'};
+  if(/\b(breakfast|pancake|waffle|omelet|omelette|french toast)\b/.test(titleText))return {category:'Breakfast & Brunch',subcategory:'Other'};
+  if(/\b(chicken|turkey|poultry)\b/.test(titleText))return {category:'Main Dishes',subcategory:'Chicken'};
+  if(/\b(pork|ham|bacon|sausage)\b/.test(titleText))return {category:'Main Dishes',subcategory:'Pork'};
+  if(/\b(beef|steak|brisket|meatloaf)\b/.test(titleText))return {category:'Main Dishes',subcategory:'Beef'};
+  if(/\b(shrimp|salmon|tuna|fish|seafood|crab|lobster)\b/.test(titleText))return {category:'Main Dishes',subcategory:'Seafood'};
+  const cats=Object.keys(categories||{});
+  const category=cats.includes('Main Dishes')?'Main Dishes':(cats[0]||'Other');
+  const subs=(categories||{})[category]||[];
+  return {category,subcategory:subs.includes('Other')?'Other':(subs[0]||'Other')};
 }
 function structuredRecipeFromHtml(html,url){
   let r=findRecipeJsonLd(html);
