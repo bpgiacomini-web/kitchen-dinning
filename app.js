@@ -84,19 +84,12 @@ function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&l
 let metroCloudReady=false,metroCloudTimer=null,metroCloudBusy=false,metroCloudQueued=false;
 function save(){localStorage.setItem(KEY,JSON.stringify(db));if(metroCloudReady){clearTimeout(metroCloudTimer);metroCloudTimer=setTimeout(metroCloudPush,700)}}
 function metroCloudMerge(local,remote){
-  // Merge both stores by ID, preferring the record with the newest edit timestamp.
-  // This prevents an older Home Screen cache from overwriting newer cloud edits.
+  // Cloud is authoritative for records with matching IDs. Keep local-only rows
+  // so device-only data is not discarded, but never let an old app cache overwrite cloud edits.
   function rows(localRows,remoteRows){
     const map=new Map();
+    (localRows||[]).forEach(x=>{if(x&&x.id)map.set(String(x.id),x)});
     (remoteRows||[]).forEach(x=>{if(x&&x.id)map.set(String(x.id),x)});
-    (localRows||[]).forEach(x=>{
-      if(!x||!x.id)return;
-      const key=String(x.id), cloud=map.get(key);
-      if(!cloud){map.set(key,x);return}
-      const localTime=Date.parse(x.updatedAt||x.createdAt||0)||0;
-      const cloudTime=Date.parse(cloud.updatedAt||cloud.createdAt||0)||0;
-      if(localTime>cloudTime)map.set(key,x);
-    });
     return Array.from(map.values());
   }
   return {recipes:rows(local.recipes,remote.recipes),restaurants:rows(local.restaurants,remote.restaurants),cats:remote.cats||local.cats||categories};
