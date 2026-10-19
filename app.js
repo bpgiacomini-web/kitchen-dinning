@@ -300,10 +300,10 @@ function recipeInstructionItems(value,out=[]){
   if(Array.isArray(value)){value.forEach(x=>recipeInstructionItems(x,out));return out}
   if(typeof value==='string'){
     /* Preserve boundaries from JSON-LD directions before cleanImportedLine collapses whitespace. */
-    const rawParts=String(value).split(/(?:\\r?\\n)+|<br\\s*\\/?\\s*>|<\\/(?:p|li|div|h[1-6])\\s*>/i).map(x=>cleanImportedLine(x)).filter(Boolean);
+    const rawParts=String(value).split(/(?:\r?\n)+|<br\s*\\/?\s*>|<\\/(?:p|li|div|h[1-6])\s*>/i).map(x=>cleanImportedLine(x)).filter(Boolean);
     rawParts.forEach(raw=>{
       /* Some recipe sites serialize all directions as one paragraph. Split only at sentence boundaries that look like a new instruction. */
-      const pieces=raw.split(/(?<=[.!?])\\s+(?=(?:Using|Add|Bake|Boil|Bring|Broil|Chop|Combine|Cook|Cover|Drain|Heat|Mix|Place|Pour|Remove|Serve|Simmer|Stir|Whisk|Preheat|Reduce|Season|Transfer|Set|Let|Once|When|Then|Next|Finally|Spread|Fold|Beat|Blend|Sprinkle|Coat|Saute|Sauté)\\b)/i).map(cleanImportedLine).filter(Boolean);
+      const pieces=raw.split(/(?<=[.!?])\s+(?=(?:Using|Add|Bake|Boil|Bring|Broil|Chop|Combine|Cook|Cover|Drain|Heat|Mix|Place|Pour|Remove|Serve|Simmer|Stir|Whisk|Preheat|Reduce|Season|Transfer|Set|Let|Once|When|Then|Next|Finally|Spread|Fold|Beat|Blend|Sprinkle|Coat|Saute|Sauté)\b)/i).map(cleanImportedLine).filter(Boolean);
       pieces.forEach(x=>{if(!isRecipeMetaLine(x))out.push(x)});
     });
     return out;
