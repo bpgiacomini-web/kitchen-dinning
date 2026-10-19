@@ -90,11 +90,30 @@
 <input id="restoreFile" type="file" accept="application/json" hidden>
 <script>
 /* Metro Eats navigation fallback — keeps primary navigation usable if app initialization is delayed */
-window.tab=function(t){
+window.tab=async function(t){
   document.querySelectorAll('[data-tab]').forEach(function(b){b.classList.toggle('active',b.dataset.tab===t)});
   document.querySelectorAll('.section').forEach(function(sec){sec.classList.toggle('active',sec.id===t)});
-  try{if(t==='recipes'&&typeof window.renderRecipes==='function')window.renderRecipes()}catch(e){}
-  try{if(t==='restaurants'&&typeof window.renderRestaurants==='function')window.renderRestaurants()}catch(e){}
+  if(t==='recipes'||t==='restaurants'){
+    try{
+      var response=await fetch('/api/data?refresh='+Date.now(),{cache:'no-store'});
+      if(response.ok){
+        var remote=await response.json();
+        if(Array.isArray(remote.recipes)&&Array.isArray(remote.restaurants)){
+          var key=window.METRO_EATS_STORAGE_KEY||'metro_eats_v2';
+          var raw=localStorage.getItem(key);
+          var local=raw?JSON.parse(raw):{recipes:[],restaurants:[]};
+          var merge=window.metroCloudMerge;
+          if(typeof merge==='function'){
+            window.db=Object.assign({},window.db||{},merge(local,remote));
+            localStorage.setItem(key,JSON.stringify(window.db));
+          }else if(typeof window.metroCloudHydrate==='function'){
+            await window.metroCloudHydrate();
+          }
+        }
+      }
+    }catch(e){console.warn('Metro Eats cloud refresh failed',e)}
+  }
+  try{if(t==='recipes'||t==='restaurants'){fetch('/api/data?refresh='+Date.now(),{cache:'no-store'}).then(function(r){return r.ok?r.json():null}).then(function(d){if(!d||!Array.isArray(d.recipes))return;var key='metro_eats_v2';var local=JSON.parse(localStorage.getItem(key)||'{"recipes":[],"restaurants":[]}');var map=new Map((local.recipes||[]).map(function(x){return [x.id,x]}));(d.recipes||[]).forEach(function(x){map.set(x.id,x)});local.recipes=Array.from(map.values());var rm=new Map((local.restaurants||[]).map(function(x){return [x.id,x]}));(d.restaurants||[]).forEach(function(x){rm.set(x.id,x)});local.restaurants=Array.from(rm.values());localStorage.setItem(key,JSON.stringify(local));if(t==='recipes'&&typeof window.renderRecipes==='function')window.renderRecipes();if(t==='restaurants'&&typeof window.renderRestaurants==='function')window.renderRestaurants()}).catch(function(){})}else{if(t==='home'&&typeof window.renderHome==='function')window.renderHome()}}catch(e){}
 };
 document.addEventListener('DOMContentLoaded',function(){
   document.querySelectorAll('[data-tab]').forEach(function(b){
@@ -102,7 +121,7 @@ document.addEventListener('DOMContentLoaded',function(){
   });
 });
 </script>
-<script src="app.js?v=20261018-on-demand-cloud-refresh-14" defer></script>
+<script src="app.js?v=20261018-inline-cloud-refresh-15" defer></script>
 <script>
 /* Dining controls fallback: run after the deferred app script has had a chance to initialize. */
 (function(){
