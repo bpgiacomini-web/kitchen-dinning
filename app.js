@@ -84,8 +84,22 @@ function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&l
 let metroCloudReady=false,metroCloudTimer=null,metroCloudBusy=false,metroCloudQueued=false;
 function save(){localStorage.setItem(KEY,JSON.stringify(db));if(metroCloudReady){clearTimeout(metroCloudTimer);metroCloudTimer=setTimeout(metroCloudPush,700)}}
 function metroCloudMerge(local,remote){
-  function rows(a,b){const map=new Map();(b||[]).forEach(x=>{if(x&&x.id)map.set(String(x.id),x)});(a||[]).forEach(x=>{if(x&&x.id)map.set(String(x.id),x)});return Array.from(map.values())}
-  return {recipes:rows(local.recipes,remote.recipes),restaurants:rows(local.restaurants,remote.restaurants),cats:local.cats||remote.cats||categories};
+  // Merge both stores by ID, preferring the record with the newest edit timestamp.
+  // This prevents an older Home Screen cache from overwriting newer cloud edits.
+  function rows(localRows,remoteRows){
+    const map=new Map();
+    (remoteRows||[]).forEach(x=>{if(x&&x.id)map.set(String(x.id),x)});
+    (localRows||[]).forEach(x=>{
+      if(!x||!x.id)return;
+      const key=String(x.id), cloud=map.get(key);
+      if(!cloud){map.set(key,x);return}
+      const localTime=Date.parse(x.updatedAt||x.createdAt||0)||0;
+      const cloudTime=Date.parse(cloud.updatedAt||cloud.createdAt||0)||0;
+      if(localTime>cloudTime)map.set(key,x);
+    });
+    return Array.from(map.values());
+  }
+  return {recipes:rows(local.recipes,remote.recipes),restaurants:rows(local.restaurants,remote.restaurants),cats:remote.cats||local.cats||categories};
 }
 async function metroCloudPush(){
   if(!metroCloudReady){metroCloudQueued=true;return}
