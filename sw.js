@@ -1,4 +1,4 @@
-const CACHE='metro-eats-v37';
+const CACHE='metro-eats-v38';
 const APP=['./','./index.html','./app.js','./styles.css','./manifest.json','./news.json','./icon-180.png','./icon-512.png','./metro-eats-logo.png'];
 const SHELL=new Set(['/','/index.html','/app.js','/styles.css']);
 self.addEventListener('install',event=>{event.waitUntil(caches.open(CACHE).then(c=>c.addAll(APP).catch(()=>{})).then(()=>self.skipWaiting()))});
