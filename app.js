@@ -299,8 +299,9 @@ function findRecipeJsonLd(html){
 function recipeInstructionItems(value,out=[]){
   if(Array.isArray(value)){value.forEach(x=>recipeInstructionItems(x,out));return out}
   if(typeof value==='string'){
-    let x=cleanImportedLine(value);
-    if(x&&!isRecipeMetaLine(x))out.push(x);
+    /* Preserve boundaries from JSON-LD directions before cleanImportedLine collapses whitespace. */
+    const parts=String(value).split(/(?:\\r?\\n)+|<br\\s*\\/?\\s*>|<\\/(?:p|li|div|h[1-6])\\s*>/i).map(x=>cleanImportedLine(x)).filter(Boolean);
+    parts.forEach(x=>{if(!isRecipeMetaLine(x))out.push(x)});
     return out;
   }
   if(value&&typeof value==='object'){
