@@ -204,7 +204,7 @@ migrate();
   }catch(e){console.warn('Metro Eats one-time restaurant repair skipped',e)}
 })();
 
-function tab(t){document.querySelectorAll('[data-tab]').forEach(b=>b.classList.toggle('active',b.dataset.tab===t));document.querySelectorAll('.section').forEach(s=>s.classList.toggle('active',s.id===t));if(t==='recipes')renderRecipes();if(t==='restaurants')renderRestaurants()}
+async function tab(t){document.querySelectorAll('[data-tab]').forEach(b=>b.classList.toggle('active',b.dataset.tab===t));document.querySelectorAll('.section').forEach(s=>s.classList.toggle('active',s.id===t));if(t==='recipes'||t==='restaurants'){try{const res=await fetch('/api/data?refresh='+Date.now(),{cache:'no-store'});if(res.ok){const remote=await res.json();if(Array.isArray(remote.recipes)&&Array.isArray(remote.restaurants)){const local=JSON.parse(localStorage.getItem(KEY)||'{"recipes":[],"restaurants":[]}');db={...db,...metroCloudMerge(local,remote)};localStorage.setItem(KEY,JSON.stringify(db));}}}catch(e){console.warn('Metro Eats on-demand cloud refresh unavailable',e)}}if(t==='recipes')renderRecipes();if(t==='restaurants')renderRestaurants()}
 document.querySelectorAll('[data-tab]').forEach(b=>b.addEventListener('click',()=>tab(b.dataset.tab)));
 function renderCategoryFilter(){let e=document.getElementById('recipeCategoryFilter');if(!e)return;let v=e.value;e.innerHTML='<option value="">All Categories</option>'+Object.keys(categories).map(c=>`<option value="${esc(c)}">${esc(c)}</option>`).join('');e.value=categories[v]?v:''}
 function filterRecipeCategory(c){activeCat=c;renderRecipes()}
