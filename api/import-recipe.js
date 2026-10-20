@@ -21,7 +21,7 @@ function parseJsonLd(html) {
     if (Array.isArray(value)) { value.forEach(walk); return; }
     if (typeof value !== 'object') return;
     const types = Array.isArray(value['@type']) ? value['@type'] : [value['@type']];
-    if (types.some(t => String(t).toLowerCase() === 'recipe')) found.push(value);
+    if (types.some(t => String(t).toLowerCase().split(/[\/#]/).pop() === 'recipe')) found.push(value);
     if (value['@graph']) walk(value['@graph']);
     if (value.itemListElement) walk(value.itemListElement);
   }
