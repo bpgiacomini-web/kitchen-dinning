@@ -445,7 +445,7 @@ function extractRecipeCore(text,url){
 async function fetchWebsiteForCreateRecipe(){
   const url=fieldValue('recipeUrl').trim();
   if(!url)return alert('Please enter a recipe URL.');
-  if(!/^https?:\\/\\//i.test(url))return alert('Please enter a full http:// or https:// recipe URL.');
+  if(!/^https?:\/\//i.test(url))return alert('Please enter a full http:// or https:// recipe URL.');
   modalBody.innerHTML=`<div class="eyebrow">Recipe importer</div><h2>Extracting recipe…</h2><div class="status">Metro Eats is reading the recipe page and extracting its structured ingredients and directions.</div>`;
   try{
     const response=await fetch('/api/import-recipe',{method:'POST',headers:{'Content-Type':'application/json','Accept':'application/json'},cache:'no-store',credentials:'same-origin',body:JSON.stringify({url})});
