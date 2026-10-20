@@ -45,6 +45,14 @@ function parseJsonLd(html) {
 }
 
 function plainText(value) {
+  if (value && typeof value === 'object') {
+    // Some publishers encode ingredients as Schema.org PropertyValue objects.
+    if (value.text) return plainText(value.text);
+    if (value.value != null && value.name) return plainText(String(value.value) + ' ' + value.name);
+    if (value.name) return plainText(value.name);
+    if (value.value != null) return plainText(value.value);
+    return '';
+  }
   return String(value || '').replace(/<[^>]*>/g, ' ').replace(/&nbsp;/gi, ' ')
     .replace(/&amp;/gi, '&').replace(/&quot;/gi, '"').replace(/&#39;/g, "'")
     .replace(/\s+/g, ' ').trim();
