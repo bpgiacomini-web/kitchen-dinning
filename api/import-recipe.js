@@ -21,17 +21,27 @@ function parseJsonLd(html) {
     if (Array.isArray(value)) { value.forEach(walk); return; }
     if (typeof value !== 'object') return;
     const types = Array.isArray(value['@type']) ? value['@type'] : [value['@type']];
-    if (types.some(t => String(t).toLowerCase().split(/[\/#]/).pop() === 'recipe')) found.push(value);
-    if (value['@graph']) walk(value['@graph']);
-    if (value.itemListElement) walk(value.itemListElement);
+    if (types.some(t => String(t).toLowerCase().split(/[\\/#]/).pop() === 'recipe')) found.push(value);
+    // Recipe nodes may be nested under @graph, mainEntity, or publisher-specific wrappers.
+    for (const [key, child] of Object.entries(value)) {
+      if (key !== '@context' && key !== '@type' && key !== '@id' && child && typeof child === 'object') walk(child);
+    }
   }
   for (const block of blocks) {
     const raw = block.replace(/^<script\b[^>]*>/i, '').replace(/<\/script>\s*$/i, '')
       .replace(/&quot;/g, '"').replace(/&amp;/g, '&').trim();
     try { walk(JSON.parse(raw)); } catch {}
   }
-  return found.find(r => Array.isArray(r.recipeIngredient) && r.recipeIngredient.length &&
-    r.recipeInstructions && (Array.isArray(r.recipeInstructions) ? r.recipeInstructions.length : true)) || null;
+  const recipe = found.find(r => {
+    const ingredients = Array.isArray(r.recipeIngredient) ? r.recipeIngredient : (typeof r.recipeIngredient === 'string' ? [r.recipeIngredient] : []);
+    const steps = r.recipeInstructions;
+    return ingredients.some(item => String(item || '').trim()) &&
+      (Array.isArray(steps) ? steps.length > 0 : typeof steps === 'string' && steps.trim().length > 0);
+  }) || null;
+  if (!recipe) return null;
+  // Schema.org allows a single string as well as an array for these fields.
+  recipe.recipeIngredient = Array.isArray(recipe.recipeIngredient) ? recipe.recipeIngredient : [recipe.recipeIngredient];
+  return recipe;
 }
 
 function plainText(value) {
