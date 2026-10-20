@@ -442,7 +442,39 @@ function extractRecipeCore(text,url){
     validationIssues:checked.issues
   };
 }
-async function fetchWebsiteForCreateRecipe(){let url=fieldValue('recipeUrl');if(!url)return alert('Please enter a recipe URL.');if(!/^https?:\/\//i.test(url))return alert('Please enter a full http:// or https:// recipe URL.');modalBody.innerHTML=`<div class="eyebrow">Recipe importer</div><h2>Extracting recipe…</h2><div class="status">Reading the public recipe page and looking for structured recipe data.</div>`;try{let html='';try{let proxy='https://proxy.cors.dev/'+url;let r=await fetch(proxy,{cache:'no-store',credentials:'omit'});if(r.ok)html=await r.text()}catch{}if(!html){try{let r=await fetch('https://r.jina.ai/'+url,{cache:'no-store',credentials:'omit'});if(r.ok)html=await r.text()}catch{}}if(!html)throw Error('Recipe page could not be read');let parsed=structuredRecipeFromHtml(html,url)||extractRecipeCore(html,url);if(!parsed)throw Error('No clear recipe structure found');showImportedRecipeReview(parsed,'Website import')}catch(e){console.error('Metro Eats recipe import failed',e);modalBody.innerHTML=`<div class="eyebrow">Recipe importer</div><h2>Couldn’t extract a clean recipe</h2><p class="hint">Metro Eats could not safely extract the recipe from that page. Nothing was saved.</p><div class="actions"><button class="btn primary" onclick="openPasteImporter()">Paste Recipe Instead</button><button class="btn" onclick="openRecipeChooser()">Back</button></div>`}}
+async function fetchWebsiteForCreateRecipe(){
+  let url=fieldValue('recipeUrl');
+  if(!url)return alert('Please enter a recipe URL.');
+  if(!/^https?:\\/\\//i.test(url))return alert('Please enter a full http:// or https:// recipe URL.');
+  modalBody.innerHTML=`<div class="eyebrow">Recipe importer</div><h2>Extracting recipe…</h2><div class="status">Trying safe public-page readers and looking for structured recipe data.</div>`;
+  try{
+    let html='';
+    const readers=[
+      'https://r.jina.ai/'+url,
+      'https://proxy.cors.dev/'+url,
+      'https://api.allorigins.win/raw?url='+encodeURIComponent(url),
+      'https://corsproxy.io/?url='+encodeURIComponent(url)
+    ];
+    for(const reader of readers){
+      try{
+        const response=await fetch(reader,{cache:'no-store',credentials:'omit'});
+        if(!response.ok)continue;
+        const candidate=await response.text();
+        if(candidate&&candidate.length>500&&!/\b(502 Bad Gateway|403 Forbidden|Access denied|Cloudflare Ray ID)\b/i.test(candidate)){
+          html=candidate;
+          if(structuredRecipeFromHtml(html,url)||extractRecipeCore(html,url))break;
+        }
+      }catch{}
+    }
+    if(!html)throw Error('Recipe page could not be read by available public readers');
+    let parsed=structuredRecipeFromHtml(html,url)||extractRecipeCore(html,url);
+    if(!parsed)throw Error('Page was reached, but no safe recipe structure was found');
+    showImportedRecipeReview(parsed,'Website import');
+  }catch(e){
+    console.error('Metro Eats recipe import failed',e);
+    modalBody.innerHTML=`<div class="eyebrow">Recipe importer</div><h2>Couldn’t extract a clean recipe</h2><p class="hint">Metro Eats could not safely read and validate the recipe from that page. Nothing was saved. Try again, or paste the recipe text instead.</p><div class="actions"><button class="btn primary" onclick="openPasteImporter()">Paste Recipe Instead</button><button class="btn" onclick="openRecipeChooser()">Back</button></div>`;
+  }
+}
 function parsePastedRecipe(){
   let text=fieldValue('rawRecipe').trim();
   if(!text)return alert('Paste the recipe text first.');
