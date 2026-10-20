@@ -1,0 +1,122 @@
+const MAX_HTML = 2_000_000;
+const TIMEOUT_MS = 12_000;
+
+function safePublicUrl(value) {
+  let url;
+  try { url = new URL(value); } catch { return null; }
+  if (!['http:', 'https:'].includes(url.protocol)) return null;
+  const host = url.hostname.toLowerCase();
+  if (!host || host === 'localhost' || host.endsWith('.localhost') || host.endsWith('.local') ||
+      host === '::1' || host.startsWith('127.') || host.startsWith('10.') ||
+      host.startsWith('192.168.') || /^172\.(1[6-9]|2\d|3[01])\./.test(host) ||
+      host === '0.0.0.0' || host === '169.254.169.254') return null;
+  return url;
+}
+
+function parseJsonLd(html) {
+  const found = [];
+  const blocks = html.match(/<script\b[^>]*type\s*=\s*["']application\/ld\+json["'][^>]*>[\s\S]*?<\/script>/gi) || [];
+  function walk(value) {
+    if (!value) return;
+    if (Array.isArray(value)) { value.forEach(walk); return; }
+    if (typeof value !== 'object') return;
+    const types = Array.isArray(value['@type']) ? value['@type'] : [value['@type']];
+    if (types.some(t => String(t).toLowerCase() === 'recipe')) found.push(value);
+    if (value['@graph']) walk(value['@graph']);
+    if (value.itemListElement) walk(value.itemListElement);
+  }
+  for (const block of blocks) {
+    const raw = block.replace(/^<script\b[^>]*>/i, '').replace(/<\/script>\s*$/i, '')
+      .replace(/&quot;/g, '"').replace(/&amp;/g, '&').trim();
+    try { walk(JSON.parse(raw)); } catch {}
+  }
+  return found.find(r => Array.isArray(r.recipeIngredient) && r.recipeIngredient.length &&
+    r.recipeInstructions && (Array.isArray(r.recipeInstructions) ? r.recipeInstructions.length : true)) || null;
+}
+
+function plainText(value) {
+  return String(value || '').replace(/<[^>]*>/g, ' ').replace(/&nbsp;/gi, ' ')
+    .replace(/&amp;/gi, '&').replace(/&quot;/gi, '"').replace(/&#39;/g, "'")
+    .replace(/\s+/g, ' ').trim();
+}
+function instructions(value, out = []) {
+  if (typeof value === 'string') { const t = plainText(value); if (t) out.push(t); }
+  else if (Array.isArray(value)) value.forEach(v => instructions(v, out));
+  else if (value && typeof value === 'object') {
+    if (value.text) instructions(value.text, out);
+    else if (value.itemListElement) instructions(value.itemListElement, out);
+    else if (value.name) instructions(value.name, out);
+  }
+  return out;
+}
+function isoDuration(value) {
+  if (!value) return '';
+  const m = String(value).match(/P(?:(\d+)D)?(?:T(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?)?/i);
+  if (!m) return plainText(value);
+  const parts = [];
+  if (m[1]) parts.push(Number(m[1]) * 24 * 60 + Number(m[2] || 0) * 60 + Number(m[3] || 0) + ' minutes');
+  else {
+    if (m[2]) parts.push(m[2] + ' hours');
+    if (m[3]) parts.push(m[3] + ' minutes');
+  }
+  return parts.join(' ') || plainText(value);
+}
+async function readText(url) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
+  try {
+    const response = await fetch(url, {
+      redirect: 'follow',
+      signal: controller.signal,
+      headers: { 'User-Agent': 'Mozilla/5.0 (compatible; MetroEatsRecipeImporter/1.0)', 'Accept': 'text/html,text/plain;q=0.9,*/*;q=0.8' }
+    });
+    if (!response.ok) return '';
+    const type = response.headers.get('content-type') || '';
+    if (!/text\/html|text\/plain|application\/json/i.test(type)) return '';
+    const text = await response.text();
+    return text.length <= MAX_HTML ? text : text.slice(0, MAX_HTML);
+  } catch { return ''; } finally { clearTimeout(timer); }
+}
+
+export default async function handler(req, res) {
+  res.setHeader('Cache-Control', 'no-store, max-age=0');
+  if (req.method !== 'POST') {
+    res.setHeader('Allow', 'POST');
+    return res.status(405).json({ error: 'Method not allowed.' });
+  }
+  const url = safePublicUrl(req.body && req.body.url);
+  if (!url) return res.status(400).json({ error: 'Enter a valid public http or https recipe URL.' });
+  try {
+    let html = await readText(url.href);
+    let recipe = html ? parseJsonLd(html) : null;
+    // If the publisher blocks server fetches, try a text-reader proxy server-side.
+    if (!recipe) {
+      const reader = 'https://r.jina.ai/' + url.href;
+      const text = await readText(reader);
+      if (text) {
+        html = text;
+        recipe = parseJsonLd(text);
+      }
+    }
+    if (!recipe) return res.status(422).json({ error: 'The page could not be read as a structured recipe. Paste the recipe text instead.' });
+    const ingredients = recipe.recipeIngredient.map(plainText).filter(Boolean).slice(0, 100);
+    const steps = instructions(recipe.recipeInstructions).slice(0, 100);
+    if (!ingredients.length || !steps.length) return res.status(422).json({ error: 'The page did not contain clear ingredients and directions.' });
+    const time = [];
+    if (recipe.prepTime) time.push('Prep ' + isoDuration(recipe.prepTime));
+    if (recipe.cookTime) time.push('Cook ' + isoDuration(recipe.cookTime));
+    if (!time.length && recipe.totalTime) time.push('Total ' + isoDuration(recipe.totalTime));
+    const yieldValue = Array.isArray(recipe.recipeYield) ? recipe.recipeYield.join(', ') : recipe.recipeYield || '';
+    return res.status(200).json({ recipe: {
+      title: plainText(recipe.name) || 'Imported Recipe',
+      ingredients,
+      steps,
+      servings: plainText(yieldValue),
+      time: time.join(' • '),
+      extractionMethod: 'Server-side Recipe structured data'
+    }});
+  } catch (error) {
+    console.error('Metro Eats recipe URL import error', error);
+    return res.status(500).json({ error: 'Recipe import service is temporarily unavailable.' });
+  }
+}
