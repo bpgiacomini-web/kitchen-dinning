@@ -86,7 +86,7 @@ function parseReaderText(text) {
     recipeIngredient: ingredients, recipeInstructions: steps };
 }
 
-async function readText(url) {
+async function readText(url, outcomes = []) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
   try {
@@ -95,8 +95,12 @@ async function readText(url) {
       signal: controller.signal,
       headers: { 'User-Agent': 'Mozilla/5.0 (compatible; MetroEatsRecipeImporter/1.0)', 'Accept': 'text/html,text/plain;q=0.9,*/*;q=0.8' }
     });
-    if (!response.ok) return '';
     const type = response.headers.get('content-type') || '';
+    if (!response.ok) {
+      outcomes.push({ url, status: response.status, contentType: type });
+      return '';
+    }
+    outcomes.push({ url, status: response.status, contentType: type });
     const text = await response.text();
     // Reader proxies may label readable recipe text as text/markdown or an unfamiliar type.
     if (!/text\/html|text\/plain|text\/markdown|application\/json|application\/xhtml\+xml/i.test(type) && !/^\s*(?:#|Title:|Ingredients\b)/i.test(text)) return '';
@@ -113,18 +117,25 @@ export default async function handler(req, res) {
   const url = safePublicUrl(req.body && req.body.url);
   if (!url) return res.status(400).json({ error: 'Enter a valid public http or https recipe URL.' });
   try {
-    let html = await readText(url.href);
+    const outcomes = [];
+    let html = await readText(url.href, outcomes);
     let recipe = html ? parseJsonLd(html) : null;
     // If the publisher blocks server fetches, try a text-reader proxy server-side.
     if (!recipe) {
       const reader = 'https://r.jina.ai/' + url.href;
-      const text = await readText(reader);
+      const text = await readText(reader, outcomes);
       if (text) {
         html = text;
         recipe = parseJsonLd(text) || parseReaderText(text);
       }
     }
-    if (!recipe) return res.status(422).json({ error: 'The page was reached, but Metro Eats could not identify both ingredient and direction sections. Nothing was saved.' });
+    if (!recipe) {
+      const blocked = outcomes.some(item => [401, 402, 403, 406, 409, 429, 451].includes(item.status));
+      const error = blocked
+        ? 'This website blocks automated recipe importing, so Metro Eats cannot safely extract its recipe. Nothing was saved. Open the recipe, copy the ingredients and directions, and paste the recipe text into Metro Eats instead.'
+        : 'Metro Eats could not find clear recipe ingredients and directions on that page. Nothing was saved. Try another recipe page or paste the recipe text directly.';
+      return res.status(422).json({ error, reason: blocked ? 'source_blocked' : 'recipe_not_found' });
+    }
     const ingredients = recipe.recipeIngredient.map(plainText).filter(Boolean).slice(0, 100);
     const steps = instructions(recipe.recipeInstructions).slice(0, 100);
     if (!ingredients.length || !steps.length) return res.status(422).json({ error: 'The page did not contain clear ingredients and directions.' });
