@@ -333,6 +333,9 @@ function looksLikeRecipeStep(x){
 function normalizeImportedIngredientText(value){
   return String(value??'')
     .replace(/[\\u200B-\\u200D\\uFEFF]/g,'')
+    // Strip grocery price annotations while preserving recipe quantities.
+    .replace(/\\s*\\(\\s*\\$\\s*\\d+(?:\\.\\d{1,2})?\\s*\\)/g,'')
+    .replace(/\\s+\\$\\s*\\d+(?:\\.\\d{1,2})?\\b/g,'')
     .replace(/\\b(table\\s*spoons?|tablespoons?)\\s*([sS])\\b/gi,'tablespoons')
     .replace(/\\b(teaspoons?)\\s*([sS])\\b/gi,'teaspoons')
     .replace(/\\b(cloves?)\\s*([sS])\\b/gi,'cloves')
@@ -481,6 +484,9 @@ function parsePastedRecipe(){
   showImportedRecipeReview({title,ingredients,steps,servings,time,extractionMethod:'Pasted recipe'},'Pasted recipe');
 }
 function showImportedRecipeReview(data,source){
+  const inferred=inferImportedCategory(data.title||data.name,data.ingredients||[],data.steps||[]);
+  data={...data,category:data.category||inferred.category,subcategory:data.subcategory||inferred.subcategory,
+    servings:normalizeImportedServings(data.servings||''),time:normalizeImportedTime(data.time||'')};
   const checked=validateRecipeExtraction(data);
   window._pendingImportedRecipe={
     ...data,
@@ -517,7 +523,9 @@ function continueImportedRecipe(){
   }
   const title=fieldValue('importTitle').trim();
   if(!title){alert('Please enter a recipe name before continuing.');return}
-  window._pendingImportedRecipe={...p,title,servings:fieldValue('importServings').trim(),time:fieldValue('importTime').trim(),ingredients:checked.ingredients,steps:checked.steps};
+  const finalIngredients=checked.ingredients.map(normalizeImportedIngredientText);
+  const inferred=inferImportedCategory(title,finalIngredients,checked.steps);
+  window._pendingImportedRecipe={...p,title,category:p.category||inferred.category,subcategory:p.subcategory||inferred.subcategory,servings:normalizeImportedServings(fieldValue('importServings').trim()),time:normalizeImportedTime(fieldValue('importTime').trim()),ingredients:finalIngredients,steps:checked.steps};
   openRecipe('new',window._pendingImportedRecipe);
 }
 function openRestaurant(id,prefilling=null){let r=id==='new'?prefilling||{id:'new',name:'',type:'Other',location:'',website:'',menuUrl:'',notes:'',photos:[],survey:null,reviewHistory:[],createdAt:null,updatedAt:null}:db.restaurants.find(x=>String(x.id)===String(id));if(!r)return;if(id!=='new'&&!r.id){r.id=uid();save()}pendingRestaurant=id==='new'?{...r}:null;pendingReviewRestaurant=id==='new'?null:{...r,photos:[...(r.photos||[])]};restaurantEditMode=id!=='new';window._editingPhotos=[...(r.photos||[])];let latest=r.reviewHistory?.[r.reviewHistory.length-1]||r.survey||null;let scores=latest?.scores||{};surveyState={restaurantId:id==='new'?'new':r.id,scores:{},ordered:latest?.ordered||'',orderAgain:latest?.orderAgain||''};surveyQuestions.forEach((q,i)=>surveyState.scores[i]=Number((Array.isArray(scores)?scores[i]:scores[i])||0));renderSurvey()}
