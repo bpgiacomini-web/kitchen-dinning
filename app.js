@@ -332,19 +332,19 @@ function looksLikeRecipeStep(x){
 }
 function normalizeImportedIngredientText(value){
   return String(value??'')
-    .replace(/[\\u200B-\\u200D\\uFEFF]/g,'')
-    // Strip grocery price annotations while preserving recipe quantities.
-    .replace(/\\s*\\(\\s*\\$\\s*\\d+(?:\\.\\d{1,2})?\\s*\\)/g,'')
-    .replace(/\\s+\\$\\s*\\d+(?:\\.\\d{1,2})?\\b/g,'')
-    .replace(/\\b(table\\s*spoons?|tablespoons?)\\s*([sS])\\b/gi,'tablespoons')
-    .replace(/\\b(teaspoons?)\\s*([sS])\\b/gi,'teaspoons')
-    .replace(/\\b(cloves?)\\s*([sS])\\b/gi,'cloves')
-    .replace(/\\b(cups?)\\s*([sS])\\b/gi,'cups')
-    .replace(/\\b(minutes?)\\s*([sS])\\b/gi,'minutes')
-    .replace(/\\bhours?\\s*([sS])\\b/gi,'hours')
-    .replace(/\\b(pieces?)\\s*([sS])\\b/gi,'pieces')
-    .replace(/\\b(sprigs?)\\s*([sS])\\b/gi,'sprigs')
-    .replace(/\\s+/g,' ')
+    .replace(/[\u200B-\u200D\uFEFF]/g,'')
+    // Strip publisher grocery prices like ($.59), ($0.40), and trailing $0.40.
+    .replace(/\s*\(\s*\$\s*(?:\d+(?:\.\d{1,2})?|\.\d{1,2})\s*\)/g,'')
+    .replace(/\s+\$\s*(?:\d+(?:\.\d{1,2})?|\.\d{1,2})\b/g,'')
+    .replace(/\b(table\s*spoons?|tablespoons?)\s*([sS])\b/gi,'tablespoons')
+    .replace(/\b(teaspoons?)\s*([sS])\b/gi,'teaspoons')
+    .replace(/\b(cloves?)\s*([sS])\b/gi,'cloves')
+    .replace(/\b(cups?)\s*([sS])\b/gi,'cups')
+    .replace(/\b(minutes?)\s*([sS])\b/gi,'minutes')
+    .replace(/\bhours?\s*([sS])\b/gi,'hours')
+    .replace(/\b(pieces?)\s*([sS])\b/gi,'pieces')
+    .replace(/\b(sprigs?)\s*([sS])\b/gi,'sprigs')
+    .replace(/\s+/g,' ')
     .trim();
 }
 function validateRecipeExtraction(data){
@@ -484,9 +484,12 @@ function parsePastedRecipe(){
   showImportedRecipeReview({title,ingredients,steps,servings,time,extractionMethod:'Pasted recipe'},'Pasted recipe');
 }
 function showImportedRecipeReview(data,source){
-  const inferred=inferImportedCategory(data.title||data.name,data.ingredients||[],data.steps||[]);
-  data={...data,category:data.category||inferred.category,subcategory:data.subcategory||inferred.subcategory,
-    servings:normalizeImportedServings(data.servings||''),time:normalizeImportedTime(data.time||'')};
+  const cleanIngredients=(data.ingredients||[]).map(normalizeImportedIngredientText);
+  const inferred=inferImportedCategory(data.title||data.name,cleanIngredients,data.steps||[]);
+  const hasSpecificInferred=/\\b(dip|spread)\\b/i.test(String(data.title||data.name||''));
+  data={...data,category:hasSpecificInferred?inferred.category:(data.category||inferred.category),
+    subcategory:hasSpecificInferred?inferred.subcategory:(data.subcategory||inferred.subcategory),
+    ingredients:cleanIngredients,servings:normalizeImportedServings(data.servings||''),time:normalizeImportedTime(data.time||'')};
   const checked=validateRecipeExtraction(data);
   window._pendingImportedRecipe={
     ...data,
