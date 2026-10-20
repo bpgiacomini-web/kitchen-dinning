@@ -384,6 +384,8 @@ function inferImportedCategory(title,ingredients,steps){
   if(/\b(salad|salads)\b/.test(titleText))return {category:'Soups, Salads & Sandwiches',subcategory:'Salads'};
   if(/\b(sandwich|sandwiches)\b/.test(titleText))return {category:'Soups, Salads & Sandwiches',subcategory:'Sandwiches'};
   if(/\b(burger|burgers)\b/.test(titleText))return {category:'Soups, Salads & Sandwiches',subcategory:'Burgers'};
+  // Classify mixed/assembled dishes by their dish name before looking at meat ingredients.
+  if(/\b(stuffed peppers?|bell peppers?|casseroles?|shepherd'?s pie|pot pie|meatloaf|stuffed shells?)\b/.test(titleText))return {category:'Main Dishes',subcategory:'Other'};
   if(/\b(taco|tacos|enchilada|burrito|quesadilla)\b/.test(titleText))return {category:'Mexican & Latin',subcategory:'Other'};
   if(/\b(pizza|pasta|alfredo|lasagna|spaghetti|fettuccine|ravioli|risotto)\b/.test(titleText))return {category:'Italian',subcategory:'Other'};
   if(/\b(breakfast|pancake|waffle|omelet|omelette|french toast)\b/.test(titleText))return {category:'Breakfast & Brunch',subcategory:'Other'};
