@@ -443,36 +443,22 @@ function extractRecipeCore(text,url){
   };
 }
 async function fetchWebsiteForCreateRecipe(){
-  let url=fieldValue('recipeUrl');
+  const url=fieldValue('recipeUrl').trim();
   if(!url)return alert('Please enter a recipe URL.');
   if(!/^https?:\\/\\//i.test(url))return alert('Please enter a full http:// or https:// recipe URL.');
-  modalBody.innerHTML=`<div class="eyebrow">Recipe importer</div><h2>Extracting recipe…</h2><div class="status">Trying safe public-page readers and looking for structured recipe data.</div>`;
+  modalBody.innerHTML=`<div class="eyebrow">Recipe importer</div><h2>Extracting recipe…</h2><div class="status">Metro Eats is reading the recipe page and extracting its structured ingredients and directions.</div>`;
   try{
-    let html='';
-    const readers=[
-      'https://r.jina.ai/'+url,
-      'https://proxy.cors.dev/'+url,
-      'https://api.allorigins.win/raw?url='+encodeURIComponent(url),
-      'https://corsproxy.io/?url='+encodeURIComponent(url)
-    ];
-    for(const reader of readers){
-      try{
-        const response=await fetch(reader,{cache:'no-store',credentials:'omit'});
-        if(!response.ok)continue;
-        const candidate=await response.text();
-        if(candidate&&candidate.length>500&&!/\b(502 Bad Gateway|403 Forbidden|Access denied|Cloudflare Ray ID)\b/i.test(candidate)){
-          html=candidate;
-          if(structuredRecipeFromHtml(html,url)||extractRecipeCore(html,url))break;
-        }
-      }catch{}
-    }
-    if(!html)throw Error('Recipe page could not be read by available public readers');
-    let parsed=structuredRecipeFromHtml(html,url)||extractRecipeCore(html,url);
-    if(!parsed)throw Error('Page was reached, but no safe recipe structure was found');
-    showImportedRecipeReview(parsed,'Website import');
+    const response=await fetch('/api/import-recipe',{method:'POST',headers:{'Content-Type':'application/json','Accept':'application/json'},cache:'no-store',credentials:'same-origin',body:JSON.stringify({url})});
+    let result={};try{result=await response.json()}catch{}
+    if(!response.ok)throw Error(result.error||'The recipe page could not be read.');
+    if(!result.recipe||!Array.isArray(result.recipe.ingredients)||!Array.isArray(result.recipe.steps))throw Error('The importer returned incomplete recipe data.');
+    const parsed=result.recipe;
+    const checked=validateRecipeExtraction(parsed);
+    if(!checked.ingredients.length||!checked.steps.length)throw Error('No clear ingredients and directions were found.');
+    showImportedRecipeReview({...parsed,ingredients:checked.ingredients,steps:checked.steps,validationIssues:checked.issues},'Website import');
   }catch(e){
     console.error('Metro Eats recipe import failed',e);
-    modalBody.innerHTML=`<div class="eyebrow">Recipe importer</div><h2>Couldn’t extract a clean recipe</h2><p class="hint">Metro Eats could not safely read and validate the recipe from that page. Nothing was saved. Try again, or paste the recipe text instead.</p><div class="actions"><button class="btn primary" onclick="openPasteImporter()">Paste Recipe Instead</button><button class="btn" onclick="openRecipeChooser()">Back</button></div>`;
+    modalBody.innerHTML=`<div class="eyebrow">Recipe importer</div><h2>Couldn’t extract a clean recipe</h2><p class="hint">${esc(e.message||'Metro Eats could not safely read the recipe page.')} Nothing was saved. You can try again or paste the recipe text instead.</p><div class="actions"><button class="btn primary" onclick="openPasteImporter()">Paste Recipe Instead</button><button class="btn" onclick="openRecipeChooser()">Back</button></div>`;
   }
 }
 function parsePastedRecipe(){
