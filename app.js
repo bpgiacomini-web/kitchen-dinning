@@ -334,8 +334,11 @@ function normalizeImportedIngredientText(value){
   return String(value??'')
     .replace(/[\u200B-\u200D\uFEFF]/g,'')
     // Strip publisher grocery prices like ($.59), ($0.40), and trailing $0.40.
-    .replace(/\s*\(\s*\$\s*(?:\d+(?:\.\d{1,2})?|\.\d{1,2})\s*\)/g,'')
-    .replace(/\s+\$\s*(?:\d+(?:\.\d{1,2})?|\.\d{1,2})\b/g,'')
+    .replace(/\s*\(\s*\$\s*(?:\d+(?:\.\d{1,2})?|\.\d{1,2})\s*\*?\s*\)/g,'')
+    .replace(/\s+\$\s*(?:\d+(?:\.\d{1,2})?|\.\d{1,2})\s*\*?\b/g,'')
+    .replace(/\s*\(\s*(diced|minced|shredded|freshly cracked|uncooked)\s*,?\s*\)/gi, ' ($1)')
+    .replace(/\bmoz\s+zarella\b/gi,'mozzarella')
+    .replace(/\b(clove)\s+s\b/gi,'$1s')
     .replace(/\b(table\s*spoons?|tablespoons?)\s*([sS])\b/gi,'tablespoons')
     .replace(/\b(teaspoons?)\s*([sS])\b/gi,'teaspoons')
     .replace(/\b(cloves?)\s*([sS])\b/gi,'cloves')
