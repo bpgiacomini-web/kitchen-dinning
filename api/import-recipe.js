@@ -97,8 +97,9 @@ async function readText(url) {
     });
     if (!response.ok) return '';
     const type = response.headers.get('content-type') || '';
-    if (!/text\/html|text\/plain|application\/json/i.test(type)) return '';
     const text = await response.text();
+    // Reader proxies may label readable recipe text as text/markdown or an unfamiliar type.
+    if (!/text\/html|text\/plain|text\/markdown|application\/json|application\/xhtml\+xml/i.test(type) && !/^\s*(?:#|Title:|Ingredients\b)/i.test(text)) return '';
     return text.length <= MAX_HTML ? text : text.slice(0, MAX_HTML);
   } catch { return ''; } finally { clearTimeout(timer); }
 }
@@ -123,7 +124,7 @@ export default async function handler(req, res) {
         recipe = parseJsonLd(text) || parseReaderText(text);
       }
     }
-    if (!recipe) return res.status(422).json({ error: 'The page could not be read as a structured recipe. Paste the recipe text instead.' });
+    if (!recipe) return res.status(422).json({ error: 'The page was reached, but Metro Eats could not identify both ingredient and direction sections. Nothing was saved.' });
     const ingredients = recipe.recipeIngredient.map(plainText).filter(Boolean).slice(0, 100);
     const steps = instructions(recipe.recipeInstructions).slice(0, 100);
     if (!ingredients.length || !steps.length) return res.status(422).json({ error: 'The page did not contain clear ingredients and directions.' });
