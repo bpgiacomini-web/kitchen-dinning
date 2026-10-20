@@ -330,9 +330,23 @@ function looksLikeRecipeStep(x){
   if(!s||s.length>900||/https?:\/\//i.test(s)||isRecipeMetaLine(s))return false;
   return true;
 }
+function normalizeImportedIngredientText(value){
+  return String(value??'')
+    .replace(/[\\u200B-\\u200D\\uFEFF]/g,'')
+    .replace(/\\b(table\\s*spoons?|tablespoons?)\\s*([sS])\\b/gi,'tablespoons')
+    .replace(/\\b(teaspoons?)\\s*([sS])\\b/gi,'teaspoons')
+    .replace(/\\b(cloves?)\\s*([sS])\\b/gi,'cloves')
+    .replace(/\\b(cups?)\\s*([sS])\\b/gi,'cups')
+    .replace(/\\b(minutes?)\\s*([sS])\\b/gi,'minutes')
+    .replace(/\\bhours?\\s*([sS])\\b/gi,'hours')
+    .replace(/\\b(pieces?)\\s*([sS])\\b/gi,'pieces')
+    .replace(/\\b(sprigs?)\\s*([sS])\\b/gi,'sprigs')
+    .replace(/\\s+/g,' ')
+    .trim();
+}
 function validateRecipeExtraction(data){
-  const ingredients=(data.ingredients||[]).map(cleanImportedLine).filter(looksLikeRecipeIngredient);
-  const steps=(data.steps||[]).map(cleanImportedLine).filter(looksLikeRecipeStep);
+  const ingredients=(data.ingredients||[]).map(x=>cleanImportedLine(normalizeImportedIngredientText(x))).filter(looksLikeRecipeIngredient);
+  const steps=(data.steps||[]).map(x=>cleanImportedLine(x)).filter(looksLikeRecipeStep);
   const issues=[];
   if(ingredients.length<2)issues.push('Not enough clearly identifiable ingredients were found.');
   if(steps.length<2)issues.push('Not enough clearly identifiable cooking directions were found.');
