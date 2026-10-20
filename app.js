@@ -365,7 +365,7 @@ function normalizeImportedTime(value){
   const m=x.match(/^PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?$/i);
   if(m){const h=Number(m[1]||0),min=Number(m[2]||0),sec=Number(m[3]||0);return [h?h+' hour'+(h===1?'':'s'):'',min?min+' minute'+(min===1?'':'s'):'',sec?sec+' second'+(sec===1?'':'s'):''].filter(Boolean).join(' ')}
   // Remove labels accidentally imported as part of the value (e.g. "Prep 10 minutes").
-  x=x.replace(/^(?:prep(?:aration)?(?:\\s*\\+\\s*cook)?|cook(?:ing)? time)\\s*[:—-]?\\s*/i,'');
+  x=x.replace(/^(?:prep(?:aration)?(?:\s*\+\s*cook)?|cook(?:ing)? time)\s*[:—-]?\s*/i,'');
   return x;
 }
 function inferImportedCategory(title,ingredients,steps){
