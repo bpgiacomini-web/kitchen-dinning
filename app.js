@@ -336,8 +336,10 @@ function normalizeImportedIngredientText(value){
     // Strip publisher grocery prices like ($.59), ($0.40), and trailing $0.40.
     .replace(/\s*\(\s*\$\s*(?:\d+(?:\.\d{1,2})?|\.\d{1,2})\s*\*?\s*\)/g,'')
     .replace(/\s+\$\s*(?:\d+(?:\.\d{1,2})?|\.\d{1,2})\s*\*?\b/g,'')
-    .replace(/\s*\(\s*(diced|minced|shredded|freshly cracked|uncooked)\s*,?\s*\)/gi, ' ($1)')
+    .replace(/\s*\(\s*(diced|minced|shredded|freshly cracked|uncooked|divided)\s*,?\s*\*{1,3}\s*\)/gi, ' ($1)')
+    .replace(/\s*\(\s*(diced|minced|shredded|freshly cracked|uncooked|divided)\s*,?\s*\)/gi, ' ($1)')
     .replace(/\bmoz\s+zarella\b/gi,'mozzarella')
+    .replace(/\bclove\s+s\b/gi,'cloves')
     .replace(/\b(clove)\s+s\b/gi,'$1s')
     .replace(/\b(table\s*spoons?|tablespoons?)\s*([sS])\b/gi,'tablespoons')
     .replace(/\b(teaspoons?)\s*([sS])\b/gi,'teaspoons')
