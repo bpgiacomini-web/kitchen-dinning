@@ -495,7 +495,8 @@ function parsePastedRecipe(){
 function showImportedRecipeReview(data,source){
   const cleanIngredients=(data.ingredients||[]).map(normalizeImportedIngredientText);
   const inferred=inferImportedCategory(data.title||data.name,cleanIngredients,data.steps||[]);
-  const hasSpecificInferred=/\\b(dip|spread)\\b/i.test(String(data.title||data.name||''));
+  const importTitle=String(data.title||data.name||'').toLowerCase();
+  const hasSpecificInferred=/\b(dip|spread|stuffed peppers?|bell peppers?|casseroles?|shepherd'?s pie|pot pie|meatloaf|stuffed shells?)\b/i.test(importTitle);
   data={...data,category:hasSpecificInferred?inferred.category:(data.category||inferred.category),
     subcategory:hasSpecificInferred?inferred.subcategory:(data.subcategory||inferred.subcategory),
     ingredients:cleanIngredients,servings:normalizeImportedServings(data.servings||''),time:normalizeImportedTime(data.time||'')};
