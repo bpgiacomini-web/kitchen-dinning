@@ -349,6 +349,8 @@ function normalizeImportedIngredientText(value){
     .replace(/\s*\(\s*(diced|minced|shredded|freshly cracked|uncooked|divided)\s*,?\s*\*{1,3}\s*\)/gi, ' ($1)')
     .replace(/\s*\(\s*(diced|minced|shredded|freshly cracked|uncooked|divided)\s*,?\s*\)/gi, ' ($1)')
     .replace(/\bmoz\s+zarella\b/gi,'mozzarella')
+    // Repair plural unit words split by pasted formatting, e.g. "3 clove s garlic".
+    .replace(/\b(clove|cup|tablespoon|teaspoon|minute|hour|piece|sprig)\s+([sS])(?=\s|,|$)/gi,'$1$2')
     .replace(/\bclove\s+s\b/gi,'cloves')
     .replace(/\bcup\s+s\b/gi,'cups')
     .replace(/\b(clove)\s+s\b/gi,'$1s')
