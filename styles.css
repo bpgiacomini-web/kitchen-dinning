@@ -90,3 +90,7 @@
 .cloudStatus{position:fixed;top:calc(env(safe-area-inset-top,0px) + 6px);left:10px;right:10px;z-index:100000;box-sizing:border-box;padding:10px 12px;border:2px solid #e7c17a;border-radius:12px;background:#171511;color:#fff;text-align:center;font-size:14px;font-weight:800;line-height:1.35;box-shadow:0 4px 18px #0009}
 /* Keep cloud status in normal document flow; never let it overlay recipe import/editor sheets. */
 #metroCloudStatus{position:relative!important;top:auto!important;left:auto!important;right:auto!important;z-index:0!important;pointer-events:none!important;box-shadow:none!important}
+/* iOS modal scroll containment: keep touch swipes inside recipe import/review overlays and their textareas. */
+.modal.show{overscroll-behavior:contain;touch-action:pan-y;}
+.modal .sheet{max-height:calc(100dvh - env(safe-area-inset-top,0px) - 24px);overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;touch-action:pan-y;}
+.modal textarea{overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;touch-action:pan-y;}
