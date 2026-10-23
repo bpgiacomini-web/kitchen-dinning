@@ -83,7 +83,7 @@ function uid(){return 'me-'+Date.now().toString(36)+'-'+Math.random().toString(3
 function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 let metroCloudReady=false,metroCloudTimer=null,metroCloudBusy=false,metroCloudQueued=false,metroRestoreInProgress=false,metroCloudHydrated=false;
 // Bound cloud requests so a stalled connection can never leave the status banner on CHECKING forever.
-async function metroCloudFetch(url,options={}){const controller=new AbortController();const timeout=setTimeout(()=>controller.abort(),20000);try{return await fetch(url,{...options,signal:controller.signal,cache:options.cache||'no-store'})}finally{clearTimeout(timeout)}}
+async function metroCloudFetch(url,options={}){const controller=new AbortController();const timeout=setTimeout(()=>controller.abort(),18000);try{return await fetch(url,{...options,signal:controller.signal,cache:options.cache||'no-store'})}finally{clearTimeout(timeout)}}
 function save(){localStorage.setItem(KEY,JSON.stringify(db));if(metroCloudReady){clearTimeout(metroCloudTimer);metroCloudTimer=setTimeout(metroCloudPush,700)}}
 function metroCloudMerge(local,remote){
   // Cloud is authoritative for records with matching IDs. Keep local-only rows
@@ -209,9 +209,9 @@ migrate();
 (async function metroCloudHydrate(){
   try{
     let response,lastError;
-    for(let attempt=0;attempt<3;attempt++){
+    for(let attempt=0;attempt<2;attempt++){
       try{response=await metroCloudFetch('/api/data?hydrate='+Date.now()+'-'+attempt,{cache:'no-store'});if(!response.ok)throw new Error('Cloud load returned '+response.status);break}
-      catch(error){lastError=error;if(attempt===2)throw lastError;await new Promise(resolve=>setTimeout(resolve,700*(attempt+1)))}
+      catch(error){lastError=error;if(attempt===1)throw lastError;await new Promise(resolve=>setTimeout(resolve,700*(attempt+1)))}
     }
     const remote=await response.json();
     if(!remote||!Array.isArray(remote.recipes)||!Array.isArray(remote.restaurants))throw new Error('Cloud data format is invalid');
