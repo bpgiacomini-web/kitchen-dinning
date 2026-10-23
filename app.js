@@ -81,9 +81,9 @@ new MutationObserver(function(){
 }).observe(modal,{attributes:true,attributeFilter:['class']});let pendingRestaurant=null,pendingReviewRestaurant=null,restaurantEditMode=false,activeCat='',surveyState={restaurantId:null,scores:{},ordered:'',orderAgain:''};
 function uid(){return 'me-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,10)}
 function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
-let metroCloudReady=false,metroCloudTimer=null,metroCloudBusy=false,metroCloudQueued=false,metroRestoreInProgress=false;
+let metroCloudReady=false,metroCloudTimer=null,metroCloudBusy=false,metroCloudQueued=false,metroRestoreInProgress=false,metroCloudHydrated=false;
 // Bound cloud requests so a stalled connection can never leave the status banner on CHECKING forever.
-async function metroCloudFetch(url,options={}){const controller=new AbortController();const timeout=setTimeout(()=>controller.abort(),12000);try{return await fetch(url,{...options,signal:controller.signal,cache:options.cache||'no-store'})}finally{clearTimeout(timeout)}}
+async function metroCloudFetch(url,options={}){const controller=new AbortController();const timeout=setTimeout(()=>controller.abort(),20000);try{return await fetch(url,{...options,signal:controller.signal,cache:options.cache||'no-store'})}finally{clearTimeout(timeout)}}
 function save(){localStorage.setItem(KEY,JSON.stringify(db));if(metroCloudReady){clearTimeout(metroCloudTimer);metroCloudTimer=setTimeout(metroCloudPush,700)}}
 function metroCloudMerge(local,remote){
   // Cloud is authoritative for records with matching IDs. Keep local-only rows
@@ -98,7 +98,7 @@ function metroCloudMerge(local,remote){
 }
 async function metroCloudPush(){
   if(metroRestoreInProgress){metroCloudQueued=true;return}
-  if(!metroCloudReady){metroCloudQueued=true;return}
+  if(!metroCloudReady||!metroCloudHydrated){metroCloudQueued=true;return}
   if(metroCloudBusy){metroCloudQueued=true;return}
   metroCloudBusy=true;metroCloudQueued=false;
   try{
@@ -208,8 +208,11 @@ migrate();
 /* Cloud persistence: local data stays usable if the network is unavailable. */
 (async function metroCloudHydrate(){
   try{
-    const response=await metroCloudFetch('/api/data',{cache:'no-store'});
-    if(!response.ok)throw new Error('Cloud load returned '+response.status);
+    let response,lastError;
+    for(let attempt=0;attempt<3;attempt++){
+      try{response=await metroCloudFetch('/api/data?hydrate='+Date.now()+'-'+attempt,{cache:'no-store'});if(!response.ok)throw new Error('Cloud load returned '+response.status);break}
+      catch(error){lastError=error;if(attempt===2)throw lastError;await new Promise(resolve=>setTimeout(resolve,700*(attempt+1)))}
+    }
     const remote=await response.json();
     if(!remote||!Array.isArray(remote.recipes)||!Array.isArray(remote.restaurants))throw new Error('Cloud data format is invalid');
     const local=JSON.parse(localStorage.getItem(KEY)||'{"recipes":[],"restaurants":[]}');
@@ -217,15 +220,15 @@ migrate();
     db={...db,...merged};
     localStorage.setItem(KEY,JSON.stringify(db));
     renderRecipes();renderRestaurants();updateStory();
-    metroCloudReady=true;
+    metroCloudReady=true;metroCloudHydrated=true;
     window.metroEatsCloudStatus='connected';
     const status=document.getElementById('metroCloudStatus');if(status)status.textContent='Cloud backup: connected';
     if((db.recipes||[]).length||(db.restaurants||[]).length)await metroCloudPush();
   }catch(error){
     console.warn('Metro Eats cloud unavailable; keeping local data intact.',error);
-    metroCloudReady=true;
+    metroCloudReady=false;metroCloudHydrated=false;
     window.metroEatsCloudStatus='offline';
-    const status=document.getElementById('metroCloudStatus');if(status)status.textContent='Cloud backup unavailable — data remains on this device';
+    const status=document.getElementById('metroCloudStatus');if(status)status.textContent='Cloud connection failed — saved cloud data is protected. Reload to retry; do not save until connected.';
   }
 })();
 
