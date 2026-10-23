@@ -262,7 +262,19 @@ function isRecipeStopHeading(s){
   return /^(ingredients?|directions?|instructions?|method|steps?|notes?|nutrition|nutritional information|calories?|more recipes|related recipes|you may also like|recommended|about the author|comments?|leave a reply|video|watch|equipment|tools|storage|variations?|tips?|substitutions?|serving suggestions?|reviews?)\b/i.test(String(s||'').replace(/^#+\s*/,'').trim());
 }
 function isRecipeSectionHeading(s){
-  return /^(ingredients?|directions?|instructions?|method|steps?|notes?|nutrition|nutritional information|calories?|equipment|tools|storage|variations?|tips?|substitutions?|serving suggestions?|reviews?|comments?|more recipes|related recipes|you may also like|recommended|about the author)\s*:??$/i.test(String(s||'').replace(/^#+\s*/,'').trim());
+  const heading=String(s||'').replace(/^#+\s*/,'').replace(/\s+/g,' ').trim();
+  return /^(?:ingredients?(?:\s*\([^)]*\))?(?:\s*[-–—|:].*)?|directions?(?:\s*[-–—|:].*)?|instructions?(?:\s*[-–—|:].*)?|method(?:\s*[-–—|:].*)?|steps?(?:\s*[-–—|:].*)?|notes?|nutrition|nutritional information|calories?|equipment|tools|storage|variations?|tips?|substitutions?|serving suggestions?|reviews?|comments?|more recipes|related recipes|you may also like|recommended|about the author)\s*:??$/i.test(heading);
+}
+function extractPastedRecipeTitle(lines){
+  const beforeIngredients=lines.slice(0,Math.max(1,lines.findIndex(line=>/^ingredients?(?:\s*\([^)]*\))?(?:\s*[-–—|:].*)?\s*:?$/i.test(line.replace(/^#+\s*/,'').trim()))<0?Math.min(lines.length,20):lines.findIndex(line=>/^ingredients?(?:\s*\([^)]*\))?(?:\s*[-–—|:].*)?\s*:?$/i.test(line.replace(/^#+\s*/,'').trim())));
+  const explicit=beforeIngredients.find(line=>/^title\s*:/i.test(line));
+  if(explicit)return cleanImportedLine(explicit.replace(/^title\s*:\s*/i,''));
+  const headings=beforeIngredients.filter(line=>/^#{1,3}\s+/.test(line)).map(line=>cleanImportedLine(line.replace(/^#{1,3}\s+/,'')));
+  const ignored=/^(jump to recipe|print recipe|save recipe|pin recipe|ingredients?|directions?|instructions?|method|steps?|home|recipes?|advertisement|sponsored)$/i;
+  const plausible=line=>{const x=cleanImportedLine(line);return x.length>=4&&x.length<=110&&!ignored.test(x)&&!isRecipeMetaLine(x)&&!/^https?:\/\//i.test(x)&&!/^\d+\s*(?:stars?|reviews?)$/i.test(x)&&!/^by\s+/i.test(x)};
+  const heading=headings.find(plausible);
+  if(heading)return heading;
+  return beforeIngredients.map(cleanImportedLine).find(line=>plausible(line)&&!isBulletLine(line)&&!/[.!?]$/.test(line))||'Pasted Recipe';
 }
 function isBulletLine(s){return /^\s*(?:[-*•]|(?:\d+[.)]))\s+/.test(s)}
 function normalizeRecipeInstruction(x){
@@ -477,15 +489,14 @@ function parsePastedRecipe(){
   let text=fieldValue('rawRecipe').trim();
   if(!text)return alert('Paste the recipe text first.');
   let lines=text.split(/\r?\n/).map(x=>x.trim()).filter(Boolean);
-  let title=lines[0]||'Pasted Recipe';
-  title=title.replace(/^title\s*:\s*/i,'').replace(/^#+\s*/,'').trim()||'Pasted Recipe';
+  let title=extractPastedRecipeTitle(lines);
   let servings='',time='';
-  for(const line of lines.slice(0,12)){
+  for(const line of lines.slice(0,30)){
     let m=line.match(/^(?:yield|yields|serves|servings)\s*:\s*(.+)$/i);if(m)servings=cleanImportedLine(m[1]);
     m=line.match(/^(?:prep(?:aration)?\s*time|cook(?:ing)?\s*time|total\s*time|time)\s*:\s*(.+)$/i);if(m)time+=(time?' • ':'')+cleanImportedLine(m[1]);
   }
-  let ingredients=collectSection(text,/^(ingredients?)$/i,'ingredients');
-  let steps=collectSection(text,/^(directions?|instructions?|method|steps?)$/i,'steps');
+  let ingredients=collectSection(text,/^ingredients?(?:\s*\([^)]*\))?(?:\s*[-–—|:].*)?$/i,'ingredients');
+  let steps=collectSection(text,/^(?:directions?|instructions?|method|steps?)(?:\s*[-–—|:].*)?$/i,'steps');
   if(!ingredients.length||!steps.length){
     modalBody.innerHTML=`<div class="eyebrow">Recipe importer</div><h2>Couldn’t identify the recipe sections</h2><p class="hint">To avoid mixing article text into your recipe, Metro Eats needs clearly labeled Ingredients and Directions (or Instructions/Method/Steps) sections. Nothing has been saved.</p><div class="actions"><button class="btn primary" onclick="openPasteImporter()">Edit Pasted Text</button><button class="btn" onclick="openRecipeChooser()">Back</button></div>`;
     return;
