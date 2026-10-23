@@ -94,3 +94,8 @@
 .modal.show{overscroll-behavior:contain;touch-action:pan-y;}
 .modal .sheet{max-height:calc(100dvh - env(safe-area-inset-top,0px) - 24px);overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;touch-action:pan-y;}
 .modal textarea{overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;touch-action:pan-y;}
+/* App-wide iPhone modal behavior: when ANY modal is open, prevent the page behind it from scrolling. */
+html:has(.modal.show),body:has(.modal.show){overflow:hidden;overscroll-behavior:none;}
+.modal.show{position:fixed;inset:0;isolation:isolate;overscroll-behavior:none;}
+.modal .sheet{overscroll-behavior-y:contain;touch-action:pan-y;}
+.modal .sheet textarea{display:block;max-width:100%;touch-action:pan-y;}
