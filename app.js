@@ -380,8 +380,9 @@ function normalizeImportedTime(value){
   let x=cleanImportedLine(value||'');
   const m=x.match(/^PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?$/i);
   if(m){const h=Number(m[1]||0),min=Number(m[2]||0),sec=Number(m[3]||0);return [h?h+' hour'+(h===1?'':'s'):'',min?min+' minute'+(min===1?'':'s'):'',sec?sec+' second'+(sec===1?'':'s'):''].filter(Boolean).join(' ')}
-  // Remove labels accidentally imported as part of the value (e.g. "Prep 10 minutes").
-  x=x.replace(/^(?:prep(?:aration)?(?:\s*\+\s*cook)?|cook(?:ing)? time)\s*[:—-]?\s*/i,'');
+  // Preserve explicit prep/cook/total labels; the editor field can hold all three values.
+  // Only remove the generic combined-field label if it was copied into the value.
+  x=x.replace(/^prep(?:aration)?\s*\+\s*cook\s*time\s*[:—-]?\s*/i,'');
   return x;
 }
 function inferImportedCategory(title,ingredients,steps){
