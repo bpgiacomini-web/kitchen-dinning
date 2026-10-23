@@ -80,21 +80,30 @@ function isoDuration(value) {
   return parts.join(' ') || plainText(value);
 }
 function parseReaderText(text) {
-  const lines = String(text || '').replace(/\r/g, '').split('\n').map(line =>
+  const originalLines = String(text || '').replace(/\r/g, '').split('\n').map(line => line.trim()).filter(Boolean);
+  const lines = originalLines.map(line =>
     line.replace(/^\s{0,3}#{1,6}\s*/, '').replace(/\*\*/g, '').trim()
   ).filter(Boolean);
+  const ignoredTitle = /^(jump to recipe|print recipe|save recipe|pin recipe|ingredients?|directions?|instructions?|method|preparation|steps?|nutrition|notes?|tips|equipment|reviews|comments|related recipes|more recipes|about the author|advertisement)$/i;
   let title = '';
   const titleLine = lines.find(line => /^title\s*:/i.test(line));
   if (titleLine) title = titleLine.replace(/^title\s*:\s*/i, '').trim();
-  if (!title) title = lines.find(line => line.length > 3 && !/^https?:\/\//i.test(line) && !/^(ingredients|directions|instructions|method|steps)\s*:??$/i.test(line)) || '';
+  if (!title) {
+    const heading = originalLines.find(line => /^\s{0,3}#{1,3}\s+/.test(line))
+      ?.replace(/^\s{0,3}#{1,3}\s+/, '').replace(/\*\*/g, '').trim();
+    if (heading && heading.length <= 120 && !ignoredTitle.test(heading)) title = heading;
+  }
+  if (!title) title = lines.find(line => line.length > 3 && line.length <= 120 &&
+    !/^https?:\/\//i.test(line) && !ignoredTitle.test(line) &&
+    !/^(serves?|yield|prep(?:aration)?\s*time|cook(?:ing)?\s*time|total\s*time|calories?|nutrition|by)\s*:/i.test(line)) || '';
   const ingredients = [];
   const steps = [];
   let section = '';
   for (const raw of lines) {
     const line = raw.replace(/^[-*•]\s*/, '').replace(/^\d+[.)]\s*/, '').trim();
-    if (/^(ingredients?)(\s*\([^)]*\))?\s*:??$/i.test(line)) { section = 'ingredients'; continue; }
-    if (/^(directions?|instructions?|method|preparation|steps?)\s*:??$/i.test(line)) { section = 'steps'; continue; }
-    if (/^(nutrition|notes?|tips|equipment|reviews|comments|related recipes|more recipes|about the author)\b/i.test(line)) { if(section) section=''; continue; }
+    if (/^ingredients?(?:\s*\([^)]*\))?(?:\s*[-–—|:].*)?\s*:??$/i.test(line)) { section = 'ingredients'; continue; }
+    if (/^(?:directions?|instructions?|method|preparation|steps?)(?:\s*[-–—|:].*)?\s*:??$/i.test(line)) { section = 'steps'; continue; }
+    if (/^(nutrition|notes?|tips|equipment|reviews|comments|related recipes|more recipes|about the author|variations|storage|serving suggestions)\b/i.test(line)) { section = ''; continue; }
     if (!section || line.length < 2 || /^https?:\/\//i.test(line)) continue;
     if (section === 'ingredients' && line.length <= 260) ingredients.push(line);
     if (section === 'steps' && line.length <= 1200) steps.push(line);
