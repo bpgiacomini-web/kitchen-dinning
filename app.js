@@ -241,8 +241,9 @@ function cleanImportedLine(s){
     .replace(/\b(\d+)\s*\/\s*(\d+)\b/g,'$1/$2')
     .replace(/\b(\d+)\s+(\d+)\s*\/\s*(\d+)\b/g,'$1 $2/$3')
     // Normalize split plural units at the shared cleanup stage, before review or editor.
-    .replace(/\bclove\s+s(?=\s|,|$)/gi,'cloves')
-    .replace(/\bcup\s+s(?=\s|,|$)/gi,'cups')
+    .replace(/\bclove\s*s\s+(?=[a-z])/gi,'cloves ')
+    .replace(/\bcup\s*s\s+(?=[a-z])/gi,'cups ')
+    .replace(/\b(clove|cup)\s+([sS])(?=\s|,|$)/gi,'$1$2')
     .replace(/\b(tablespoon|teaspoon|minute|hour|piece|sprig)\s+s(?=\s|,|$)/gi,'$1s')
     .replace(/\b(clove|cup)\s+s\b/gi,'$1s')
     .replace(/\b(tablespoon|teaspoon)\s+s\b/gi,'$1s')
