@@ -19,7 +19,40 @@
   <div class="nav" id="desktopNav"><button class="active" data-tab="home">Home</button><button data-tab="recipes">Recipes</button><button data-tab="restaurants">Dining</button></div>
 </header>
 <div id="metroCloudStatus" role="status" aria-live="polite" style="display:block!important;visibility:visible!important;opacity:1!important;position:relative;z-index:1;pointer-events:none;box-sizing:border-box;width:100%;margin:0;padding:5px 12px;border:0;border-bottom:1px solid #45413a;border-radius:0;background:#171511;color:#c9c2b5;text-align:center;font-size:12px;font-weight:600;line-height:1.25">METRO EATS CLOUD BACKUP: CHECKING…</div>
-<script>/* Independent failsafe: even if app initialization fails, never leave the banner saying CHECKING forever. */setTimeout(function(){var s=document.getElementById("metroCloudStatus");if(s&&/CHECKING/i.test(s.textContent)){s.textContent="CLOUD CONNECTION TAKING TOO LONG — CLOUD BACKUP NOT CONFIRMED";s.setAttribute("data-cloud-status","timeout");}},42000);</script>
+<script>
+/* Independent cloud probe: distinguish an unreachable cloud API from app hydration/sync failures. */
+(function(){
+  var s=document.getElementById("metroCloudStatus");
+  if(!s)return;
+  var finished=false;
+  var controller=new AbortController();
+  var timer=setTimeout(function(){controller.abort();},10000);
+  fetch("/api/data?health="+Date.now(),{cache:"no-store",signal:controller.signal})
+    .then(function(r){if(!r.ok)throw new Error("HTTP "+r.status);return r.json();})
+    .then(function(d){
+      if(!d||!Array.isArray(d.recipes)||!Array.isArray(d.restaurants))throw new Error("Invalid cloud response");
+      finished=true;
+      if(/CHECKING/i.test(s.textContent)){
+        s.textContent="CLOUD SERVICE REACHABLE — VERIFYING DEVICE SYNC";
+        s.setAttribute("data-cloud-status","reachable");
+      }
+    })
+    .catch(function(){
+      finished=true;
+      if(/CHECKING/i.test(s.textContent)){
+        s.textContent="CLOUD SERVICE UNAVAILABLE — DEVICE BACKUP NOT CONFIRMED";
+        s.setAttribute("data-cloud-status","unavailable");
+      }
+    })
+    .finally(function(){clearTimeout(timer);});
+  setTimeout(function(){
+    if(!finished&&/CHECKING/i.test(s.textContent)){
+      s.textContent="CLOUD STATUS STILL CHECKING — DEVICE BACKUP NOT CONFIRMED";
+      s.setAttribute("data-cloud-status","timeout");
+    }
+  },15000);
+})();
+</script>
 <section id="home" class="section active">
   <div class="hero"><div class="heroIn"><div class="eyebrow">St. Louis • Metro East</div><h2>Metro Eats<br><span class="fl">⚜</span> Recipes & Dining</h2><p>Your personal recipe book and restaurant journal — built around the food you actually love.</p><div class="homeFeatureButtons"><button class="homeFeatureButton recipeButton" onclick="tab('recipes')"><span class="homeFeatureIcon">✦</span><span><strong>Recipes</strong><small>Your Kitchen</small></span><span class="homeFeatureArrow">→</span></button><button class="homeFeatureButton diningButton" onclick="tab('restaurants')"><span class="homeFeatureIcon">⚜</span><span><strong>Dining Experience</strong><small>Your Restaurants & Reviews</small></span><span class="homeFeatureArrow">→</span></button></div>
 <div id="restaurantSpotlight" class="restaurantSpotlight" hidden></div>
