@@ -254,10 +254,10 @@ function cleanImportedLine(s){
     .replace(/\s+/g,' ')
     .trim();
   // Last-chance repair after cleanup for split plural units in imported text.
-  x=x.replace(/\\bclove\\s+s(?=\\s|,|$)/gi,'cloves')
-      .replace(/\\bcup\\s+s(?=\\s|,|$)/gi,'cups')
-      .replace(/\\b(tablespoon|teaspoon|minute|hour|piece|sprig)\\s+s(?=\\s|,|$)/gi,'$1s')
-      .replace(/\\s+/g,' ').trim();
+  x=x.replace(/\bclove\s+s(?=\s|,|$)/gi,'cloves')
+      .replace(/\bcup\s+s(?=\s|,|$)/gi,'cups')
+      .replace(/\b(tablespoon|teaspoon|minute|hour|piece|sprig)\s+s(?=\s|,|$)/gi,'$1s')
+      .replace(/\s+/g,' ').trim();
   return x;
 }
 function isRecipeMetaLine(s){
