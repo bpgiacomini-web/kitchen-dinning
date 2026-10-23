@@ -268,7 +268,8 @@ function isRecipeSectionHeading(s){
   return /^(?:ingredients?(?:\s*\([^)]*\))?(?:\s*[-–—|:].*)?|directions?(?:\s*[-–—|:].*)?|instructions?(?:\s*[-–—|:].*)?|method(?:\s*[-–—|:].*)?|steps?(?:\s*[-–—|:].*)?|notes?|nutrition|nutritional information|calories?|equipment|tools|storage|variations?|tips?|substitutions?|serving suggestions?|reviews?|comments?|more recipes|related recipes|you may also like|recommended|about the author)\s*:??$/i.test(heading);
 }
 function extractPastedRecipeTitle(lines){
-  const beforeIngredients=lines.slice(0,Math.max(1,lines.findIndex(line=>/^ingredients?(?:\s*\([^)]*\))?(?:\s*[-–—|:].*)?\s*:?$/i.test(line.replace(/^#+\s*/,'').trim()))<0?Math.min(lines.length,20):lines.findIndex(line=>/^ingredients?(?:\s*\([^)]*\))?(?:\s*[-–—|:].*)?\s*:?$/i.test(line.replace(/^#+\s*/,'').trim())));
+  const ingredientHeadingIndex=lines.findIndex(line=>/^ingredients?(?:\s*\([^)]*\))?(?:\s*[-–—|:].*)?\s*:?$/i.test(line.replace(/^#+\s*/,'').trim()));
+  const beforeIngredients=lines.slice(0,ingredientHeadingIndex<0?Math.min(lines.length,20):Math.max(1,ingredientHeadingIndex));
   const explicit=beforeIngredients.find(line=>/^title\s*:/i.test(line));
   if(explicit)return cleanImportedLine(explicit.replace(/^title\s*:\s*/i,''));
   const headings=beforeIngredients.filter(line=>/^#{1,3}\s+/.test(line)).map(line=>cleanImportedLine(line.replace(/^#{1,3}\s+/,'')));
