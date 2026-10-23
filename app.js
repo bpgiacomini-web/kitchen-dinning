@@ -81,7 +81,7 @@ new MutationObserver(function(){
 }).observe(modal,{attributes:true,attributeFilter:['class']});let pendingRestaurant=null,pendingReviewRestaurant=null,restaurantEditMode=false,activeCat='',surveyState={restaurantId:null,scores:{},ordered:'',orderAgain:''};
 function uid(){return 'me-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,10)}
 function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
-let metroCloudReady=false,metroCloudTimer=null,metroCloudBusy=false,metroCloudQueued=false;
+let metroCloudReady=false,metroCloudTimer=null,metroCloudBusy=false,metroCloudQueued=false,metroRestoreInProgress=false;
 // Bound cloud requests so a stalled connection can never leave the status banner on CHECKING forever.
 async function metroCloudFetch(url,options={}){const controller=new AbortController();const timeout=setTimeout(()=>controller.abort(),12000);try{return await fetch(url,{...options,signal:controller.signal,cache:options.cache||'no-store'})}finally{clearTimeout(timeout)}}
 function save(){localStorage.setItem(KEY,JSON.stringify(db));if(metroCloudReady){clearTimeout(metroCloudTimer);metroCloudTimer=setTimeout(metroCloudPush,700)}}
@@ -97,6 +97,7 @@ function metroCloudMerge(local,remote){
   return {recipes:rows(local.recipes,remote.recipes),restaurants:rows(local.restaurants,remote.restaurants),cats:remote.cats||local.cats||categories};
 }
 async function metroCloudPush(){
+  if(metroRestoreInProgress){metroCloudQueued=true;return}
   if(!metroCloudReady){metroCloudQueued=true;return}
   if(metroCloudBusy){metroCloudQueued=true;return}
   metroCloudBusy=true;metroCloudQueued=false;
@@ -140,16 +141,56 @@ function openBackup(){
 document.getElementById('restoreFile')?.addEventListener('change',function(e){
   const file=e.target.files&&e.target.files[0]; if(!file)return;
   const reader=new FileReader();
-  reader.onload=function(){
+  reader.onload=async function(){
+    let previousDb=null,previousRaw=null,previousCloud=null,cloudWriteAttempted=false;
     try{
       const restored=JSON.parse(reader.result);
-      if(!restored||!Array.isArray(restored.recipes)||!Array.isArray(restored.restaurants))throw new Error('Invalid Metro Eats backup file.');
-      if(!confirm('Restore this backup? Your current local Metro Eats data will be replaced.'))return;
-      localStorage.setItem(KEY,JSON.stringify(restored));
-      db=parseData(); migrate(); renderRecipes(); renderRestaurants(); updateStory(); closeModal();
-      alert('Metro Eats backup restored successfully.');
-    }catch(err){alert('Metro Eats could not restore that backup.\n\n'+(err.message||'Invalid backup file.'))}
-    finally{e.target.value='';}
+      if(!restored||!Array.isArray(restored.recipes)||!Array.isArray(restored.restaurants))throw new Error('Invalid Metro Eats backup file: recipes and restaurants must both be lists.');
+      if(restored.recipes.some(x=>!x||typeof x!=='object'||Array.isArray(x))||restored.restaurants.some(x=>!x||typeof x!=='object'||Array.isArray(x)))throw new Error('This backup contains an invalid recipe or restaurant record.');
+      if(!metroCloudReady)throw new Error('Cloud sync is not ready yet. Wait until Metro Eats finishes connecting to cloud backup, then try again. Nothing was changed.');
+      if(metroCloudBusy)throw new Error('Cloud backup is currently saving. Wait a moment and try restoring again. Nothing was changed.');
+      if(!confirm('Restore this backup to Metro Eats? This will replace the current recipes and restaurants on this device AND in cloud backup. A safety copy of the current data will download first.'))return;
+      previousDb=JSON.parse(JSON.stringify(db));
+      previousRaw=localStorage.getItem(KEY);
+      const cloudResponse=await metroCloudFetch('/api/data',{cache:'no-store'});
+      if(!cloudResponse.ok)throw new Error('Could not read the current cloud backup. Restore was cancelled before changing anything.');
+      previousCloud=await cloudResponse.json();
+      if(!previousCloud||!Array.isArray(previousCloud.recipes)||!Array.isArray(previousCloud.restaurants))throw new Error('The current cloud backup is not valid. Restore was cancelled.');
+      const safetyPayload=JSON.stringify({ ...previousDb, backupCreatedAt:new Date().toISOString(), backupReason:'Automatic pre-restore safety snapshot' },null,2);
+      const safetyUrl=URL.createObjectURL(new Blob([safetyPayload],{type:'application/json'}));
+      const safetyLink=document.createElement('a');safetyLink.href=safetyUrl;safetyLink.download='metro-eats-pre-restore-safety-'+new Date().toISOString().slice(0,10)+'.json';document.body.appendChild(safetyLink);safetyLink.click();safetyLink.remove();setTimeout(()=>URL.revokeObjectURL(safetyUrl),1500);
+      metroRestoreInProgress=true;clearTimeout(metroCloudTimer);metroCloudQueued=false;
+      db={...restored,recipes:restored.recipes,restaurants:restored.restaurants};
+      localStorage.setItem(KEY,JSON.stringify(db));
+      migrate();
+      cloudWriteAttempted=true;
+      const putResponse=await metroCloudFetch('/api/data',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({recipes:db.recipes||[],restaurants:db.restaurants||[]})});
+      if(!putResponse.ok)throw new Error('Cloud backup rejected the restored data.');
+      const verifyResponse=await metroCloudFetch('/api/data?restoreVerify='+Date.now(),{cache:'no-store'});
+      if(!verifyResponse.ok)throw new Error('Could not verify the restored cloud backup.');
+      const verified=await verifyResponse.json();
+      const matches=(expected,actual)=>expected.length===actual.length&&expected.every(item=>{const saved=actual.find(row=>row&&String(row.id)===String(item.id));return !!saved&&JSON.stringify(saved)===JSON.stringify(item)});
+      if(!Array.isArray(verified.recipes)||!Array.isArray(verified.restaurants)||!matches(db.recipes||[],verified.recipes)||!matches(db.restaurants||[],verified.restaurants))throw new Error('Cloud read-back did not match the restored backup.');
+      metroRestoreInProgress=false;metroCloudReady=true;metroCloudQueued=false;
+      window.metroEatsCloudStatus='saved';
+      const status=document.getElementById('metroCloudStatus');if(status)status.textContent='Cloud backup: restored and verified';
+      renderRecipes();renderRestaurants();updateStory();closeModal();
+      alert('Metro Eats backup restored. The safety copy was downloaded, and the restored recipes and restaurants were verified in cloud backup.');
+    }catch(err){
+      if(previousDb){
+        try{
+          if(cloudWriteAttempted&&previousCloud){
+            await metroCloudFetch('/api/data',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({recipes:previousCloud.recipes||[],restaurants:previousCloud.restaurants||[]})});
+          }
+        }catch(rollbackError){console.error('Metro Eats cloud rollback could not be verified; keep the downloaded pre-restore safety file.',rollbackError)}
+        db=previousDb;
+        try{if(previousRaw===null)localStorage.removeItem(KEY);else localStorage.setItem(KEY,previousRaw)}catch(storageError){console.error('Local restore rollback failed',storageError)}
+        renderRecipes();renderRestaurants();updateStory();
+      }
+      alert('Metro Eats could not complete the restore. '+(err.message||'Invalid backup file.')+(previousDb?' Your previous local data was put back. Keep the downloaded pre-restore safety copy.':''));
+    }finally{
+      metroRestoreInProgress=false;e.target.value='';
+    }
   };
   reader.readAsText(file);
 });
