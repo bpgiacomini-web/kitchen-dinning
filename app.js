@@ -264,8 +264,8 @@ function isRecipeStopHeading(s){
   return /^(ingredients?|directions?|instructions?|method|steps?|notes?|nutrition|nutritional information|calories?|more recipes|related recipes|you may also like|recommended|about the author|comments?|leave a reply|video|watch|equipment|tools|storage|variations?|tips?|substitutions?|serving suggestions?|reviews?)\b/i.test(String(s||'').replace(/^#+\s*/,'').trim());
 }
 function isRecipeSectionHeading(s){
-  const heading=String(s||'').replace(/^#+\\s*/,'').replace(/\\s+/g,' ').trim();
-  return /^(?:ingredients?(?:\\s*\\([^)]*\\))?(?:\\s*[-–—|:].*)?|directions?(?:\\s*[-–—|:].*)?|instructions?(?:\\s*[-–—|:].*)?|method(?:\\s*[-–—|:].*)?|steps?(?:\\s*[-–—|:].*)?|notes?|nutrition(?:al information)?(?: facts?)?|calories?|equipment|tools|storage|variations?|tips?|substitutions?|serving suggestions?|reviews?|comments?|leave a comment|leave a reply|reader comments?|more recipes|related recipes|you may also like|recommended|about the author|subscribe(?: to.*)?|newsletter|advertisement|sponsored(?: story)?)\\s*:??$/i.test(heading);
+  const heading=String(s||'').replace(/^#+\s*/,'').replace(/\s+/g,' ').trim();
+  return /^(?:ingredients?(?:\s*\([^)]*\))?(?:\s*[-–—|:].*)?|directions?(?:\s*[-–—|:].*)?|instructions?(?:\s*[-–—|:].*)?|method(?:\s*[-–—|:].*)?|steps?(?:\s*[-–—|:].*)?|notes?|nutrition(?:al information)?(?: facts?)?|calories?|equipment|tools|storage|variations?|tips?|substitutions?|serving suggestions?|reviews?|comments?|leave a comment|leave a reply|reader comments?|more recipes|related recipes|you may also like|recommended|about the author|subscribe(?: to.*)?|newsletter|advertisement|sponsored(?: story)?)\s*:??$/i.test(heading);
 }
 function extractPastedRecipeTitle(lines){
   const ingredientHeadingIndex=lines.findIndex(line=>/^ingredients?(?:\s*\([^)]*\))?(?:\s*[-–—|:].*)?\s*:?$/i.test(line.replace(/^#+\s*/,'').trim()));
@@ -355,6 +355,7 @@ function normalizeImportedIngredientText(value){
     .replace(/\s*\(\s*(diced|minced|shredded|freshly cracked|uncooked|divided)\s*,?\s*\)/gi, ' ($1)')
     .replace(/\bmoz\s+zarella\b/gi,'mozzarella')
     .replace(/\bclove\s+s\b/gi,'cloves')
+    .replace(/\bcup\s+s\b/gi,'cups')
     .replace(/\b(clove)\s+s\b/gi,'$1s')
     .replace(/\b(table\s*spoons?|tablespoons?)\s*([sS])\b/gi,'tablespoons')
     .replace(/\b(teaspoons?)\s*([sS])\b/gi,'teaspoons')
