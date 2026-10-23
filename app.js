@@ -82,6 +82,8 @@ new MutationObserver(function(){
 function uid(){return 'me-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,10)}
 function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 let metroCloudReady=false,metroCloudTimer=null,metroCloudBusy=false,metroCloudQueued=false;
+// Bound cloud requests so a stalled connection can never leave the status banner on CHECKING forever.
+async function metroCloudFetch(url,options={}){const controller=new AbortController();const timeout=setTimeout(()=>controller.abort(),12000);try{return await fetch(url,{...options,signal:controller.signal,cache:options.cache||'no-store'})}finally{clearTimeout(timeout)}}
 function save(){localStorage.setItem(KEY,JSON.stringify(db));if(metroCloudReady){clearTimeout(metroCloudTimer);metroCloudTimer=setTimeout(metroCloudPush,700)}}
 function metroCloudMerge(local,remote){
   // Cloud is authoritative for records with matching IDs. Keep local-only rows
@@ -99,10 +101,10 @@ async function metroCloudPush(){
   if(metroCloudBusy){metroCloudQueued=true;return}
   metroCloudBusy=true;metroCloudQueued=false;
   try{
-    const response=await fetch('/api/data',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({recipes:db.recipes||[],restaurants:db.restaurants||[]})});
+    const response=await metroCloudFetch('/api/data',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({recipes:db.recipes||[],restaurants:db.restaurants||[]})});
     if(!response.ok)throw new Error('Cloud save returned '+response.status);
     // Verify the exact write by reading the cloud copy back before reporting success.
-    const verifyResponse=await fetch('/api/data?verify='+Date.now(),{cache:'no-store'});
+    const verifyResponse=await metroCloudFetch('/api/data?verify='+Date.now(),{cache:'no-store'});
     if(!verifyResponse.ok)throw new Error('Cloud verification returned '+verifyResponse.status);
     const verified=await verifyResponse.json();
     const expectedRecipes=db.recipes||[], expectedRestaurants=db.restaurants||[];
@@ -165,7 +167,7 @@ migrate();
 /* Cloud persistence: local data stays usable if the network is unavailable. */
 (async function metroCloudHydrate(){
   try{
-    const response=await fetch('/api/data',{cache:'no-store'});
+    const response=await metroCloudFetch('/api/data',{cache:'no-store'});
     if(!response.ok)throw new Error('Cloud load returned '+response.status);
     const remote=await response.json();
     if(!remote||!Array.isArray(remote.recipes)||!Array.isArray(remote.restaurants))throw new Error('Cloud data format is invalid');
