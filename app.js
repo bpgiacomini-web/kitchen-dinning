@@ -377,7 +377,7 @@ function normalizeImportedIngredientText(value){
 }
 function isNonRecipePromoLine(value){
   const s=String(value||'').replace(/^\\s*\\d+[.)]\\s*/,'').trim();
-  return /^(?:thanks for reading|thank you for reading|subscribe(?: to| for| now|$)|sign up for (?:our|the) newsletter|newsletter(?: signup| sign[- ]?up)?|leave (?:a )?comment|leave a reply|did you make this recipe|check out (?:our|these|more) (?:other |related )?(?:recipes|weeknight dinner ideas|posts)|more recipes|related recipes|you may also like|read more|follow us|advertisement|sponsored (?:story|content)|share (?:this|the) recipe|pin this recipe|join (?:our|the) mailing list)\\b/i.test(s);
+  return /^(?:thanks for reading|thank you for reading|subscribe(?: to| for| now|$)|sign up for (?:our|the) newsletter|newsletter(?: signup| sign[- ]?up)?|leave (?:a )?comment|leave a reply|did you make this recipe|check out (?:our|these|more) (?:other |related )?(?:recipes|weeknight dinner ideas|posts)|more recipes|related recipes|you may also like|read more|follow us|advertisement|sponsored (?:story|content)|share (?:this|the) recipe|pin this recipe|join (?:our|the) mailing list)\b/i.test(s);
 }
 function validateRecipeExtraction(data){
   const ingredients=(data.ingredients||[]).map(x=>cleanImportedLine(normalizeImportedIngredientText(x))).filter(looksLikeRecipeIngredient);
