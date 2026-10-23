@@ -493,7 +493,12 @@ function parsePastedRecipe(){
   let servings='',time='';
   for(const line of lines.slice(0,30)){
     let m=line.match(/^(?:yield|yields|serves|servings)\s*:\s*(.+)$/i);if(m)servings=cleanImportedLine(m[1]);
-    m=line.match(/^(?:prep(?:aration)?\s*time|cook(?:ing)?\s*time|total\s*time|time)\s*:\s*(.+)$/i);if(m)time+=(time?' • ':'')+cleanImportedLine(m[1]);
+    m=line.match(/^(prep(?:aration)?\s*time|cook(?:ing)?\s*time|total\s*time|time)\s*:\s*(.+)$/i);
+    if(m){
+      const label=/^prep/i.test(m[1])?'Prep':/^cook/i.test(m[1])?'Cook':/^total/i.test(m[1])?'Total':'Time';
+      const value=cleanImportedLine(m[2]);
+      if(value&&!time.split(' • ').some(part=>part.toLowerCase().startsWith(label.toLowerCase()+' ')))time+=(time?' • ':'')+label+' '+value;
+    }
   }
   let ingredients=collectSection(text,/^ingredients?(?:\s*\([^)]*\))?(?:\s*[-–—|:].*)?$/i,'ingredients');
   let steps=collectSection(text,/^(?:directions?|instructions?|method|steps?)(?:\s*[-–—|:].*)?$/i,'steps');
