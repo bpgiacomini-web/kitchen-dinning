@@ -234,21 +234,16 @@ function cleanImportedLine(s){
     .replace(/^\s*#+\s*/,'')
     .replace(/^\s*(?:[-*•]|\d+[.)])\s*/,'')
     .replace(/^\s*(?:step\s*)?\d+\s*[:.-]\s*/i,'')
-    /* Remove dangling source footnote markers such as softened* and seasoning** when their footnotes are not imported. */
     .replace(/\s*\*{1,3}\s*$/,'')
     .replace(/\s+/g,' ')
     .trim();
-  /* Normalize common recipe-unit OCR/HTML extraction errors.
-     Examples: "1 /2" -> "1/2", "teaspooncayenne" -> "teaspoon cayenne",
-     "tablespoonbutter" -> "tablespoon butter", and "cup s" -> "cups". */
   x=x
     .replace(/\b(\d+)\s*\/\s*(\d+)\b/g,'$1/$2')
     .replace(/\b(\d+)\s+(\d+)\s*\/\s*(\d+)\b/g,'$1 $2/$3')
-    .replace(/\b(cup|tablespoon|teaspoon)\s*([sS])\b/g,'$1$2')
-    .replace(/\b(tablespoon)\s+s\b/gi,'$1s')
-    .replace(/\b(teaspoon)\s+s\b/gi,'$1s')
-    .replace(/\b(tablespoons?|teaspoons?|cloves?|cups?|minutes?|hours?|pieces?|sprigs?|inches?|ounces?|pounds?|cans?)\s+s\b/gi,'$1')
-    .replace(/\b(tablespoon|teaspoon|clove|minute|hour|piece|sprig|inch|ounce|pound|cup|can)\s+s\b/gi,'$1s')
+    .replace(/\bclove\s+s\b/gi,'cloves')
+    .replace(/\bcup\s+s\b/gi,'cups')
+    .replace(/\b(clove|cup)\s+s\b/gi,'$1s')
+    .replace(/\b(tablespoon|teaspoon)\s+s\b/gi,'$1s')
     .replace(/(teaspoons?|tablespoons?|cups?|pounds?|ounces?|oz\.?|lbs?\.?|cloves?|cans?)(?=[A-Za-z])/gi,'$1 ')
     .replace(/\s*([,;])\s*\1+/g,'$1')
     .replace(/\s*\(\s*\$\d+(?:\.\d{1,2})?\s*\)/g,'')
@@ -446,6 +441,7 @@ function collectSection(text,headingRegex,kind){
     const raw=lines[i];
     const normalized=raw.replace(/^#+\s*/,'').replace(/:$/,'').trim();
     if(isRecipeSectionHeading(normalized)&&!headingRegex.test(normalized))break;
+    if(kind==='steps'&&/^(?:did you make this recipe|leave a comment|leave a reply|subscribe(?: to\b|$)|sign up for our newsletter|newsletter\b|advertisement\b|sponsored story\b|you may also like\b|related recipes\b|more recipes\b)/i.test(normalized))break;
     if(headingRegex.test(normalized))continue;
     if(isRecipeMetaLine(raw))continue;
     const cleaned=cleanImportedLine(raw);
