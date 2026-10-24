@@ -19,7 +19,28 @@
   <div class="nav" id="desktopNav"><button class="active" data-tab="home">Home</button><button data-tab="recipes">Recipes</button><button data-tab="restaurants">Dining</button></div>
 </header>
 <div id="metroCloudStatus" role="status" aria-live="polite" style="display:block!important;visibility:visible!important;opacity:1!important;position:relative;z-index:100000;box-sizing:border-box;width:100%;margin:0;padding:calc(12px + env(safe-area-inset-top, 0px)) 10px 12px;border:3px solid #e7c17a;border-radius:0;background:#171511;color:#fff;text-align:center;font-size:16px;font-weight:900;line-height:1.4">Cloud backup: connecting to verify saved data…</div>
-<script>/* Cloud state is set by app.js only after its own connection or save checks. Do not replace that state with a blind timer. */</script>
+<script>
+/* Independent read-only cloud connection check. This updates the banner even if app.js hydration fails. */
+(function(){
+  var status=document.getElementById('metroCloudStatus');
+  if(!status)return;
+  var controller=new AbortController();
+  var timer=setTimeout(function(){controller.abort()},12000);
+  fetch('/api/data?statusCheck='+Date.now(),{cache:'no-store',signal:controller.signal})
+    .then(function(response){if(!response.ok)throw new Error('Cloud API returned '+response.status);return response.json()})
+    .then(function(data){
+      if(!data||!Array.isArray(data.recipes)||!Array.isArray(data.restaurants))throw new Error('Cloud data format could not be verified');
+      status.textContent='Cloud connection verified • '+data.recipes.length+' recipes • '+data.restaurants.length+' restaurants';
+      status.setAttribute('data-cloud-status','connected');
+      status.style.borderColor='#7bc8b6';
+    })
+    .catch(function(){
+      status.textContent='Cloud connection could not be verified — do not rely on a cloud backup yet';
+      status.setAttribute('data-cloud-status','unverified');
+    })
+    .finally(function(){clearTimeout(timer)});
+})();
+</script>
 <section id="home" class="section active">
   <div class="hero"><div class="heroIn"><div class="eyebrow">St. Louis • Metro East</div><h2>Metro Eats<br><span class="fl">⚜</span> Recipes & Dining</h2><p>Your personal recipe book and restaurant journal — built around the food you actually love.</p><div class="homeFeatureButtons"><button class="homeFeatureButton recipeButton" onclick="tab('recipes')"><span class="homeFeatureIcon">✦</span><span><strong>Recipes</strong><small>Your Kitchen</small></span><span class="homeFeatureArrow">→</span></button><button class="homeFeatureButton diningButton" onclick="tab('restaurants')"><span class="homeFeatureIcon">⚜</span><span><strong>Dining Experience</strong><small>Your Restaurants & Reviews</small></span><span class="homeFeatureArrow">→</span></button></div>
 <div id="restaurantSpotlight" class="restaurantSpotlight" hidden></div>
@@ -122,7 +143,7 @@ document.addEventListener('DOMContentLoaded',function(){
   });
 });
 </script>
-<script src="app.js?v=20261024-cloud-status-entry-fix-1" defer></script>
+<script src="app.js?v=20261024-cloud-status-entry-fix-2" defer></script>
 <script>
 /* Dining controls fallback: run after the deferred app script has had a chance to initialize. */
 (function(){
