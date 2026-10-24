@@ -1096,8 +1096,8 @@ function meSpotlightMarkup(r){
   let repeat=s.orderAgain?(' You said you would '+(s.orderAgain==='Yes'?'order it again.':'not order it again.')):'';
   return '<article class="restaurantSpotlightCard">'+
     '<div class="sectionKicker">Your #1 Restaurant</div>'+
-    '<div class="restaurantSpotlightTitleRow"><div><h3>'+esc(r.name)+'</h3><div class="meta">'+esc(r.location||'')+(r.type?' • '+esc(r.type):'')+'</div></div><div class="restaurantSpotlightScore">'+score.toFixed(1)+'<small>/10</small></div></div>'+
-    '<p class="restaurantSpotlightInsight"><strong>Critic insight:</strong> '+insight+esc(repeat)+'</p>'+
+    '<div class="restaurantSpotlightTitleRow"><div><button type="button" class="restaurantSpotlightName" onclick="showReviewResults(\''+String(r.id).replace(/'/g,"&#39;")+'\')" aria-label="Open review for '+esc(r.name)+'">'+esc(r.name)+'</button><div class="meta">'+esc(r.location||'')+(r.type?' • '+esc(r.type):'')+'</div></div><div class="restaurantSpotlightScore">'+score.toFixed(1)+'<small>/10</small></div></div>'+
+    '<p class="restaurantSpotlightInsight" role="button" tabindex="0" onclick="showReviewResults(\''+String(r.id).replace(/'/g,"&#39;")+'\')" onkeydown="if(event.key===\'Enter\'||event.key===\' \'){event.preventDefault();showReviewResults(\''+String(r.id).replace(/'/g,"&#39;")+'\')}" style="cursor:pointer"><strong>Critic insight:</strong> '+insight+esc(repeat)+'</p>'+
     (s.foodItems?.length?'<div class="restaurantSpotlightDishes"><b>Top dishes</b>'+meCriticTopFoods(s).map(x=>'<span>'+esc(x.name)+' <strong>'+Number(x.rating).toFixed(1)+'/10</strong></span>').join('')+'</div>':'')+
     '<div class="actions"><button class="btn primary" onclick="showReviewResults(\''+String(r.id).replace(/'/g,"&#39;")+'\')">View Review Results</button>'+(r.website?'<a class="btn" href="'+esc(r.website)+'" target="_blank" rel="noopener noreferrer">Official Website</a>':'')+'</div>'+
     '</article>';
