@@ -113,3 +113,8 @@
  .hero p{font-size:16px;margin-bottom:12px}
  .newsSection{margin-top:20px}
 }
+
+/* Make restaurant names an obvious, accessible tap target for opening their review entry. */
+.restaurantNameLink{display:inline-block;cursor:pointer;touch-action:manipulation;text-decoration:underline;text-decoration-color:#8fb7a655;text-underline-offset:4px;border-radius:4px}
+.restaurantNameLink:active{opacity:.72}
+.restaurantNameLink:focus-visible{outline:2px solid var(--section-accent,var(--accent));outline-offset:4px}
