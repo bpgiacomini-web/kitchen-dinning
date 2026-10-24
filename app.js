@@ -464,7 +464,8 @@ function inferImportedCategory(title,ingredients,steps){
   // Classify mixed/assembled dishes by their dish name before looking at meat ingredients.
   if(/\b(stuffed peppers?|bell peppers?|casseroles?|shepherd'?s pie|pot pie|meatloaf|stuffed shells?)\b/.test(titleText))return {category:'Main Dishes',subcategory:'Other'};
   if(/\b(taco|tacos|enchilada|burrito|quesadilla)\b/.test(titleText))return {category:'Mexican & Latin',subcategory:'Other'};
-  if(/\b(noodles?|pasta|alfredo|lasagna|spaghetti|fettuccine|ravioli|risotto|macaroni)\b/.test(titleText))return {category:'Main Dishes',subcategory:'Pasta'};\n   if(/\b(pizza)\b/.test(titleText))return {category:'Italian',subcategory:'Pizza'};
+  if(/\b(noodles?|pasta|alfredo|lasagna|spaghetti|fettuccine|ravioli|risotto|macaroni)\b/.test(titleText))return {category:'Main Dishes',subcategory:'Pasta'};
+  if(/\b(pizza)\b/.test(titleText))return {category:'Italian',subcategory:'Pizza'};
   if(/\b(breakfast|pancake|waffle|omelet|omelette|french toast)\b/.test(titleText))return {category:'Breakfast & Brunch',subcategory:'Other'};
   if(/\b(chicken|turkey|poultry)\b/.test(titleText))return {category:'Main Dishes',subcategory:'Chicken'};
   if(/\b(pork|ham|bacon|sausage)\b/.test(titleText))return {category:'Main Dishes',subcategory:'Pork'};
