@@ -88,3 +88,28 @@
 
 /* Cloud persistence status — visible on mobile and desktop */
 .cloudStatus{position:fixed;top:calc(env(safe-area-inset-top,0px) + 6px);left:10px;right:10px;z-index:100000;box-sizing:border-box;padding:10px 12px;border:2px solid #e7c17a;border-radius:12px;background:#171511;color:#fff;text-align:center;font-size:14px;font-weight:800;line-height:1.35;box-shadow:0 4px 18px #0009}
+
+
+/* Personalize home navigation and keep the local news feed visually prominent. */
+.homeFeatureButtons{grid-template-columns:1fr 1fr;gap:10px;margin-top:16px}
+.homeFeatureButton{min-height:70px;padding:13px 16px;border-radius:16px;gap:10px;box-shadow:none;background:#11161b;border-color:#303941;color:#e7e8e8}
+.homeFeatureButton strong{font-size:clamp(17px,2.4vw,21px);font-weight:750}
+.homeFeatureButton small{font-size:11px;letter-spacing:.015em}
+.homeFeatureIcon{font-size:19px}
+.homeFeatureArrow{font-size:22px}
+.recipeButton,.diningButton{background:#11161b;border-color:#303941}
+.recipeButton .homeFeatureIcon,.recipeButton .homeFeatureArrow{color:#d6a85b}
+.diningButton .homeFeatureIcon,.diningButton .homeFeatureArrow{color:#8fb7a6}
+.newsSection{margin-top:22px}
+@media(max-width:760px){
+ .homeFeatureButtons{grid-template-columns:1fr 1fr;gap:8px}
+ .homeFeatureButton{min-height:66px;padding:11px 10px;grid-template-columns:auto 1fr auto;gap:7px}
+ .homeFeatureButton strong{font-size:16px;line-height:1.15}
+ .homeFeatureButton small{font-size:10px;line-height:1.25}
+ .homeFeatureIcon{font-size:17px}
+ .homeFeatureArrow{font-size:19px}
+ .heroIn{padding:clamp(22px,5vw,34px)}
+ .hero h2{font-size:clamp(34px,7vw,52px)}
+ .hero p{font-size:16px;margin-bottom:12px}
+ .newsSection{margin-top:20px}
+}
