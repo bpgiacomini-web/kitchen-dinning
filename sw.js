@@ -1,6 +1,6 @@
-const CACHE='metro-eats-v47';
-const APP=['./','./index.html','./app.js','./styles.css','./manifest.json','./news.json','./icon-180.png','./icon-512.png','./metro-eats-logo.png'];
-const SHELL=new Set(['/','/index.html','/app.js','/styles.css']);
+const CACHE='metro-eats-v48';
+const APP=['./','./index.html','./index-persistence.html','./app.js','./styles.css','./manifest.json','./news.json','./icon-180.png','./icon-512.png','./metro-eats-logo.png'];
+const SHELL=new Set(['/','/index.html','/index-persistence.html','/app.js','/styles.css']);
 self.addEventListener('install',event=>{event.waitUntil(caches.open(CACHE).then(c=>c.addAll(APP).catch(()=>{})).then(()=>self.skipWaiting()))});
 self.addEventListener('activate',event=>{event.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim()))});
 self.addEventListener('fetch',event=>{

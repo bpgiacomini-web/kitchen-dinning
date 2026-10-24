@@ -81,7 +81,9 @@ new MutationObserver(function(){
 }).observe(modal,{attributes:true,attributeFilter:['class']});let pendingRestaurant=null,pendingReviewRestaurant=null,restaurantEditMode=false,activeCat='',surveyState={restaurantId:null,scores:{},ordered:'',orderAgain:''};
 function uid(){return 'me-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,10)}
 function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
-let metroCloudReady=false,metroCloudTimer=null,metroCloudBusy=false,metroCloudQueued=false;
+let metroCloudReady=false,metroCloudTimer=null,metroCloudBusy=false,metroCloudQueued=false,metroRestoreInProgress=false,metroCloudHydrated=false;
+// Bound cloud requests so a stalled connection can never leave the status banner on CHECKING forever.
+async function metroCloudFetch(url,options={}){const controller=new AbortController();const timeout=setTimeout(()=>controller.abort(),18000);try{return await fetch(url,{...options,signal:controller.signal,cache:options.cache||'no-store'})}finally{clearTimeout(timeout)}}
 function save(){localStorage.setItem(KEY,JSON.stringify(db));if(metroCloudReady){clearTimeout(metroCloudTimer);metroCloudTimer=setTimeout(metroCloudPush,700)}}
 function metroCloudMerge(local,remote){
   // Cloud is authoritative for records with matching IDs. Keep local-only rows
@@ -95,14 +97,15 @@ function metroCloudMerge(local,remote){
   return {recipes:rows(local.recipes,remote.recipes),restaurants:rows(local.restaurants,remote.restaurants),cats:remote.cats||local.cats||categories};
 }
 async function metroCloudPush(){
-  if(!metroCloudReady){metroCloudQueued=true;return}
+  if(metroRestoreInProgress){metroCloudQueued=true;return}
+  if(!metroCloudReady||!metroCloudHydrated){metroCloudQueued=true;return}
   if(metroCloudBusy){metroCloudQueued=true;return}
   metroCloudBusy=true;metroCloudQueued=false;
   try{
-    const response=await fetch('/api/data',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({recipes:db.recipes||[],restaurants:db.restaurants||[]})});
+    const response=await metroCloudFetch('/api/data',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({recipes:db.recipes||[],restaurants:db.restaurants||[]})});
     if(!response.ok)throw new Error('Cloud save returned '+response.status);
     // Verify the exact write by reading the cloud copy back before reporting success.
-    const verifyResponse=await fetch('/api/data?verify='+Date.now(),{cache:'no-store'});
+    const verifyResponse=await metroCloudFetch('/api/data?verify='+Date.now(),{cache:'no-store'});
     if(!verifyResponse.ok)throw new Error('Cloud verification returned '+verifyResponse.status);
     const verified=await verifyResponse.json();
     const expectedRecipes=db.recipes||[], expectedRestaurants=db.restaurants||[];
@@ -138,16 +141,56 @@ function openBackup(){
 document.getElementById('restoreFile')?.addEventListener('change',function(e){
   const file=e.target.files&&e.target.files[0]; if(!file)return;
   const reader=new FileReader();
-  reader.onload=function(){
+  reader.onload=async function(){
+    let previousDb=null,previousRaw=null,previousCloud=null,cloudWriteAttempted=false;
     try{
       const restored=JSON.parse(reader.result);
-      if(!restored||!Array.isArray(restored.recipes)||!Array.isArray(restored.restaurants))throw new Error('Invalid Metro Eats backup file.');
-      if(!confirm('Restore this backup? Your current local Metro Eats data will be replaced.'))return;
-      localStorage.setItem(KEY,JSON.stringify(restored));
-      db=parseData(); migrate(); renderRecipes(); renderRestaurants(); updateStory(); closeModal();
-      alert('Metro Eats backup restored successfully.');
-    }catch(err){alert('Metro Eats could not restore that backup.\n\n'+(err.message||'Invalid backup file.'))}
-    finally{e.target.value='';}
+      if(!restored||!Array.isArray(restored.recipes)||!Array.isArray(restored.restaurants))throw new Error('Invalid Metro Eats backup file: recipes and restaurants must both be lists.');
+      if(restored.recipes.some(x=>!x||typeof x!=='object'||Array.isArray(x))||restored.restaurants.some(x=>!x||typeof x!=='object'||Array.isArray(x)))throw new Error('This backup contains an invalid recipe or restaurant record.');
+      if(!metroCloudReady)throw new Error('Cloud sync is not ready yet. Wait until Metro Eats finishes connecting to cloud backup, then try again. Nothing was changed.');
+      if(metroCloudBusy)throw new Error('Cloud backup is currently saving. Wait a moment and try restoring again. Nothing was changed.');
+      if(!confirm('Restore this backup to Metro Eats? This will replace the current recipes and restaurants on this device AND in cloud backup. A safety copy of the current data will download first.'))return;
+      previousDb=JSON.parse(JSON.stringify(db));
+      previousRaw=localStorage.getItem(KEY);
+      const cloudResponse=await metroCloudFetch('/api/data',{cache:'no-store'});
+      if(!cloudResponse.ok)throw new Error('Could not read the current cloud backup. Restore was cancelled before changing anything.');
+      previousCloud=await cloudResponse.json();
+      if(!previousCloud||!Array.isArray(previousCloud.recipes)||!Array.isArray(previousCloud.restaurants))throw new Error('The current cloud backup is not valid. Restore was cancelled.');
+      const safetyPayload=JSON.stringify({ ...previousDb, backupCreatedAt:new Date().toISOString(), backupReason:'Automatic pre-restore safety snapshot' },null,2);
+      const safetyUrl=URL.createObjectURL(new Blob([safetyPayload],{type:'application/json'}));
+      const safetyLink=document.createElement('a');safetyLink.href=safetyUrl;safetyLink.download='metro-eats-pre-restore-safety-'+new Date().toISOString().slice(0,10)+'.json';document.body.appendChild(safetyLink);safetyLink.click();safetyLink.remove();setTimeout(()=>URL.revokeObjectURL(safetyUrl),1500);
+      metroRestoreInProgress=true;clearTimeout(metroCloudTimer);metroCloudQueued=false;
+      db={...restored,recipes:restored.recipes,restaurants:restored.restaurants};
+      localStorage.setItem(KEY,JSON.stringify(db));
+      migrate();
+      cloudWriteAttempted=true;
+      const putResponse=await metroCloudFetch('/api/data',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({recipes:db.recipes||[],restaurants:db.restaurants||[]})});
+      if(!putResponse.ok)throw new Error('Cloud backup rejected the restored data.');
+      const verifyResponse=await metroCloudFetch('/api/data?restoreVerify='+Date.now(),{cache:'no-store'});
+      if(!verifyResponse.ok)throw new Error('Could not verify the restored cloud backup.');
+      const verified=await verifyResponse.json();
+      const matches=(expected,actual)=>expected.length===actual.length&&expected.every(item=>{const saved=actual.find(row=>row&&String(row.id)===String(item.id));return !!saved&&JSON.stringify(saved)===JSON.stringify(item)});
+      if(!Array.isArray(verified.recipes)||!Array.isArray(verified.restaurants)||!matches(db.recipes||[],verified.recipes)||!matches(db.restaurants||[],verified.restaurants))throw new Error('Cloud read-back did not match the restored backup.');
+      metroRestoreInProgress=false;metroCloudReady=true;metroCloudQueued=false;
+      window.metroEatsCloudStatus='saved';
+      const status=document.getElementById('metroCloudStatus');if(status)status.textContent='Cloud backup: restored and verified';
+      renderRecipes();renderRestaurants();updateStory();closeModal();
+      alert('Metro Eats backup restored. The safety copy was downloaded, and the restored recipes and restaurants were verified in cloud backup.');
+    }catch(err){
+      if(previousDb){
+        try{
+          if(cloudWriteAttempted&&previousCloud){
+            await metroCloudFetch('/api/data',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({recipes:previousCloud.recipes||[],restaurants:previousCloud.restaurants||[]})});
+          }
+        }catch(rollbackError){console.error('Metro Eats cloud rollback could not be verified; keep the downloaded pre-restore safety file.',rollbackError)}
+        db=previousDb;
+        try{if(previousRaw===null)localStorage.removeItem(KEY);else localStorage.setItem(KEY,previousRaw)}catch(storageError){console.error('Local restore rollback failed',storageError)}
+        renderRecipes();renderRestaurants();updateStory();
+      }
+      alert('Metro Eats could not complete the restore. '+(err.message||'Invalid backup file.')+(previousDb?' Your previous local data was put back. Keep the downloaded pre-restore safety copy.':''));
+    }finally{
+      metroRestoreInProgress=false;e.target.value='';
+    }
   };
   reader.readAsText(file);
 });
@@ -165,8 +208,11 @@ migrate();
 /* Cloud persistence: local data stays usable if the network is unavailable. */
 (async function metroCloudHydrate(){
   try{
-    const response=await fetch('/api/data',{cache:'no-store'});
-    if(!response.ok)throw new Error('Cloud load returned '+response.status);
+    let response,lastError;
+    for(let attempt=0;attempt<2;attempt++){
+      try{response=await metroCloudFetch('/api/data?hydrate='+Date.now()+'-'+attempt,{cache:'no-store'});if(!response.ok)throw new Error('Cloud load returned '+response.status);break}
+      catch(error){lastError=error;if(attempt===1)throw lastError;await new Promise(resolve=>setTimeout(resolve,700*(attempt+1)))}
+    }
     const remote=await response.json();
     if(!remote||!Array.isArray(remote.recipes)||!Array.isArray(remote.restaurants))throw new Error('Cloud data format is invalid');
     const local=JSON.parse(localStorage.getItem(KEY)||'{"recipes":[],"restaurants":[]}');
@@ -174,15 +220,15 @@ migrate();
     db={...db,...merged};
     localStorage.setItem(KEY,JSON.stringify(db));
     renderRecipes();renderRestaurants();updateStory();
-    metroCloudReady=true;
+    metroCloudReady=true;metroCloudHydrated=true;
     window.metroEatsCloudStatus='connected';
     const status=document.getElementById('metroCloudStatus');if(status)status.textContent='Cloud backup: connected';
     if((db.recipes||[]).length||(db.restaurants||[]).length)await metroCloudPush();
   }catch(error){
     console.warn('Metro Eats cloud unavailable; keeping local data intact.',error);
-    metroCloudReady=true;
+    metroCloudReady=false;metroCloudHydrated=false;
     window.metroEatsCloudStatus='offline';
-    const status=document.getElementById('metroCloudStatus');if(status)status.textContent='Cloud backup unavailable — data remains on this device';
+    const status=document.getElementById('metroCloudStatus');if(status)status.textContent='Cloud connection failed — saved cloud data is protected. Reload to retry; do not save until connected.';
   }
 })();
 
@@ -209,13 +255,13 @@ document.querySelectorAll('[data-tab]').forEach(b=>b.addEventListener('click',()
 function renderCategoryFilter(){let e=document.getElementById('recipeCategoryFilter');if(!e)return;let v=e.value;e.innerHTML='<option value="">All Categories</option>'+Object.keys(categories).map(c=>`<option value="${esc(c)}">${esc(c)}</option>`).join('');e.value=categories[v]?v:''}
 function filterRecipeCategory(c){activeCat=c;renderRecipes()}
 function recipeIdArg(id){return JSON.stringify(String(id??''))}
-function renderRecipes(){renderCategoryFilter();let q=(fieldValue('recipeSearch')).toLowerCase();let arr=db.recipes.filter(r=>(!activeCat||r.category===activeCat)&&(!q||JSON.stringify(r).toLowerCase().includes(q)));document.getElementById('recipeList').innerHTML=arr.length?arr.map(r=>`<article class="recipe" id="recipe-${r.id}"><div class="recipeHead clickable" onclick="toggleRecipe('${r.id}',event)"><div>${r.photos?.[0]?`<img class="recipePhoto" src="${esc(r.photos[0])}" alt="Photo of ${esc(r.title)}">`:''}<h3>${esc(r.title)} ${r.favorite?'★':''}</h3><div class="meta">${esc(r.category||'Other')} • ${esc(r.subcategory||'Other')} ${r.servings?'• '+esc(r.servings)+' servings':''} ${r.time?'• '+esc(normalizeImportedTime(r.time)):''}</div>${stamp('Added',r.createdAt)}${r.updatedAt?stamp('Last updated',r.updatedAt):''}</div><div class="actions"><button class="btn" aria-label="Edit ${esc(r.title)}" onclick='event.stopPropagation();openRecipe(${recipeIdArg(r.id)})'>Edit</button><button class="btn" aria-label="${r.favorite?'Remove from favorites':'Add to favorites'}" onclick="event.stopPropagation();toggleFav('${r.id}')">${r.favorite?'★':'☆'}</button></div></div><div class="recipeBody"><div><h4>Ingredients</h4><ul>${(r.ingredients||[]).map(x=>`<li>${esc(x)}</li>`).join('')}</ul></div><div><h4>Directions</h4><ol>${(r.steps||[]).map(x=>`<li>${esc(String(x).replace(/^\s*\d+[.)]\s*/,''))}</li>`).join('')}</ol></div></div></article>`).join(''):'<div class="empty">No recipes found.</div>'}
+function renderRecipes(){renderCategoryFilter();let q=(fieldValue('recipeSearch')).toLowerCase(),sort=document.getElementById('recipeSort')?.value||'newest';let arr=db.recipes.filter(r=>(!activeCat||r.category===activeCat)&&(!q||JSON.stringify(r).toLowerCase().includes(q))&&(sort!=='favorites'||!!r.favorite));arr.sort((a,b)=>{const date=x=>new Date(x.createdAt||0).getTime()||0;switch(sort){case 'name':return String(a.title||'').localeCompare(String(b.title||''));case 'oldest':return date(a)-date(b);case 'favorites':case 'favorites-first':return Number(!!b.favorite)-Number(!!a.favorite)||date(b)-date(a);default:return date(b)-date(a)}});document.getElementById('recipeList').innerHTML=arr.length?arr.map(r=>`<article class="recipe" id="recipe-${r.id}"><div class="recipeHead clickable" onclick="toggleRecipe('${r.id}',event)"><div>${r.photos?.[0]?`<img class="recipePhoto" src="${esc(r.photos[0])}" alt="Photo of ${esc(r.title)}">`:''}<h3>${esc(r.title)} ${r.favorite?'★':''}</h3><div class="meta">${esc(r.category||'Other')} • ${esc(r.subcategory||'Other')} ${r.servings?'• '+esc(r.servings)+' servings':''} ${r.time?'• '+esc(normalizeImportedTime(r.time)):''}</div>${stamp('Added',r.createdAt)}${r.updatedAt?stamp('Last updated',r.updatedAt):''}</div><div class="actions"><button class="btn" aria-label="Edit ${esc(r.title)}" onclick='event.stopPropagation();openRecipe(${recipeIdArg(r.id)})'>Edit</button><button class="btn" aria-label="${r.favorite?'Remove from favorites':'Add to favorites'}" onclick="event.stopPropagation();toggleFav('${r.id}')">${r.favorite?'★':'☆'}</button></div></div><div class="recipeBody"><div><h4>Ingredients</h4><ul>${(r.ingredients||[]).map(x=>`<li>${esc(x)}</li>`).join('')}</ul></div><div><h4>Directions</h4><ol>${(r.steps||[]).map(x=>`<li>${esc(String(x).replace(/^\s*\d+[.)]\s*/,''))}</li>`).join('')}</ol></div></div></article>`).join(''):'<div class="empty">No recipes found.</div>'}
 function toggleRecipe(id,e){if(e?.target?.closest('button'))return;document.getElementById('recipe-'+id)?.classList.toggle('expanded')}
 function toggleFav(id){let r=db.recipes.find(x=>x.id===id);if(!r)return;r.favorite=!r.favorite;r.updatedAt=new Date().toISOString();save();renderRecipes();updateStory()}
 function openRecipeChooser(){modal.classList.add('show');modalBody.innerHTML=`<div class="eyebrow">Your Kitchen</div><h2>Add a Recipe</h2><p class="hint">Import a recipe from a website or paste recipe text. Both paths go through the same recipe editor before anything is saved.</p><div class="choiceGrid"><article class="choiceCard"><div><div class="choiceIcon">↗</div><h3>Import From Website</h3><p class="hint">Extract recipe-specific content from a public recipe page.</p></div><button class="btn primary" onclick="openWebsiteImporter()">Import Recipe</button></article><article class="choiceCard"><div><div class="choiceIcon">▤</div><h3>Paste Recipe</h3><p class="hint">Paste recipe text and let Metro Eats separate the useful parts.</p></div><button class="btn primary" onclick="openPasteImporter()">Paste Recipe</button></article></div><div class="actions"><button class="btn danger" onclick="closeModal()">Cancel</button></div>`}
 async function deleteRecipeById(id){let index=-1;if(id)index=db.recipes.findIndex(x=>String(x.id)===String(id));if(index<0)return alert('That recipe could not be found in Metro Eats.');let saved=db.recipes[index];if(!confirm('Delete this recipe? This will permanently remove the recipe, ingredients, directions, photo and saved recipe data from Metro Eats.'))return;let backup=JSON.parse(JSON.stringify(saved));try{db.recipes.splice(index,1);save();closeModal();renderRecipes();updateStory();alert('Recipe deleted.')}catch(e){db.recipes.splice(index,0,backup);alert('Metro Eats could not delete this recipe. Your data was not changed.\n\n'+(e?.message||'Please try again.'))}}
 async function deleteCurrentRecipe(){let r=window._editingRecipe;if(!r)return;return deleteRecipeById(r.id)}
-function openRecipe(id,imported=null){let r=id==='new'?{id:'new',title:'',category:'Main Dishes',subcategory:'Beef',servings:'',time:'',ingredients:[],steps:[],favorite:false,createdAt:null,updatedAt:null,photos:[]}:db.recipes.find(x=>x.id===id);if(!r)return;modal.classList.add('show');window._editingRecipe=id==='new'?null:r;modalBody.innerHTML=`<div class="eyebrow">Recipe editor</div><h2>${id==='new'?'Create Recipe':'Edit Recipe'}</h2>${id!=='new'&&!imported?'<div class="notice" style="margin:12px 0"><strong>Editing saved recipe</strong><div class="actions" style="margin-top:10px"><button type="button" class="btn danger" onclick="deleteCurrentRecipe()">Delete Recipe</button></div></div>':''}<div class="fields"><div class="field full"><label for="fTitle">Recipe name</label><input id="fTitle" autocomplete="off" value="${esc(imported?.title??r.title)}"></div><div class="field"><label for="fCat">Category</label><select id="fCat" onchange="fillSubcats()">${Object.keys(categories).map(c=>`<option value="${esc(c)}" ${c===(imported?.category||r.category)?'selected':''}>${esc(c)}</option>`).join('')}</select></div><div class="field"><label for="fSub">Subcategory</label><select id="fSub"></select></div><div class="field"><label for="fServ">Servings</label><input id="fServ" value="${esc(imported?.servings??r.servings)}"></div><div class="field"><label for="fTime">Prep + cook time</label><input id="fTime" value="${esc(normalizeImportedTime(imported?.time??r.time))}"></div><div class="field full"><label for="fIng">Ingredients — one per line</label><textarea id="fIng" rows="9">${esc((imported?.ingredients||r.ingredients||[]).join('\n'))}</textarea></div><div class="field full"><label for="fSteps">Directions — one step per line</label><textarea id="fSteps" rows="9">${esc((imported?.steps||r.steps||[]).map((step,i)=>(i+1)+'. '+step).join('\n\n'))}</textarea></div><div class="field full"><label for="fPhoto">Recipe photo</label><input id="fPhoto" type="file" accept="image/*" capture="environment" onchange="previewRecipePhoto(this)"><div class="fileNote">Photos stay in your Metro Eats backup/export and are stored locally on this device.</div><div id="recipePhotoPreview"></div></div></div>${r.createdAt?stamp('Added',r.createdAt):''}${r.updatedAt?stamp('Last updated',r.updatedAt):''}<div class="actions"><button class="btn primary" onclick="saveRecipe('${id}')">Save Recipe</button><button class="btn danger" onclick="closeModal()">Cancel</button></div>`;window._recipePhoto=(imported?.photos?.[0]||r.photos?.[0]||'');renderRecipePhotoPreview();fillSubcats(imported?.subcategory||r.subcategory||'');const stepField=document.getElementById('fSteps');if(stepField)stepField.scrollTop=0;const ingredientField=document.getElementById('fIng');if(ingredientField)ingredientField.scrollTop=0}
+function openRecipe(id,imported=null){let r=id==='new'?{id:'new',title:'',category:'Main Dishes',subcategory:'Pasta',servings:'',time:'',ingredients:[],steps:[],favorite:false,createdAt:null,updatedAt:null,photos:[]}:db.recipes.find(x=>x.id===id);if(!r)return;modal.classList.add('show');window._editingRecipe=id==='new'?null:r;modalBody.innerHTML=`<div class="eyebrow">Recipe editor</div><h2>${id==='new'?'Create Recipe':'Edit Recipe'}</h2>${id!=='new'&&!imported?'<div class="notice" style="margin:12px 0"><strong>Editing saved recipe</strong><div class="actions" style="margin-top:10px"><button type="button" class="btn danger" onclick="deleteCurrentRecipe()">Delete Recipe</button></div></div>':''}<div class="fields"><div class="field full"><label for="fTitle">Recipe name</label><input id="fTitle" autocomplete="off" value="${esc(imported?.title??r.title)}"></div><div class="field"><label for="fCat">Category</label><select id="fCat" onchange="fillSubcats()">${Object.keys(categories).map(c=>`<option value="${esc(c)}" ${c===(imported?.category||r.category)?'selected':''}>${esc(c)}</option>`).join('')}</select></div><div class="field"><label for="fSub">Subcategory</label><select id="fSub"></select></div><div class="field"><label for="fServ">Servings</label><input id="fServ" value="${esc(imported?.servings??r.servings)}"></div><div class="field"><label for="fTime">Prep + cook time</label><input id="fTime" value="${esc(normalizeImportedTime(imported?.time??r.time))}"></div><div class="field full"><label for="fIng">Ingredients — one per line</label><textarea id="fIng" rows="9">${esc((imported?.ingredients||r.ingredients||[]).join('\n'))}</textarea></div><div class="field full"><label for="fSteps">Directions — one step per line</label><textarea id="fSteps" rows="9">${esc((imported?.steps||r.steps||[]).map((step,i)=>(i+1)+'. '+step).join('\n\n'))}</textarea></div><div class="field full"><label for="fPhoto">Recipe photo</label><input id="fPhoto" type="file" accept="image/*" capture="environment" onchange="previewRecipePhoto(this)"><div class="fileNote">Photos stay in your Metro Eats backup/export and are stored locally on this device.</div><div id="recipePhotoPreview"></div></div></div>${r.createdAt?stamp('Added',r.createdAt):''}${r.updatedAt?stamp('Last updated',r.updatedAt):''}<div class="actions"><button class="btn primary" onclick="saveRecipe('${id}')">Save Recipe</button><button class="btn danger" onclick="closeModal()">Cancel</button></div>`;window._recipePhoto=(imported?.photos?.[0]||r.photos?.[0]||'');renderRecipePhotoPreview();fillSubcats(imported?.subcategory||r.subcategory||'');const stepField=document.getElementById('fSteps');if(stepField)stepField.scrollTop=0;const ingredientField=document.getElementById('fIng');if(ingredientField)ingredientField.scrollTop=0}
 function fillSubcats(selected=''){let c=document.getElementById('fCat')?.value,e=document.getElementById('fSub');if(!e)return;let opts=categories[c]||['Other'];e.innerHTML=opts.map(s=>`<option value="${esc(s)}" ${s===selected?'selected':''}>${esc(s)}</option>`).join('')}
 async function previewRecipePhoto(input){if(input.files?.[0]){window._recipePhoto=await readFileAsDataUrl(input.files[0]);renderRecipePhotoPreview()}}
 function renderRecipePhotoPreview(){let e=document.getElementById('recipePhotoPreview');if(!e)return;e.innerHTML=window._recipePhoto?`<img class="recipePhoto" src="${esc(window._recipePhoto)}" alt="Recipe photo preview"><button class="btn" onclick="window._recipePhoto='';renderRecipePhotoPreview()">Remove Photo</button>`:''}
@@ -232,27 +278,30 @@ function cleanImportedLine(s){
     .replace(/^\s*#+\s*/,'')
     .replace(/^\s*(?:[-*•]|\d+[.)])\s*/,'')
     .replace(/^\s*(?:step\s*)?\d+\s*[:.-]\s*/i,'')
-    /* Remove dangling source footnote markers such as softened* and seasoning** when their footnotes are not imported. */
     .replace(/\s*\*{1,3}\s*$/,'')
     .replace(/\s+/g,' ')
     .trim();
-  /* Normalize common recipe-unit OCR/HTML extraction errors.
-     Examples: "1 /2" -> "1/2", "teaspooncayenne" -> "teaspoon cayenne",
-     "tablespoonbutter" -> "tablespoon butter", and "cup s" -> "cups". */
   x=x
     .replace(/\b(\d+)\s*\/\s*(\d+)\b/g,'$1/$2')
     .replace(/\b(\d+)\s+(\d+)\s*\/\s*(\d+)\b/g,'$1 $2/$3')
-    .replace(/\b(cup|tablespoon|teaspoon)\s*([sS])\b/g,'$1$2')
-    .replace(/\b(tablespoon)\s+s\b/gi,'$1s')
-    .replace(/\b(teaspoon)\s+s\b/gi,'$1s')
-    .replace(/\b(tablespoons?|teaspoons?|cloves?|cups?|minutes?|hours?|pieces?|sprigs?|inches?|ounces?|pounds?|cans?)\s+s\b/gi,'$1')
-    .replace(/\b(tablespoon|teaspoon|clove|minute|hour|piece|sprig|inch|ounce|pound|cup|can)\s+s\b/gi,'$1s')
+    // Normalize split plural units at the shared cleanup stage, before review or editor.
+    .replace(/\bclove\s*s\s+(?=[a-z])/gi,'cloves ')
+    .replace(/\bcup\s*s\s+(?=[a-z])/gi,'cups ')
+    .replace(/\b(clove|cup)\s+([sS])(?=\s|,|$)/gi,'$1$2')
+    .replace(/\b(tablespoon|teaspoon|minute|hour|piece|sprig)\s+s(?=\s|,|$)/gi,'$1s')
+    .replace(/\b(clove|cup)\s+s\b/gi,'$1s')
+    .replace(/\b(tablespoon|teaspoon)\s+s\b/gi,'$1s')
     .replace(/(teaspoons?|tablespoons?|cups?|pounds?|ounces?|oz\.?|lbs?\.?|cloves?|cans?)(?=[A-Za-z])/gi,'$1 ')
     .replace(/\s*([,;])\s*\1+/g,'$1')
     .replace(/\s*\(\s*\$\d+(?:\.\d{1,2})?\s*\)/g,'')
     .replace(/(\d)\s*(\()/g,'$1 $2')
     .replace(/\s+/g,' ')
     .trim();
+  // Last-chance repair after cleanup for split plural units in imported text.
+  x=x.replace(/\bclove\s+s(?=\s|,|$)/gi,'cloves')
+      .replace(/\bcup\s+s(?=\s|,|$)/gi,'cups')
+      .replace(/\b(tablespoon|teaspoon|minute|hour|piece|sprig)\s+s(?=\s|,|$)/gi,'$1s')
+      .replace(/\s+/g,' ').trim();
   return x;
 }
 function isRecipeMetaLine(s){
@@ -262,7 +311,20 @@ function isRecipeStopHeading(s){
   return /^(ingredients?|directions?|instructions?|method|steps?|notes?|nutrition|nutritional information|calories?|more recipes|related recipes|you may also like|recommended|about the author|comments?|leave a reply|video|watch|equipment|tools|storage|variations?|tips?|substitutions?|serving suggestions?|reviews?)\b/i.test(String(s||'').replace(/^#+\s*/,'').trim());
 }
 function isRecipeSectionHeading(s){
-  return /^(ingredients?|directions?|instructions?|method|steps?|notes?|nutrition|nutritional information|calories?|equipment|tools|storage|variations?|tips?|substitutions?|serving suggestions?|reviews?|comments?|more recipes|related recipes|you may also like|recommended|about the author)\s*:??$/i.test(String(s||'').replace(/^#+\s*/,'').trim());
+  const heading=String(s||'').replace(/^#+\s*/,'').replace(/\s+/g,' ').trim();
+  return /^(?:ingredients?(?:\s*\([^)]*\))?(?:\s*[-–—|:].*)?|directions?(?:\s*[-–—|:].*)?|instructions?(?:\s*[-–—|:].*)?|method(?:\s*[-–—|:].*)?|steps?(?:\s*[-–—|:].*)?|notes?|nutrition(?:al information)?(?: facts?)?|calories?|equipment|tools|storage|variations?|tips?|substitutions?|serving suggestions?|reviews?|comments?|leave a comment|leave a reply|reader comments?|more recipes|related recipes|you may also like|recommended|about the author|subscribe(?: to.*)?|newsletter|advertisement|sponsored(?: story)?)\s*:??$/i.test(heading);
+}
+function extractPastedRecipeTitle(lines){
+  const ingredientHeadingIndex=lines.findIndex(line=>/^ingredients?(?:\s*\([^)]*\))?(?:\s*[-–—|:].*)?\s*:?$/i.test(line.replace(/^#+\s*/,'').trim()));
+  const beforeIngredients=lines.slice(0,ingredientHeadingIndex<0?Math.min(lines.length,20):Math.max(1,ingredientHeadingIndex));
+  const explicit=beforeIngredients.find(line=>/^title\s*:/i.test(line));
+  if(explicit)return cleanImportedLine(explicit.replace(/^title\s*:\s*/i,''));
+  const headings=beforeIngredients.filter(line=>/^#{1,3}\s+/.test(line)).map(line=>cleanImportedLine(line.replace(/^#{1,3}\s+/,'')));
+  const ignored=/^(jump to recipe|print recipe|save recipe|pin recipe|ingredients?|directions?|instructions?|method|steps?|home|recipes?|advertisement|sponsored)$/i;
+  const plausible=line=>{const x=cleanImportedLine(line);return x.length>=4&&x.length<=110&&!ignored.test(x)&&!isRecipeMetaLine(x)&&!/^https?:\/\//i.test(x)&&!/^\d+\s*(?:stars?|reviews?)$/i.test(x)&&!/^by\s+/i.test(x)};
+  const heading=headings.find(plausible);
+  if(heading)return heading;
+  return beforeIngredients.map(cleanImportedLine).find(line=>plausible(line)&&!isBulletLine(line)&&!/[.!?]$/.test(line))||'Pasted Recipe';
 }
 function isBulletLine(s){return /^\s*(?:[-*•]|(?:\d+[.)]))\s+/.test(s)}
 function normalizeRecipeInstruction(x){
@@ -339,7 +401,12 @@ function normalizeImportedIngredientText(value){
     .replace(/\s*\(\s*(diced|minced|shredded|freshly cracked|uncooked|divided)\s*,?\s*\*{1,3}\s*\)/gi, ' ($1)')
     .replace(/\s*\(\s*(diced|minced|shredded|freshly cracked|uncooked|divided)\s*,?\s*\)/gi, ' ($1)')
     .replace(/\bmoz\s+zarella\b/gi,'mozzarella')
+    // Repair plural unit words even when pasted text splits the plural from the following ingredient.
+    .replace(/\bclove\s+s\s+(?=[a-z])/gi,'cloves ')
+    .replace(/\bcup\s+s\s+(?=[a-z])/gi,'cups ')
+    .replace(/\b(clove|cup|tablespoon|teaspoon|minute|hour|piece|sprig)\s+([sS])(?=\s|,|$)/gi,'$1$2')
     .replace(/\bclove\s+s\b/gi,'cloves')
+    .replace(/\bcup\s+s\b/gi,'cups')
     .replace(/\b(clove)\s+s\b/gi,'$1s')
     .replace(/\b(table\s*spoons?|tablespoons?)\s*([sS])\b/gi,'tablespoons')
     .replace(/\b(teaspoons?)\s*([sS])\b/gi,'teaspoons')
@@ -352,9 +419,18 @@ function normalizeImportedIngredientText(value){
     .replace(/\s+/g,' ')
     .trim();
 }
+function isNonRecipePromoLine(value){
+  const s=String(value||'').replace(/^\\s*\\d+[.)]\\s*/,'').trim();
+  return /^(?:thanks for reading|thank you for reading|subscribe(?: to| for| now|$)|sign up for (?:our|the) newsletter|newsletter(?: signup| sign[- ]?up)?|leave (?:a )?comment|leave a reply|did you make this recipe|check out (?:our|these|more) (?:other |related )?(?:recipes|weeknight dinner ideas|posts)|more recipes|related recipes|you may also like|read more|follow us|advertisement|sponsored (?:story|content)|share (?:this|the) recipe|pin this recipe|join (?:our|the) mailing list)\b/i.test(s);
+}
 function validateRecipeExtraction(data){
   const ingredients=(data.ingredients||[]).map(x=>cleanImportedLine(normalizeImportedIngredientText(x))).filter(looksLikeRecipeIngredient);
-  const steps=(data.steps||[]).map(x=>cleanImportedLine(x)).filter(looksLikeRecipeStep);
+  const steps=[];
+  for(const value of (data.steps||[])){
+    const cleaned=cleanImportedLine(value);
+    if(!cleaned||isNonRecipePromoLine(cleaned)||isRecipeSectionHeading(cleaned))break;
+    steps.push(cleaned);
+  }
   const issues=[];
   if(ingredients.length<2)issues.push('Not enough clearly identifiable ingredients were found.');
   if(steps.length<2)issues.push('Not enough clearly identifiable cooking directions were found.');
@@ -369,8 +445,9 @@ function normalizeImportedTime(value){
   let x=cleanImportedLine(value||'');
   const m=x.match(/^PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?$/i);
   if(m){const h=Number(m[1]||0),min=Number(m[2]||0),sec=Number(m[3]||0);return [h?h+' hour'+(h===1?'':'s'):'',min?min+' minute'+(min===1?'':'s'):'',sec?sec+' second'+(sec===1?'':'s'):''].filter(Boolean).join(' ')}
-  // Remove labels accidentally imported as part of the value (e.g. "Prep 10 minutes").
-  x=x.replace(/^(?:prep(?:aration)?(?:\s*\+\s*cook)?|cook(?:ing)? time)\s*[:—-]?\s*/i,'');
+  // Preserve explicit prep/cook/total labels; the editor field can hold all three values.
+  // Only remove the generic combined-field label if it was copied into the value.
+  x=x.replace(/^prep(?:aration)?\s*\+\s*cook\s*time\s*[:—-]?\s*/i,'');
   return x;
 }
 function inferImportedCategory(title,ingredients,steps){
@@ -387,7 +464,8 @@ function inferImportedCategory(title,ingredients,steps){
   // Classify mixed/assembled dishes by their dish name before looking at meat ingredients.
   if(/\b(stuffed peppers?|bell peppers?|casseroles?|shepherd'?s pie|pot pie|meatloaf|stuffed shells?)\b/.test(titleText))return {category:'Main Dishes',subcategory:'Other'};
   if(/\b(taco|tacos|enchilada|burrito|quesadilla)\b/.test(titleText))return {category:'Mexican & Latin',subcategory:'Other'};
-  if(/\b(pizza|pasta|alfredo|lasagna|spaghetti|fettuccine|ravioli|risotto)\b/.test(titleText))return {category:'Italian',subcategory:'Other'};
+  if(/\b(noodles?|pasta|alfredo|lasagna|spaghetti|fettuccine|ravioli|risotto|macaroni)\b/.test(titleText))return {category:'Main Dishes',subcategory:'Pasta'};
+  if(/\b(pizza)\b/.test(titleText))return {category:'Italian',subcategory:'Pizza'};
   if(/\b(breakfast|pancake|waffle|omelet|omelette|french toast)\b/.test(titleText))return {category:'Breakfast & Brunch',subcategory:'Other'};
   if(/\b(chicken|turkey|poultry)\b/.test(titleText))return {category:'Main Dishes',subcategory:'Chicken'};
   if(/\b(pork|ham|bacon|sausage)\b/.test(titleText))return {category:'Main Dishes',subcategory:'Pork'};
@@ -430,6 +508,7 @@ function collectSection(text,headingRegex,kind){
     const raw=lines[i];
     const normalized=raw.replace(/^#+\s*/,'').replace(/:$/,'').trim();
     if(isRecipeSectionHeading(normalized)&&!headingRegex.test(normalized))break;
+    if(kind==='steps'&&/^(?:did you make this recipe|leave a comment|leave a reply|subscribe(?: to\b|$)|sign up for our newsletter|newsletter\b|advertisement\b|sponsored story\b|you may also like\b|related recipes\b|more recipes\b)/i.test(normalized))break;
     if(headingRegex.test(normalized))continue;
     if(isRecipeMetaLine(raw))continue;
     const cleaned=cleanImportedLine(raw);
@@ -477,15 +556,19 @@ function parsePastedRecipe(){
   let text=fieldValue('rawRecipe').trim();
   if(!text)return alert('Paste the recipe text first.');
   let lines=text.split(/\r?\n/).map(x=>x.trim()).filter(Boolean);
-  let title=lines[0]||'Pasted Recipe';
-  title=title.replace(/^title\s*:\s*/i,'').replace(/^#+\s*/,'').trim()||'Pasted Recipe';
+  let title=extractPastedRecipeTitle(lines);
   let servings='',time='';
-  for(const line of lines.slice(0,12)){
+  for(const line of lines.slice(0,30)){
     let m=line.match(/^(?:yield|yields|serves|servings)\s*:\s*(.+)$/i);if(m)servings=cleanImportedLine(m[1]);
-    m=line.match(/^(?:prep(?:aration)?\s*time|cook(?:ing)?\s*time|total\s*time|time)\s*:\s*(.+)$/i);if(m)time+=(time?' • ':'')+cleanImportedLine(m[1]);
+    m=line.match(/^(prep(?:aration)?\s*time|cook(?:ing)?\s*time|total\s*time|time)\s*:\s*(.+)$/i);
+    if(m){
+      const label=/^prep/i.test(m[1])?'Prep':/^cook/i.test(m[1])?'Cook':/^total/i.test(m[1])?'Total':'Time';
+      const value=cleanImportedLine(m[2]);
+      if(value&&!time.split(' • ').some(part=>part.toLowerCase().startsWith(label.toLowerCase()+' ')))time+=(time?' • ':'')+label+' '+value;
+    }
   }
-  let ingredients=collectSection(text,/^(ingredients?)$/i,'ingredients');
-  let steps=collectSection(text,/^(directions?|instructions?|method|steps?)$/i,'steps');
+  let ingredients=collectSection(text,/^ingredients?(?:\s*\([^)]*\))?(?:\s*[-–—|:].*)?$/i,'ingredients');
+  let steps=collectSection(text,/^(?:directions?|instructions?|method|steps?)(?:\s*[-–—|:].*)?$/i,'steps');
   if(!ingredients.length||!steps.length){
     modalBody.innerHTML=`<div class="eyebrow">Recipe importer</div><h2>Couldn’t identify the recipe sections</h2><p class="hint">To avoid mixing article text into your recipe, Metro Eats needs clearly labeled Ingredients and Directions (or Instructions/Method/Steps) sections. Nothing has been saved.</p><div class="actions"><button class="btn primary" onclick="openPasteImporter()">Edit Pasted Text</button><button class="btn" onclick="openRecipeChooser()">Back</button></div>`;
     return;
@@ -496,7 +579,7 @@ function showImportedRecipeReview(data,source){
   const cleanIngredients=(data.ingredients||[]).map(normalizeImportedIngredientText);
   const inferred=inferImportedCategory(data.title||data.name,cleanIngredients,data.steps||[]);
   const importTitle=String(data.title||data.name||'').toLowerCase();
-  const hasSpecificInferred=/\b(dip|spread|stuffed peppers?|bell peppers?|casseroles?|shepherd'?s pie|pot pie|meatloaf|stuffed shells?)\b/i.test(importTitle);
+  const hasSpecificInferred=/\b(dip|spread|stuffed peppers?|bell peppers?|casseroles?|shepherd'?s pie|pot pie|meatloaf|stuffed shells?|noodles?|pasta|alfredo|lasagna|spaghetti|fettuccine|ravioli|risotto|macaroni|pizza)\b/i.test(importTitle);
   data={...data,category:hasSpecificInferred?inferred.category:(data.category||inferred.category),
     subcategory:hasSpecificInferred?inferred.subcategory:(data.subcategory||inferred.subcategory),
     ingredients:cleanIngredients,servings:normalizeImportedServings(data.servings||''),time:normalizeImportedTime(data.time||'')};
@@ -570,8 +653,18 @@ function officialMenuSearch(name,loc){
   return 'https://www.google.com/search?q='+q;
 }
 function restaurantIdArg(id){return JSON.stringify(String(id??''))}
-function renderRestaurants(){let q=fieldValue('restaurantSearch').toLowerCase(),arr=db.restaurants.filter(r=>JSON.stringify(r).toLowerCase().includes(q));document.getElementById('restaurantList').innerHTML=arr.length?arr.map(r=>restaurantCard(r)).join(''):'<div class="empty">No saved restaurants yet.</div>';updateStory()}
-function restaurantCard(r){let s=r.survey,history=Array.isArray(r.reviewHistory)?r.reviewHistory:[],summary=s?topRatedSummary(s):'';return `<article class="restaurant"><div class="recipeHead"><div><h3>${esc(r.name)}</h3><div class="meta">${esc(r.location||'')} ${r.type?'• '+esc(r.type):''}</div>${stamp('Added',r.createdAt)}${r.updatedAt?stamp('Last updated',r.updatedAt):''}</div><button class="btn" onclick='openRestaurant(${restaurantIdArg(r.id)})'>Edit</button></div>${s?`<div class="restaurantScoreCard"><div><div class="restaurantScore">${Number(s.overall||0).toFixed(1)}<span style="font-size:.45em;letter-spacing:0"> / 10</span></div><div class="restaurantScoreLabel">Overall Experience</div></div><div><div class="topRated"><strong>Top Rated:</strong> ${summary||'Complete another visit for more detail.'}</div>${stamp('Reviewed',s.createdAt)}<div class="restaurantLinks"><button type="button" class="btn primary" onclick='event.stopPropagation();meDiningReview(${restaurantIdArg(r.id)})'>Review Again</button><button type="button" class="btn" onclick="event.stopPropagation();showVisitHistory('${r.id}')">Visit History (${history.length})</button></div></div></div>`:`<div class="actions"><button class="btn primary" onclick='showReviewResults(${restaurantIdArg(r.id)})'>★ Rate This Restaurant</button></div>`}${r.notes?`<p>${esc(r.notes)}</p>`:''}<div class="restaurantLinks">${normalizeExternalUrl(r.website)?`<a class="btn" href="${esc(normalizeExternalUrl(r.website))}">Official Website</a>`:''}${normalizeExternalUrl(r.menuUrl)?`<a class="btn" href="${esc(normalizeExternalUrl(r.menuUrl))}">Official Menu</a>`:`<a class="btn" href="${esc(officialMenuSearch(r.name,r.location||''))}">Find Official Menu</a>`}</div>${r.photos?.length?`<div class="photos">${r.photos.slice(0,6).map((p,i)=>`<img src="${esc(p)}" alt="${esc(r.name)} meal photo ${i+1}">`).join('')}</div>`:''}</article>`}
+function renderRestaurants(){let q=fieldValue('restaurantSearch').toLowerCase(),sort=document.getElementById('restaurantSort')?.value||'newest',arr=db.restaurants.filter(r=>JSON.stringify(r).toLowerCase().includes(q));const date=v=>{const n=new Date(v||0).getTime();return Number.isFinite(n)?n:0},reviewDate=r=>date(r.survey?.createdAt||r.reviewHistory?.[r.reviewHistory.length-1]?.createdAt||r.createdAt),rank=r=>Number(r.survey?.overall||r.rating||0);arr.sort((a,b)=>{switch(sort){case 'name':return String(a.name||'').localeCompare(String(b.name||''));case 'oldest':return date(a.createdAt)-date(b.createdAt);case 'highest':return rank(b)-rank(a)||reviewDate(b)-reviewDate(a);case 'lowest':return rank(a)-rank(b)||reviewDate(b)-reviewDate(a);case 'review-newest':return reviewDate(b)-reviewDate(a);case 'review-oldest':return reviewDate(a)-reviewDate(b);default:return date(b.createdAt)-date(a.createdAt)}});document.getElementById('restaurantList').innerHTML=arr.length?arr.map(r=>restaurantCard(r)).join(''):'<div class="empty">No saved restaurants yet.</div>';updateStory()}
+function restaurantCard(r){let s=r.survey,history=Array.isArray(r.reviewHistory)?r.reviewHistory:[],summary=s?topRatedSummary(s):'';return `<article class="restaurant"><div class="recipeHead"><div>${s?`<button type="button" class="restaurantTitle" aria-label="View ${esc(r.name)} review details" data-review-restaurant-id="${esc(String(r.id))}">${esc(r.name)} <span aria-hidden="true">›</span></button>`:`<h3>${esc(r.name)}</h3>`}<div class="meta">${esc(r.location||'')} ${r.type?'• '+esc(r.type):''}</div>${stamp('Added',r.createdAt)}${r.updatedAt?stamp('Last updated',r.updatedAt):''}</div><button class="btn" onclick='openRestaurant(${restaurantIdArg(r.id)})'>Edit</button></div>${s?`<div class="restaurantScoreCard"><div><div class="restaurantScore">${Number(s.overall||0).toFixed(1)}<span style="font-size:.45em;letter-spacing:0"> / 10</span></div><div class="restaurantScoreLabel">Overall Experience</div></div><div><div class="topRated"><strong>Top Rated:</strong> ${summary||'Complete another visit for more detail.'}</div>${stamp('Reviewed',s.createdAt)}<div class="restaurantLinks"><button type="button" class="btn primary" onclick='event.stopPropagation();meDiningReview(${restaurantIdArg(r.id)})'>Review Again</button><button type="button" class="btn" onclick="event.stopPropagation();showVisitHistory('${r.id}')">Visit History (${history.length})</button></div></div></div>`:`<div class="actions"><button class="btn primary" onclick='showReviewResults(${restaurantIdArg(r.id)})'>★ Rate This Restaurant</button></div>`}${r.notes?`<p>${esc(r.notes)}</p>`:''}<div class="restaurantLinks">${normalizeExternalUrl(r.website)?`<a class="btn" href="${esc(normalizeExternalUrl(r.website))}">Official Website</a>`:''}${normalizeExternalUrl(r.menuUrl)?`<a class="btn" href="${esc(normalizeExternalUrl(r.menuUrl))}">Official Menu</a>`:`<a class="btn" href="${esc(officialMenuSearch(r.name,r.location||''))}">Find Official Menu</a>`}</div>${r.photos?.length?`<div class="photos">${r.photos.slice(0,6).map((p,i)=>`<img src="${esc(p)}" alt="${esc(r.name)} meal photo ${i+1}">`).join('')}</div>`:''}</article>`}
+
+// Delegate restaurant-name taps from the list; avoid inline handlers and safely resolve the saved restaurant ID.
+document.addEventListener('click',function(event){
+  const title=event.target.closest && event.target.closest('[data-review-restaurant-id]');
+  if(!title)return;
+  event.preventDefault();
+  event.stopPropagation();
+  const id=title.getAttribute('data-review-restaurant-id');
+  if(id)showReviewResults(String(id));
+});
 function showReviewDetails(id){let r=db.restaurants.find(x=>x.id===id),s=r?.survey;if(!r||!s)return;modal.classList.add('show');modalBody.innerHTML='<div class="eyebrow">Complete Review</div><h2>'+esc(r.name)+'</h2><div class="meta">'+esc(r.location||'')+(r.type?' • '+esc(r.type):'')+'</div>'+stamp('Reviewed',s.createdAt)+'<div class="scoreHero"><div class="restaurantScore">'+Number(s.overall||0).toFixed(1)+'<span style="font-size:.45em;letter-spacing:0"> / 10</span></div><div class="restaurantScoreLabel">Overall Experience — 10-question survey</div></div><div class="reviewDetails">'+surveyQuestions.map((q,i)=>'<div class="reviewDetailRow"><div><b>'+(i+1)+'. '+esc(q[0])+'</b><div class="small">'+esc(q[1])+'</div></div><strong>'+Number(s.scores?.[i]||0)+'/10</strong></div>').join('')+'</div><div class="reviewExtras" style="margin-top:16px"><div class="field"><label>What did I eat?</label><div class="notice">'+esc(s.ordered||'Not recorded')+'</div></div><div class="field"><label>Would I order it again?</label><div class="notice">'+esc(s.orderAgain||'Not recorded')+'</div></div></div><div class="actions"><button class="btn primary" onclick="closeModal();startSurvey(\''+r.id+'\')">Edit Review</button><button class="btn danger" onclick="closeModal()">Close</button></div>'}
 function topRatedSummary(s){let labels=surveyQuestions.map((q,i)=>({name:q[0],score:Number(s?.scores?.[i]||0),i})).filter(x=>x.i>0&&x.i<9&&x.score>0).sort((a,b)=>b.score-a.score).slice(0,3);return labels.map(x=>`${esc(x.name)} ${x.score}/10`).join(' • ')}
 async function fetchWithTimeout(url,options={},ms=7000){
@@ -687,7 +780,7 @@ function useCurrentLocationForAddress(){if(!navigator.geolocation)return alert('
 function findWebsiteForCurrentRestaurant(){let q=encodeURIComponent(`${fieldValue('rName')} ${fieldValue('rLoc')} official restaurant website`);window.location.href='https://www.google.com/search?q='+q}
 function findOfficialMenu(){let q=encodeURIComponent(`${fieldValue('rName')} ${fieldValue('rLoc')} official menu`);window.location.href='https://www.google.com/search?q='+q}
 function officialMenuSearch(name,loc){return 'https://www.google.com/search?q='+encodeURIComponent(`${name} ${loc} official menu`)}
-function renderRestaurants(){let q=fieldValue('restaurantSearch').toLowerCase(),arr=db.restaurants.filter(r=>JSON.stringify(r).toLowerCase().includes(q));document.getElementById('restaurantList').innerHTML=arr.length?arr.map(r=>restaurantCard(r)).join(''):'<div class="empty">No saved restaurants yet.</div>';updateStory()}
+function renderRestaurants(){let q=fieldValue('restaurantSearch').toLowerCase(),sort=document.getElementById('restaurantSort')?.value||'newest',arr=db.restaurants.filter(r=>JSON.stringify(r).toLowerCase().includes(q));const date=v=>{const n=new Date(v||0).getTime();return Number.isFinite(n)?n:0},reviewDate=r=>date(r.survey?.createdAt||r.reviewHistory?.[r.reviewHistory.length-1]?.createdAt||r.createdAt),rank=r=>Number(r.survey?.overall||r.rating||0);arr.sort((a,b)=>{switch(sort){case 'name':return String(a.name||'').localeCompare(String(b.name||''));case 'oldest':return date(a.createdAt)-date(b.createdAt);case 'highest':return rank(b)-rank(a)||reviewDate(b)-reviewDate(a);case 'lowest':return rank(a)-rank(b)||reviewDate(b)-reviewDate(a);case 'review-newest':return reviewDate(b)-reviewDate(a);case 'review-oldest':return reviewDate(a)-reviewDate(b);default:return date(b.createdAt)-date(a.createdAt)}});document.getElementById('restaurantList').innerHTML=arr.length?arr.map(r=>restaurantCard(r)).join(''):'<div class="empty">No saved restaurants yet.</div>';updateStory()}
 function restaurantCard(r){let s=r.survey,history=r.reviewHistory||[],summary=s?topRatedSummary(s):'';return `<article class="restaurant"><div class="recipeHead"><div><h3>${esc(r.name)}</h3><div class="meta">${esc(r.location||'')} ${r.type?'• '+esc(r.type):''}</div>${stamp('Added',r.createdAt)}${r.updatedAt?stamp('Last updated',r.updatedAt):''}</div><button class="btn" onclick="openRestaurant('${r.id}')">Edit</button></div>${s?`<div class="restaurantScoreCard"><div><div class="restaurantScore">${Number(s.overall||0).toFixed(1)}<span style="font-size:.45em;letter-spacing:0"> / 10</span></div><div class="restaurantScoreLabel">Overall Experience</div></div><div><div class="topRated"><strong>Top Rated:</strong> ${summary||'Complete another visit for more detail.'}</div>${stamp('Reviewed',s.createdAt)}<div class="restaurantLinks"><button class="btn primary" onclick="startSurvey('${r.id}')">Review Again</button><button class="btn" onclick="showVisitHistory('${r.id}')">Visit History (${history.length})</button></div></div></div>`:`<div class="actions"><button class="btn primary" onclick="startSurvey('${r.id}')">★ Rate This Restaurant</button></div>`}${r.notes?`<p>${esc(r.notes)}</p>`:''}<div class="restaurantLinks">${r.website?`<a class="btn" href="${esc(r.website)}" target="_blank" rel="noopener noreferrer">Official Website</a>`:''}${r.menuUrl?`<a class="btn" href="${esc(r.menuUrl)}" target="_blank" rel="noopener noreferrer">Official Menu</a>`:`<a class="btn" href="${officialMenuSearch(r.name,r.location||'')}" target="_blank" rel="noopener noreferrer">Find Official Menu</a>`}</div>${r.photos?.length?`<div class="photos">${r.photos.slice(0,6).map((p,i)=>`<img src="${esc(p)}" alt="${esc(r.name)} meal photo ${i+1}">`).join('')}</div>`:''}</article>`}
 function topRatedSummary(s){let labels=surveyQuestions.map((q,i)=>({name:q[0],score:Number(s?.scores?.[i]||0),i})).filter(x=>x.i>0&&x.i<9&&x.score>0).sort((a,b)=>b.score-a.score).slice(0,3);return labels.map(x=>`${esc(x.name)} ${x.score}/10`).join(' • ')}
 async function fetchWithTimeout(url,options,timeoutMs){
@@ -1003,8 +1096,8 @@ function meSpotlightMarkup(r){
   let repeat=s.orderAgain?(' You said you would '+(s.orderAgain==='Yes'?'order it again.':'not order it again.')):'';
   return '<article class="restaurantSpotlightCard">'+
     '<div class="sectionKicker">Your #1 Restaurant</div>'+
-    '<div class="restaurantSpotlightTitleRow"><div><h3>'+esc(r.name)+'</h3><div class="meta">'+esc(r.location||'')+(r.type?' • '+esc(r.type):'')+'</div></div><div class="restaurantSpotlightScore">'+score.toFixed(1)+'<small>/10</small></div></div>'+
-    '<p class="restaurantSpotlightInsight"><strong>Critic insight:</strong> '+insight+esc(repeat)+'</p>'+
+    '<div class="restaurantSpotlightTitleRow"><div><button type="button" class="restaurantSpotlightName" onclick="showReviewResults(\''+String(r.id).replace(/'/g,"&#39;")+'\')" aria-label="Open review for '+esc(r.name)+'">'+esc(r.name)+'</button><div class="meta">'+esc(r.location||'')+(r.type?' • '+esc(r.type):'')+'</div></div><div class="restaurantSpotlightScore">'+score.toFixed(1)+'<small>/10</small></div></div>'+
+    '<p class="restaurantSpotlightInsight" role="button" tabindex="0" onclick="showReviewResults(\''+String(r.id).replace(/'/g,"&#39;")+'\')" onkeydown="if(event.key===\'Enter\'||event.key===\' \'){event.preventDefault();showReviewResults(\''+String(r.id).replace(/'/g,"&#39;")+'\')}" style="cursor:pointer"><strong>Critic insight:</strong> '+insight+esc(repeat)+'</p>'+
     (s.foodItems?.length?'<div class="restaurantSpotlightDishes"><b>Top dishes</b>'+meCriticTopFoods(s).map(x=>'<span>'+esc(x.name)+' <strong>'+Number(x.rating).toFixed(1)+'/10</strong></span>').join('')+'</div>':'')+
     '<div class="actions"><button class="btn primary" onclick="showReviewResults(\''+String(r.id).replace(/'/g,"&#39;")+'\')">View Review Results</button>'+(r.website?'<a class="btn" href="'+esc(r.website)+'" target="_blank" rel="noopener noreferrer">Official Website</a>':'')+'</div>'+
     '</article>';
@@ -1481,7 +1574,7 @@ function meDiningAction(action,id){
 function restaurantCard(r){
   let s=r.survey,history=Array.isArray(r.reviewHistory)?r.reviewHistory:[],summary=s?topRatedSummary(s):'',id=restaurantIdArg(r.id);
   return '<article class="restaurant">'+
-    '<div class="recipeHead"><div><h3>'+esc(r.name)+'</h3><div class="meta">'+esc(r.location||'')+' '+(r.type?'• '+esc(r.type):'')+'</div>'+stamp('Added',r.createdAt)+(r.updatedAt?stamp('Last updated',r.updatedAt):'')+'</div>'+
+    '<div class="recipeHead"><div>'+(s?'<button type="button" class="restaurantTitle" aria-label="View '+esc(r.name)+' review details" data-review-restaurant-id="'+esc(String(r.id))+'">'+esc(r.name)+' <span aria-hidden="true">›</span></button>':'<h3>'+esc(r.name)+'</h3>')+'<div class="meta">'+esc(r.location||'')+' '+(r.type?'• '+esc(r.type):'')+'</div>'+stamp('Added',r.createdAt)+(r.updatedAt?stamp('Last updated',r.updatedAt):'')+'</div>'+
     '<button type="button" class="btn" onclick="meDiningAction(\'edit\','+id+')">Edit</button></div>'+
     (s?'<div class="restaurantScoreCard"><div><div class="restaurantScore">'+Number(s.overall||0).toFixed(1)+'<span style="font-size:.45em;letter-spacing:0"> / 10</span></div><div class="restaurantScoreLabel">Overall Experience</div></div><div><div class="topRated"><strong>Top Rated:</strong> '+(summary||'Complete another visit for more detail.')+'</div>'+stamp('Reviewed',s.createdAt)+'<div class="restaurantLinks"><button type="button" class="btn primary" onclick="meDiningAction(\'review\','+id+')">Review Again</button><button type="button" class="btn" onclick="meDiningAction(\'history\','+id+')">Visit History ('+history.length+')</button></div></div></div>':
     '<div class="actions"><button type="button" class="btn primary" onclick="meDiningAction(\'review\','+id+')">★ Rate This Restaurant</button></div>')+
@@ -1832,7 +1925,7 @@ function showVisitHistory(id){
   window.restaurantCard=function(r){
     var s=r&&r.survey,history=Array.isArray(r&&r.reviewHistory)?r.reviewHistory:[],summary='';
     if(s&&s.foodItems&&s.foodItems.length)summary=s.foodItems.filter(function(x){return x.name&&Number(x.rating)>0}).sort(function(a,b){return Number(b.rating)-Number(a.rating)}).slice(0,3).map(function(x){return esc(x.name)+' '+Number(x.rating).toFixed(1)+'/10'}).join(' • ');
-    return '<article class="restaurant"><div class="recipeHead"><div><h3>'+esc(r.name)+'</h3><div class="meta">'+esc(r.location||'')+(r.type?' • '+esc(r.type):'')+'</div>'+stamp('Added',r.createdAt)+(r.updatedAt?stamp('Last updated',r.updatedAt):'')+'</div><button type="button" class="btn" onclick="openRestaurant(\''+String(r.id).replace(/'/g,"&#39;")+'\')">Edit</button></div>'+
+    return '<article class="restaurant"><div class="recipeHead"><div>'+(s?'<button type="button" class="restaurantTitle" aria-label="View '+esc(r.name)+' saved review details" data-review-restaurant-id="'+String(r.id).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;')+'">'+esc(r.name)+' <span aria-hidden="true">›</span></button>':'<h3>'+esc(r.name)+'</h3>')+'<div class="meta">'+esc(r.location||'')+(r.type?' • '+esc(r.type):'')+'</div>'+stamp('Added',r.createdAt)+(r.updatedAt?stamp('Last updated',r.updatedAt):'')+'</div><button type="button" class="btn" onclick="openRestaurant(\''+String(r.id).replace(/'/g,"&#39;")+'\')">Edit</button></div>'+
       (s?'<div class="restaurantScoreCard"><div><div class="restaurantScore">'+Number(s.overall||0).toFixed(1)+'<span style="font-size:.45em"> / 10</span></div><div class="restaurantScoreLabel">Overall Experience</div></div><div><div class="topRated"><strong>Top Rated:</strong> '+(summary||'Complete another visit for more detail.')+'</div>'+stamp('Reviewed',s.createdAt)+'<div class="restaurantLinks"><button type="button" class="btn primary" onclick="showReviewResults(\''+String(r.id).replace(/'/g,"&#39;")+'\')">Review Again</button><button type="button" class="btn" onclick="showVisitHistory(\''+String(r.id).replace(/'/g,"&#39;")+'\')">Visit History ('+history.length+')</button></div></div></div>':'<div class="actions"><button type="button" class="btn primary" onclick="meDiningReview(\''+String(r.id).replace(/'/g,"&#39;")+'\')">★ Rate This Restaurant</button></div>')+
       (r.notes?'<p>'+esc(r.notes)+'</p>':'')+
       '<div class="restaurantLinks">'+(r.website?'<a class="btn" href="'+esc(r.website)+'" target="_blank" rel="noopener noreferrer">Official Website</a>':'')+(r.menuUrl?'<a class="btn" href="'+esc(r.menuUrl)+'" target="_blank" rel="noopener noreferrer">Official Menu</a>':'<a class="btn" href="'+officialMenuSearch(r.name,r.location||'')+'" target="_blank" rel="noopener noreferrer">Find Official Menu</a>')+'</div>'+

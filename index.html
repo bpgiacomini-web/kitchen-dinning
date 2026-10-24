@@ -10,7 +10,8 @@
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="icon-180.png">
 <title>Metro Eats</title>
-<link rel="stylesheet" href="styles.css?v=20261018-cloud-status-6">
+<!-- Cloud-status diagnostic refresh: 2026-10-24 -->
+<link rel="stylesheet" href="styles.css?v=20261024-ios-modal-scroll-1">
 </head>
 <body>
 <div class="app">
@@ -18,7 +19,41 @@
   <div class="brand"><img class="brandLogo" src="metro-eats-logo.png" alt="Metro Eats — Recipes, Restaurants, Good Food, Local Flavor"></div>
   <div class="nav" id="desktopNav"><button class="active" data-tab="home">Home</button><button data-tab="recipes">Recipes</button><button data-tab="restaurants">Dining</button></div>
 </header>
-<div id="metroCloudStatus" role="status" aria-live="polite" style="display:block!important;visibility:visible!important;opacity:1!important;position:relative;z-index:100000;box-sizing:border-box;width:100%;margin:0;padding:calc(12px + env(safe-area-inset-top, 0px)) 10px 12px;border:3px solid #e7c17a;border-radius:0;background:#171511;color:#fff;text-align:center;font-size:16px;font-weight:900;line-height:1.4">METRO EATS CLOUD BACKUP: CHECKING…</div>
+<div id="metroCloudStatus" role="status" aria-live="polite" style="display:block!important;visibility:visible!important;opacity:1!important;position:relative;z-index:1;pointer-events:none;box-sizing:border-box;width:100%;margin:0;padding:5px 12px;border:0;border-bottom:1px solid #45413a;border-radius:0;background:#171511;color:#c9c2b5;text-align:center;font-size:12px;font-weight:600;line-height:1.25">METRO EATS CLOUD BACKUP: CHECKING…</div>
+<script>
+/* Independent cloud probe: distinguish an unreachable cloud API from app hydration/sync failures. */
+(function(){
+  var s=document.getElementById("metroCloudStatus");
+  if(!s)return;
+  var finished=false;
+  var controller=new AbortController();
+  var timer=setTimeout(function(){controller.abort();},10000);
+  fetch("/api/data?health="+Date.now(),{cache:"no-store",signal:controller.signal})
+    .then(function(r){if(!r.ok)throw new Error("HTTP "+r.status);return r.json();})
+    .then(function(d){
+      if(!d||!Array.isArray(d.recipes)||!Array.isArray(d.restaurants))throw new Error("Invalid cloud response");
+      finished=true;
+      if(/CHECKING/i.test(s.textContent)){
+        s.textContent="CLOUD SERVICE REACHABLE — VERIFYING DEVICE SYNC";
+        s.setAttribute("data-cloud-status","reachable");
+      }
+    })
+    .catch(function(){
+      finished=true;
+      if(/CHECKING/i.test(s.textContent)){
+        s.textContent="CLOUD SERVICE UNAVAILABLE — DEVICE BACKUP NOT CONFIRMED";
+        s.setAttribute("data-cloud-status","unavailable");
+      }
+    })
+    .finally(function(){clearTimeout(timer);});
+  setTimeout(function(){
+    if(!finished&&/CHECKING/i.test(s.textContent)){
+      s.textContent="CLOUD STATUS STILL CHECKING — DEVICE BACKUP NOT CONFIRMED";
+      s.setAttribute("data-cloud-status","timeout");
+    }
+  },15000);
+})();
+</script>
 <section id="home" class="section active">
   <div class="hero"><div class="heroIn"><div class="eyebrow">St. Louis • Metro East</div><h2>Metro Eats<br><span class="fl">⚜</span> Recipes & Dining</h2><p>Your personal recipe book and restaurant journal — built around the food you actually love.</p><div class="homeFeatureButtons"><button class="homeFeatureButton recipeButton" onclick="tab('recipes')"><span class="homeFeatureIcon">✦</span><span><strong>Recipes</strong><small>Your Kitchen</small></span><span class="homeFeatureArrow">→</span></button><button class="homeFeatureButton diningButton" onclick="tab('restaurants')"><span class="homeFeatureIcon">⚜</span><span><strong>Dining Experience</strong><small>Your Restaurants & Reviews</small></span><span class="homeFeatureArrow">→</span></button></div>
 <div id="restaurantSpotlight" class="restaurantSpotlight" hidden></div>
@@ -74,11 +109,11 @@
   </div>
 </section>
 <section id="recipes" class="section recipeSection">
-  <div class="toolbar"><input class="grow" id="recipeSearch" aria-label="Search recipes" placeholder="Search recipes…" oninput="renderRecipes()"><select id="recipeCategoryFilter" class="filter" aria-label="Recipe category" onchange="filterRecipeCategory(this.value)"><option value="">All Categories</option></select><button class="btn primary" onclick="openRecipeChooser()">＋ Create Recipe</button><button class="btn" onclick="openBackup()">Backup</button></div>
+  <div class="toolbar"><input class="grow" id="recipeSearch" aria-label="Search recipes" placeholder="Search recipes…" oninput="renderRecipes()"><select id="recipeCategoryFilter" class="filter" aria-label="Recipe category" onchange="filterRecipeCategory(this.value)"><option value="">All Categories</option></select><select id="recipeSort" class="filter" aria-label="Sort recipes" onchange="renderRecipes()"><option value="newest">Newest added</option><option value="oldest">Oldest added</option><option value="name">Name A–Z</option><option value="favorites-first">Favorites first</option><option value="favorites">Favorites only</option></select><button class="btn primary" onclick="openRecipeChooser()">＋ Create Recipe</button><button class="btn" onclick="openBackup()">Backup</button></div>
   <div id="recipeList" class="list"></div>
 </section>
 <section id="restaurants" class="section diningSection">
-  <div class="toolbar"><input class="grow" id="restaurantSearch" aria-label="Search saved restaurants" placeholder="Search saved restaurants…" oninput="renderRestaurants()"><button type="button" class="btn primary" id="meAroundMeBtn">⌖ Restaurants Around Me</button><button type="button" class="btn" id="meAddRestaurantBtn">＋ Add Restaurant & Review</button></div>
+  <div class="toolbar"><input class="grow" id="restaurantSearch" aria-label="Search saved restaurants" placeholder="Search saved restaurants…" oninput="renderRestaurants()"><select id="restaurantSort" class="filter" aria-label="Sort restaurants and reviews" onchange="renderRestaurants()"><option value="newest">Newest restaurants</option><option value="oldest">Oldest restaurants</option><option value="review-newest">Newest reviews</option><option value="review-oldest">Oldest reviews</option><option value="highest">Highest rated</option><option value="lowest">Lowest rated</option><option value="name">Name A–Z</option></select><button type="button" class="btn primary" id="meAroundMeBtn">⌖ Restaurants Around Me</button><button type="button" class="btn" id="meAddRestaurantBtn">＋ Add Restaurant & Review</button></div>
   <div id="locationStatus" class="status">Use <b>Restaurants Around Me</b> to identify the restaurant nearest your current location.</div>
   <div id="nearbyResults"></div>
   <div class="surveyCard"><div class="eyebrow">Dining Experience</div><h3>Restaurant Review</h3><p class="hint">Rate 10 dining categories, then record what you ate and whether you would order it again. Every visit is saved separately.</p><div class="actions"><button type="button" class="btn primary" id="meCreateRestaurantBtn">★ Create Restaurant & Review</button><button class="btn" onclick="showRankings()">View My Rankings</button></div></div>
@@ -121,7 +156,7 @@ document.addEventListener('DOMContentLoaded',function(){
   });
 });
 </script>
-<script src="app.js?v=20261019-recipe-import-validation-30" defer></script>
+<script src="app.js?v=20261024-sort-controls-2" defer></script>
 <script>
 /* Dining controls fallback: run after the deferred app script has had a chance to initialize. */
 (function(){
@@ -140,6 +175,44 @@ document.addEventListener('DOMContentLoaded',function(){
   }
   setTimeout(wire,0);
   document.addEventListener('DOMContentLoaded',wire);
+})();
+</script>
+<script>
+/* iOS Safari modal scroll lock: keep the document stationary while the review sheet scrolls. */
+(function(){
+  var modal=document.getElementById('modal');
+  if(!modal)return;
+  var locked=false,scrollY=0;
+  function lockPage(){
+    if(locked)return;
+    scrollY=window.scrollY||window.pageYOffset||0;
+    var body=document.body,html=document.documentElement;
+    body.style.position='fixed';
+    body.style.top=(-scrollY)+'px';
+    body.style.left='0';
+    body.style.right='0';
+    body.style.width='100%';
+    html.style.overflow='hidden';
+    locked=true;
+  }
+  function unlockPage(){
+    if(!locked)return;
+    var body=document.body,html=document.documentElement;
+    body.style.position='';
+    body.style.top='';
+    body.style.left='';
+    body.style.right='';
+    body.style.width='';
+    html.style.overflow='';
+    locked=false;
+    window.scrollTo(0,scrollY);
+  }
+  function sync(){
+    if(modal.classList.contains('show'))lockPage();
+    else unlockPage();
+  }
+  new MutationObserver(sync).observe(modal,{attributes:true,attributeFilter:['class']});
+  sync();
 })();
 </script>
 </body>
