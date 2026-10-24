@@ -10,7 +10,7 @@
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="icon-180.png">
 <title>Metro Eats</title>
-<link rel="stylesheet" href="styles.css?v=20261018-cloud-status-6">
+<link rel="stylesheet" href="styles.css?v=20261024-ios-modal-scroll-1">
 </head>
 <body>
 <div class="app">
@@ -162,6 +162,44 @@ document.addEventListener('DOMContentLoaded',function(){
   }
   setTimeout(wire,0);
   document.addEventListener('DOMContentLoaded',wire);
+})();
+</script>
+<script>
+/* iOS Safari modal scroll lock: keep the document stationary while the review sheet scrolls. */
+(function(){
+  var modal=document.getElementById('modal');
+  if(!modal)return;
+  var locked=false,scrollY=0;
+  function lockPage(){
+    if(locked)return;
+    scrollY=window.scrollY||window.pageYOffset||0;
+    var body=document.body,html=document.documentElement;
+    body.style.position='fixed';
+    body.style.top=(-scrollY)+'px';
+    body.style.left='0';
+    body.style.right='0';
+    body.style.width='100%';
+    html.style.overflow='hidden';
+    locked=true;
+  }
+  function unlockPage(){
+    if(!locked)return;
+    var body=document.body,html=document.documentElement;
+    body.style.position='';
+    body.style.top='';
+    body.style.left='';
+    body.style.right='';
+    body.style.width='';
+    html.style.overflow='';
+    locked=false;
+    window.scrollTo(0,scrollY);
+  }
+  function sync(){
+    if(modal.classList.contains('show'))lockPage();
+    else unlockPage();
+  }
+  new MutationObserver(sync).observe(modal,{attributes:true,attributeFilter:['class']});
+  sync();
 })();
 </script>
 </body>
