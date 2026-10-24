@@ -1995,3 +1995,26 @@ function showVisitHistory(id){
     return problems;
   };
 })();
+
+
+/* Persist recipe and dining sort choices on this device. */
+(function(){
+  var key='metroEatsSortPreferencesV1';
+  var defaults={recipeSort:'newest',restaurantSort:'newest'};
+  try{
+    var saved=JSON.parse(localStorage.getItem(key)||'{}');
+    ['recipeSort','restaurantSort'].forEach(function(id){
+      var el=document.getElementById(id);
+      if(!el)return;
+      var valid=Array.prototype.some.call(el.options,function(option){return option.value===saved[id];});
+      if(valid)el.value=saved[id];
+      el.addEventListener('change',function(){
+        try{
+          var current=JSON.parse(localStorage.getItem(key)||'{}');
+          current[id]=el.value;
+          localStorage.setItem(key,JSON.stringify(current));
+        }catch(e){console.warn('Metro Eats could not save sort preference',e);}
+      });
+    });
+  }catch(e){console.warn('Metro Eats could not restore sort preferences',e);}
+})();
