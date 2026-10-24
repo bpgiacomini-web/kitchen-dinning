@@ -36,8 +36,12 @@ module.exports = async function handler(req, res) {
     } catch (_) { return []; }
   }));
   const cutoff = Date.now() - 45*24*60*60*1000;
+  // Be strict: locality alone must not let general news into a food-focused feed.
+  const foodHeadline = /restaurant|dining|food|chef|menu|coffee|cafe|café|bakery|barbecue|bbq|burger|pizza|taco|sushi|brewery|brewpub|bar and grill|eatery|deli|steakhouse|brunch|breakfast|lunch|dinner|cocktail|wine|beer|opening|opens|opened|closes|closing|new location|food truck|caterer|catering|pastry|dessert|ice cream|sandwich|noodle|ramen|sauce|culinary|recipe|kitchen|bistro|taqueria|pizzeria/i;
+  const foodContext = /restaurant|dining|food|chef|menu|coffee|cafe|café|bakery|barbecue|bbq|burger|pizza|taco|sushi|brewery|brewpub|eatery|deli|steakhouse|brunch|breakfast|lunch|dinner|cocktail|wine|beer|food truck|catering|pastry|dessert|ice cream|sandwich|noodle|ramen|bistro|taqueria|pizzeria/i;
+  const localContext = /st\\.? louis|metro east|alton|godfrey|wood river|edwardsville|collinsville|belleville|o'fallon|ofallon|fairview heights|illinois|missouri/i;
   const items = results.flat().filter(x => Date.parse(x.publishedAt) >= cutoff)
-    .filter(x => /restaurant|dining|food|chef|menu|coffee|bar |brew|burger|pizza|opening|opens|opened|alton|metro east|st\. louis|st louis|illinois|missouri|eatery|cafe|café|bakery|sauce/i.test(x.title+' '+x.description))
+    .filter(x => foodHeadline.test(x.title) || (foodContext.test(x.description) && localContext.test(x.title+' '+x.description)))
     .sort((a,b)=>Date.parse(b.publishedAt)-Date.parse(a.publishedAt))
     .filter((x,i,arr)=>arr.findIndex(y=>y.url===x.url)===i).slice(0,18)
     .map(({title,url,source,publishedAt,description})=>({title,url,source,publishedAt,description:description.slice(0,220)}));
