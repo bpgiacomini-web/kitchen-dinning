@@ -10,17 +10,17 @@
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="icon-180.png">
 <title>Metro Eats</title>
-<link rel="stylesheet" href="styles.css?v=20261018-cloud-status-6">
+<link rel="stylesheet" href="styles.css?v=20261024-personal-home-1">
 </head>
 <body>
 <div class="app">
 <header class="top">
   <div class="brand"><img class="brandLogo" src="metro-eats-logo.png" alt="Metro Eats — Recipes, Restaurants, Good Food, Local Flavor"></div>
-  <div class="nav" id="desktopNav"><button class="active" data-tab="home">Home</button><button data-tab="recipes">Recipes</button><button data-tab="restaurants">Dining</button></div>
+  <div class="nav" id="desktopNav"><button class="active" data-tab="home">Home</button><button data-tab="recipes">My Recipes</button><button data-tab="restaurants">My Restaurants</button></div>
 </header>
 <div id="metroCloudStatus" role="status" aria-live="polite" style="display:block!important;visibility:visible!important;opacity:1!important;position:relative;z-index:100000;box-sizing:border-box;width:100%;margin:0;padding:calc(12px + env(safe-area-inset-top, 0px)) 10px 12px;border:3px solid #e7c17a;border-radius:0;background:#171511;color:#fff;text-align:center;font-size:16px;font-weight:900;line-height:1.4">METRO EATS CLOUD BACKUP: CHECKING…</div>
 <section id="home" class="section active">
-  <div class="hero"><div class="heroIn"><div class="eyebrow">St. Louis • Metro East</div><h2>Metro Eats<br><span class="fl">⚜</span> Recipes & Dining</h2><p>Your personal recipe book and restaurant journal — built around the food you actually love.</p><div class="homeFeatureButtons"><button class="homeFeatureButton recipeButton" onclick="tab('recipes')"><span class="homeFeatureIcon">✦</span><span><strong>Recipes</strong><small>Your Kitchen</small></span><span class="homeFeatureArrow">→</span></button><button class="homeFeatureButton diningButton" onclick="tab('restaurants')"><span class="homeFeatureIcon">⚜</span><span><strong>Dining Experience</strong><small>Your Restaurants & Reviews</small></span><span class="homeFeatureArrow">→</span></button></div>
+  <div class="hero"><div class="heroIn"><div class="eyebrow">St. Louis • Metro East</div><h2>Metro Eats<br><span class="fl">⚜</span> My Recipes & My Restaurants</h2><p>Your personal recipe book and restaurant journal — built around the food you actually love.</p><div class="homeFeatureButtons"><button class="homeFeatureButton recipeButton" onclick="tab('recipes')"><span class="homeFeatureIcon">✦</span><span><strong>My Recipes</strong><small>Your Kitchen</small></span><span class="homeFeatureArrow">→</span></button><button class="homeFeatureButton diningButton" onclick="tab('restaurants')"><span class="homeFeatureIcon">⚜</span><span><strong>My Restaurants</strong><small>Your Visits & Reviews</small></span><span class="homeFeatureArrow">→</span></button></div>
 <div id="restaurantSpotlight" class="restaurantSpotlight" hidden></div>
 <script>
 (function(){
@@ -65,8 +65,8 @@
 </script></div></div>
   <div class="newsSection"><div class="sectionTitle"><div><div class="sectionKicker">Around the Metro</div><h3>What’s happening in St. Louis & Metro East</h3><div class="hint">Local food, drink, restaurant and dining stories.</div></div><div id="newsUpdated" class="small"></div></div><div id="newsGrid" class="newsGrid"><article class="newsCard"><div class="newsSource">Sauce Magazine</div><h4><a href="https://www.saucemagazine.com/" target="_blank" rel="noopener noreferrer">10 St. Louis restaurants with great burgers</a></h4><a class="newsMore" href="https://www.saucemagazine.com/" target="_blank" rel="noopener noreferrer">Read Full Story →</a><div class="newsDate">October 1, 2026</div></article><article class="newsCard"><div class="newsSource">Sauce Magazine</div><h4><a href="https://www.saucemagazine.com/" target="_blank" rel="noopener noreferrer">St. Louis coffee shops roll out fall menus</a></h4><a class="newsMore" href="https://www.saucemagazine.com/" target="_blank" rel="noopener noreferrer">Read Full Story →</a><div class="newsDate">September 30, 2026</div></article><article class="newsCard"><div class="newsSource">The Telegraph</div><h4><a href="https://www.thetelegraph.com/news/article/heaterz-hot-chicken-riverfront-alton-flock-truck-22454535.php" target="_blank" rel="noopener noreferrer">Heaterz Hot Chicken plans riverfront venue in Alton</a></h4><a class="newsMore" href="https://www.thetelegraph.com/news/article/heaterz-hot-chicken-riverfront-alton-flock-truck-22454535.php" target="_blank" rel="noopener noreferrer">Read Full Story →</a><div class="newsDate">October 1, 2026</div></article></div></div>
   <div class="homeColumns">
-    <article class="featureCard"><div><div class="sectionKicker">Your Kitchen</div><h3>Recipes worth keeping</h3><p>Build your personal cookbook, import recipes and keep the dishes you actually make easy to find.</p></div><div class="actions"><button class="btn primary" onclick="tab('recipes')">Open Recipes →</button><button class="btn" onclick="openRecipeChooser()">＋ Add Recipe</button></div></article>
-    <article class="featureCard accent"><div><div class="sectionKicker">Your Dining</div><h3>Remember every meal</h3><p>Log restaurants, rate each visit, keep your order history and build a personal dining record.</p></div><div class="actions"><button class="btn primary" onclick="tab('restaurants')">Open Dining →</button><button class="btn" onclick="findRestaurantAroundMe()">⌖ Around Me</button></div></article>
+    <article class="featureCard"><div><div class="sectionKicker">Your Kitchen</div><h3>Recipes worth keeping</h3><p>Build your personal cookbook, import recipes and keep the dishes you actually make easy to find.</p></div><div class="actions"><button class="btn primary" onclick="tab('recipes')">Open My Recipes →</button><button class="btn" onclick="openRecipeChooser()">＋ Add to My Recipes</button></div></article>
+    <article class="featureCard accent"><div><div class="sectionKicker">My Restaurants</div><h3>Remember every meal</h3><p>Log restaurants, rate each visit, keep your order history and build a personal dining record.</p></div><div class="actions"><button class="btn primary" onclick="tab('restaurants')">Open My Restaurants →</button><button class="btn" onclick="findRestaurantAroundMe()">⌖ Around Me</button></div></article>
   </div>
   <div class="editorialStrip">
     <article class="storyCard"><div class="sectionKicker">Personal Guide</div><h3>Know what fits your taste.</h3><p class="hint">Metro Eats can turn your favorites and dining history into a personalized restaurant brief you can send directly to ChatGPT for current recommendations.</p><div class="actions"><button class="btn primary" onclick="aiGuide()">✦ Build My Guide</button><button class="btn" onclick="openBackup()">Backup My Data</button></div></article>
@@ -74,18 +74,18 @@
   </div>
 </section>
 <section id="recipes" class="section recipeSection">
-  <div class="toolbar"><input class="grow" id="recipeSearch" aria-label="Search recipes" placeholder="Search recipes…" oninput="renderRecipes()"><select id="recipeCategoryFilter" class="filter" aria-label="Recipe category" onchange="filterRecipeCategory(this.value)"><option value="">All Categories</option></select><button class="btn primary" onclick="openRecipeChooser()">＋ Create Recipe</button><button class="btn" onclick="openBackup()">Backup</button></div>
+  <div class="toolbar"><input class="grow" id="recipeSearch" aria-label="Search recipes" placeholder="Search My Recipes…" oninput="renderRecipes()"><select id="recipeCategoryFilter" class="filter" aria-label="My Recipe category" onchange="filterRecipeCategory(this.value)"><option value="">All Categories</option></select><button class="btn primary" onclick="openRecipeChooser()">＋ Create My Recipe</button><button class="btn" onclick="openBackup()">Backup</button></div>
   <div id="recipeList" class="list"></div>
 </section>
 <section id="restaurants" class="section diningSection">
-  <div class="toolbar"><input class="grow" id="restaurantSearch" aria-label="Search saved restaurants" placeholder="Search saved restaurants…" oninput="renderRestaurants()"><button type="button" class="btn primary" id="meAroundMeBtn">⌖ Restaurants Around Me</button><button type="button" class="btn" id="meAddRestaurantBtn">＋ Add Restaurant & Review</button></div>
+  <div class="toolbar"><input class="grow" id="restaurantSearch" aria-label="Search saved restaurants" placeholder="Search My Restaurants…" oninput="renderRestaurants()"><button type="button" class="btn primary" id="meAroundMeBtn">⌖ My Restaurants Around Me</button><button type="button" class="btn" id="meAddRestaurantBtn">＋ Add to My Restaurants</button></div>
   <div id="locationStatus" class="status">Use <b>Restaurants Around Me</b> to identify the restaurant nearest your current location.</div>
   <div id="nearbyResults"></div>
   <div class="surveyCard"><div class="eyebrow">Dining Experience</div><h3>Restaurant Review</h3><p class="hint">Rate 10 dining categories, then record what you ate and whether you would order it again. Every visit is saved separately.</p><div class="actions"><button type="button" class="btn primary" id="meCreateRestaurantBtn">★ Create Restaurant & Review</button><button class="btn" onclick="showRankings()">View My Rankings</button></div></div>
   <div id="restaurantList" class="list"></div>
 </section>
 </div>
-<nav class="bottomNav" id="bottomNav" aria-label="Primary navigation"><button class="active" data-tab="home">⌂<br>Home</button><button data-tab="recipes">▱<br>Recipes</button><button data-tab="restaurants">◉<br>Dining</button></nav>
+<nav class="bottomNav" id="bottomNav" aria-label="Primary navigation"><button class="active" data-tab="home">⌂<br>Home</button><button data-tab="recipes">▱<br>My Recipes</button><button data-tab="restaurants">◉<br>My Restaurants</button></nav>
 <div id="modal" class="modal"><div class="sheet"><button class="close" aria-label="Close" onclick="closeModal()">×</button><div id="modalBody"></div></div></div>
 <input id="restoreFile" type="file" accept="application/json" hidden>
 <script>
