@@ -1902,3 +1902,36 @@ function showVisitHistory(id){
     return problems;
   };
 })();
+
+/* Metro Eats live local-food news feed: load news.json instead of leaving the hard-coded starter cards in place. */
+(function metroEatsLoadNews(){
+  function renderNews(feed){
+    var grid=document.getElementById('newsGrid');
+    if(!grid||!feed||!Array.isArray(feed.items))return;
+    var foodTerms=/restaurant|restaurants|dining|food|chef|burger|burgers|coffee|cafe|café|menu|culinary|eatery|eateries|bar |wine bar|steak|pizza|bakery|baker|brunch|breakfast|lunch|dinner|taco|sauce|drink|cocktail|brewery|brewpub|grill|chicken|sandwich|noodle|pasta|market|grocery|cater|chef|kitchen|food hall|food truck/i;
+    var eastTerms=/alton|godfrey|wood river|metro[ -]?east|belleville|granite city|edwardsville|collinsville|o'fallon|ofallon|fairview heights|highland|jerseyville|illinois/i;
+    var rows=feed.items.filter(function(item){return item&&item.title&&item.url&&foodTerms.test(item.title);});
+    rows.sort(function(a,b){
+      var ae=eastTerms.test(a.title)?1:0,be=eastTerms.test(b.title)?1:0;
+      if(ae!==be)return be-ae;
+      var ad=Date.parse(a.date)||0,bd=Date.parse(b.date)||0;
+      return bd-ad;
+    });
+    if(!rows.length)return;
+    var frag=document.createDocumentFragment();
+    rows.slice(0,8).forEach(function(item){
+      var article=document.createElement('article');article.className='newsCard';
+      var source=document.createElement('div');source.className='newsSource';source.textContent=item.source||'Local food news';article.appendChild(source);
+      var heading=document.createElement('h4'),link=document.createElement('a');
+      link.href=item.url;link.target='_blank';link.rel='noopener noreferrer';link.textContent=item.title;heading.appendChild(link);article.appendChild(heading);
+      var more=document.createElement('a');more.className='newsMore';more.href=item.url;more.target='_blank';more.rel='noopener noreferrer';more.textContent='Read Full Story →';article.appendChild(more);
+      var date=document.createElement('div');date.className='newsDate';date.textContent=item.date||'';article.appendChild(date);
+      frag.appendChild(article);
+    });
+    grid.replaceChildren(frag);
+    var updated=document.getElementById('newsUpdated');
+    if(updated){var stamp=feed.updated?new Date(feed.updated):null;updated.textContent=stamp&&!isNaN(stamp.getTime())?'Updated '+stamp.toLocaleDateString(undefined,{month:'short',day:'numeric'}):'';}
+  }
+  function load(){fetch('./news.json?feed='+Date.now(),{cache:'no-store'}).then(function(response){if(!response.ok)throw new Error('News feed unavailable');return response.json();}).then(renderNews).catch(function(error){console.warn('Metro Eats news feed could not be refreshed; keeping starter stories.',error);});}
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',load,{once:true});else load();
+})();
