@@ -67,3 +67,21 @@
   .bottomNav{padding-top:7px;padding-bottom:calc(8px + env(safe-area-inset-bottom))}
   .bottomNav button{min-height:48px}
 }
+
+
+/* Final iPhone viewport fit: preserve the approved artwork, reduce its vertical footprint. */
+@media(max-width:520px){
+  .top{align-items:center}
+  .brand{width:100%;min-width:0}
+  .brandLogo{
+    width:auto;
+    height:auto;
+    max-width:100%;
+    max-height:190px;
+    object-fit:contain;
+  }
+  .app{padding-bottom:calc(150px + env(safe-area-inset-bottom))}
+  #app .heroIn{padding:22px 20px}
+  #app .hero h2{font-size:clamp(35px,8vw,52px)}
+  #app .homeFeatureButton{min-height:92px}
+}
