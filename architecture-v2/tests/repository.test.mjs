@@ -13,6 +13,19 @@ test("legacy reader prefers v2 and does not write to storage", () => {
   assert.equal(result.data.recipes[0].title, "New");
 });
 
+test("legacy reader supports real saved recipe steps and dining review history", () => {
+  const storage = fakeStorage({ metro_eats_v2: JSON.stringify({
+    recipes: [{ id: "r1", title: "Soup", category: "Soups, Salads & Sandwiches", subcategory: "Soups", ingredients: ["stock"], steps: ["Simmer"] }],
+    restaurants: [{ id: "d1", name: "Cafe", type: "American", location: "Alton, IL", reviewHistory: [{ createdAt: "2026-10-02" }] }],
+    cats: ["Soups, Salads & Sandwiches"]
+  }) });
+  const result = readLegacyDataset(storage);
+  assert.deepEqual(result.data.recipes[0].directions, ["Simmer"]);
+  assert.equal(result.data.recipes[0].subcategory, "Soups");
+  assert.equal(result.data.restaurants[0].reviewCount, 1);
+  assert.deepEqual(result.data.cats, ["Soups, Salads & Sandwiches"]);
+});
+
 test("loadDataset uses local data without a network request", async () => {
   let called = false;
   const result = await loadDataset({ storage: fakeStorage({ metro_eats_v2: JSON.stringify({ recipes: [{ name: "Local" }], restaurants: [] }) }), fetchImpl: async () => { called = true; throw new Error("must not call"); } });
@@ -30,5 +43,5 @@ test("loadDataset fails safely when sources are unavailable", async () => {
   const result = await loadDataset({ storage: fakeStorage(), fetchImpl: async () => { throw new Error("offline"); } });
   assert.equal(result.source, "empty");
   assert.equal(result.staleFallback, true);
-  assert.deepEqual(result.data, { recipes: [], restaurants: [] });
+  assert.deepEqual(result.data, { recipes: [], restaurants: [], cats: [] });
 });
