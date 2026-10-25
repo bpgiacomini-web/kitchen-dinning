@@ -1481,8 +1481,8 @@ function meDiningAction(action,id){
 function restaurantCard(r){
   let s=r.survey,history=Array.isArray(r.reviewHistory)?r.reviewHistory:[],summary=s?topRatedSummary(s):'',id=restaurantIdArg(r.id);
   return '<article class="restaurant">'+
-    '<div class="recipeHead"><div><button type="button" class="restaurantTitle" aria-label="Open '+esc(r.name)+' restaurant information" onclick=\"openRestaurant('+id+')\">'+esc(r.name)+' <span aria-hidden="true">›</span></button><div class="meta">'+esc(r.location||'')+' '+(r.type?'• '+esc(r.type):'')+'</div>'+stamp('Added',r.createdAt)+(r.updatedAt?stamp('Last updated',r.updatedAt):'')+'</div>'+
-    '<button type="button" class="btn" onclick=\"openRestaurant('+id+')\">Edit</button></div>'+
+    '<div class="recipeHead"><div><button type="button" class="restaurantTitle" data-restaurant-id="'+esc(String(r.id))+'" aria-label="Open '+esc(r.name)+' restaurant information">'+esc(r.name)+' <span aria-hidden="true">›</span></button><div class="meta">'+esc(r.location||'')+' '+(r.type?'• '+esc(r.type):'')+'</div>'+stamp('Added',r.createdAt)+(r.updatedAt?stamp('Last updated',r.updatedAt):'')+'</div>'+
+    '<button type="button" class="btn restaurantEditButton" data-restaurant-id="'+esc(String(r.id))+'">Edit</button></div>'+
     (s?'<div class="restaurantScoreCard"><div><div class="restaurantScore">'+Number(s.overall||0).toFixed(1)+'<span style="font-size:.45em;letter-spacing:0"> / 10</span></div><div class="restaurantScoreLabel">Overall Experience</div></div><div><div class="topRated"><strong>Top Rated:</strong> '+(summary||'Complete another visit for more detail.')+'</div>'+stamp('Reviewed',s.createdAt)+'<div class="restaurantLinks"><button type="button" class="btn primary" onclick="meDiningAction(\'review\','+id+')">Review Again</button><button type="button" class="btn" onclick="meDiningAction(\'history\','+id+')">Visit History ('+history.length+')</button></div></div></div>':
     '<div class="actions"><button type="button" class="btn primary" onclick="meDiningAction(\'review\','+id+')">★ Rate This Restaurant</button></div>')+
     (r.notes?'<p>'+esc(r.notes)+'</p>':'')+
@@ -1941,4 +1941,22 @@ function showVisitHistory(id){
 (function(){
   var key='metroEatsSortPreferencesV1';
   try{var saved=JSON.parse(localStorage.getItem(key)||'{}');['recipeSort','restaurantSort'].forEach(function(id){var el=document.getElementById(id);if(!el)return;var valid=Array.prototype.some.call(el.options,function(option){return option.value===saved[id];});if(valid)el.value=saved[id];el.addEventListener('change',function(){try{var current=JSON.parse(localStorage.getItem(key)||'{}');current[id]=el.value;localStorage.setItem(key,JSON.stringify(current));}catch(e){console.warn('Metro Eats could not save sort preference',e);}});});}catch(e){console.warn('Metro Eats could not restore sort preferences',e);}
+})();
+
+
+/* Open restaurant editor through delegated click handling. This survives Dining re-renders
+   and does not depend on inline onclick attributes being executed by the browser. */
+(function(){
+  if(window.__metroEatsRestaurantOpenDelegationInstalled)return;
+  window.__metroEatsRestaurantOpenDelegationInstalled=true;
+  document.addEventListener('click',function(event){
+    var button=event.target&&event.target.closest?event.target.closest('[data-restaurant-id].restaurantTitle, [data-restaurant-id].restaurantEditButton'):null;
+    if(!button)return;
+    event.preventDefault();
+    event.stopPropagation();
+    var id=button.getAttribute('data-restaurant-id');
+    if(typeof window.openRestaurant==='function')window.openRestaurant(id);
+    else if(typeof window.meDiningAction==='function')window.meDiningAction('edit',id);
+    else console.error('Metro Eats: restaurant editor handler is unavailable');
+  },true);
 })();
