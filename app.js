@@ -1003,7 +1003,7 @@ function meSpotlightMarkup(r){
   let repeat=s.orderAgain?(' You said you would '+(s.orderAgain==='Yes'?'order it again.':'not order it again.')):'';
   return '<article class="restaurantSpotlightCard">'+
     '<div class="sectionKicker">Your #1 Restaurant</div>'+
-    '<div class="restaurantSpotlightTitleRow"><div><h3>'+esc(r.name)+'</h3><div class="meta">'+esc(r.location||'')+(r.type?' • '+esc(r.type):'')+'</div></div><div class="restaurantSpotlightScore">'+score.toFixed(1)+'<small>/10</small></div></div>'+
+    '<div class="restaurantSpotlightTitleRow"><div><h3 class="restaurantNameLink" role="button" tabindex="0" data-id="'+String(r.id).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;')+'" onclick="openRestaurant(this.dataset.id)" onkeydown="if(event.key===\'Enter\'||event.key===\' \'){event.preventDefault();openRestaurant(this.dataset.id)}">'+esc(r.name)+'</h3><div class="meta">'+esc(r.location||'')+(r.type?' • '+r.type:'')+'</div></div><div class="restaurantSpotlightScore">'+score.toFixed(1)+'<small>/10</small></div></div>'+
     '<p class="restaurantSpotlightInsight"><strong>Critic insight:</strong> '+insight+esc(repeat)+'</p>'+
     (s.foodItems?.length?'<div class="restaurantSpotlightDishes"><b>Top dishes</b>'+meCriticTopFoods(s).map(x=>'<span>'+esc(x.name)+' <strong>'+Number(x.rating).toFixed(1)+'/10</strong></span>').join('')+'</div>':'')+
     '<div class="actions"><button class="btn primary" onclick="showReviewResults(\''+String(r.id).replace(/'/g,"&#39;")+'\')">View Review Results</button>'+(r.website?'<a class="btn" href="'+esc(r.website)+'" target="_blank" rel="noopener noreferrer">Official Website</a>':'')+'</div>'+
