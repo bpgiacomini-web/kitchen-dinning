@@ -1961,3 +1961,33 @@ function showVisitHistory(id){
     else { console.error('Metro Eats: restaurant editor handler is unavailable'); alert('The restaurant editor did not load. Please refresh Metro Eats.'); }
   },true);
 })();
+
+/* Direct binding fallback for restaurant editor controls.
+   Bind after each Dining render so opening does not depend on inline HTML handlers. */
+(function(){
+  function bindRestaurantEditorButtons(){
+    var list=document.getElementById('restaurantList');
+    if(!list)return;
+    list.querySelectorAll('[data-restaurant-id].restaurantTitle, [data-restaurant-id].restaurantEditButton').forEach(function(button){
+      if(button.dataset.editorBound==='1')return;
+      button.dataset.editorBound='1';
+      button.addEventListener('click',function(event){
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        var id=button.getAttribute('data-restaurant-id');
+        if(typeof window.meV3Open==='function')window.meV3Open(id,'edit');
+        else if(typeof window.openRestaurant==='function')window.openRestaurant(id);
+        else if(typeof window.meDiningAction==='function')window.meDiningAction('edit',id);
+        else {console.error('Metro Eats: restaurant editor handler is unavailable');alert('The restaurant editor did not load. Please refresh Metro Eats.');}
+      });
+    });
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',bindRestaurantEditorButtons);
+  else bindRestaurantEditorButtons();
+  var list=document.getElementById('restaurantList');
+  if(list&&typeof MutationObserver==='function')new MutationObserver(bindRestaurantEditorButtons).observe(list,{childList:true,subtree:true});
+  document.addEventListener('click',function(event){
+    var button=event.target&&event.target.closest?event.target.closest('[data-restaurant-id].restaurantTitle, [data-restaurant-id].restaurantEditButton'):null;
+    if(button&&button.dataset.editorBound!=='1')bindRestaurantEditorButtons();
+  },true);
+})();
