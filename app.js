@@ -1951,9 +1951,8 @@ function showVisitHistory(id){
   window.__metroEatsRestaurantOpenDelegationInstalled=true;
   document.addEventListener('click',function(event){
     var button=event.target&&event.target.closest?event.target.closest('[data-restaurant-id].restaurantTitle, [data-restaurant-id].restaurantEditButton'):null;
-    if(!button)return;
+    if(!button||button.dataset.editorBound==='1')return;
     event.preventDefault();
-    event.stopPropagation();
     var id=button.getAttribute('data-restaurant-id');
     if(typeof window.meV3Open==='function')window.meV3Open(id,'edit');
     else if(typeof window.openRestaurant==='function')window.openRestaurant(id);
