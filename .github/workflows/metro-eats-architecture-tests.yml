@@ -10,6 +10,7 @@ on:
   pull_request:
     paths:
       - 'architecture-v2/**'
+      - 'api/import-recipe-v2.js'
       - '.github/workflows/metro-eats-architecture-tests.yml'
 jobs:
   test:
