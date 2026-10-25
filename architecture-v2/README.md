@@ -14,6 +14,7 @@ From this directory, run `npm test` with Node.js 20 or newer.
 
 ## Current scope
 - Read-only home, recipe list, and dining list shell.
+- Local recipe extraction preview for pasted recipe text or pasted webpage HTML/JSON-LD, with ingredient/direction review and no save path.
 - Defensive normalization of legacy recipe and restaurant records.
 - Read-only data adapter that prefers current local records and can fall back to `/api/data`.
 - Automated contract tests for normalization and repository fallback.
