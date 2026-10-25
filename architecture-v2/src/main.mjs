@@ -2,7 +2,7 @@ import { loadDataset } from "./data/repository.mjs";
 import { parsePastedRecipeText, parseRecipeJsonLd } from "./features/recipes/import-parser.mjs";
 
 const root = document.querySelector("#app");
-const status = document.querySelector("#connection-state");
+const status = document.querySelector("#previewNotice");
 const recipeCount = document.querySelector("#recipe-count");
 const diningCount = document.querySelector("#dining-count");
 let dataset = { recipes: [], restaurants: [], cats: [] };
