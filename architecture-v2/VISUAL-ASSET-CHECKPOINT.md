@@ -2,42 +2,38 @@
 
 Updated 2026-10-25. This note applies to the clean architecture rebuild only. The known-good baseline must remain untouched.
 
-## Newly approved visual assets
+## Approved visual assets
 
-The user approved two generated designs:
-- **Hero logo/photo:** the wide Metro Eats banner with a centered black-and-gold shield, fleur-de-lis, St. Louis skyline and Gateway Arch, with brighter sunset-orange accents.
-- **Square app icon:** the centered square Metro Eats emblem with brighter orange/gold rim, fleur-de-lis, “METRO EATS” lettering, fork/knife, and St. Louis skyline.
-
-Prepared PNG exports in the current ChatGPT session:
-- `metro-eats-icon-512.png` — 512 × 512
-- `metro-eats-icon-180.png` — 180 × 180
-
-The hero image was generated separately as a wide banner. These are approved replacement assets, but approval and local file creation are not the same as committing them to the repository.
+The user approved the Metro Eats brand direction:
+- Wide banner: black-and-gold shield, fleur-de-lis, St. Louis skyline and Gateway Arch, sunset-orange accents.
+- Square app icon: matching shield/fleur-de-lis, “METRO EATS” lettering, fork/knife, skyline, orange/gold rim.
+- A taller vertical logo variant was also approved for the app's top/header area.
 
 ## Repository integration status
 
-**Not yet replaced in GitHub.** The binary image files still need to be uploaded to the clean-rebuild branch before changing references. Do not point the app at filenames that do not yet exist in the repository.
+The continuing clean-rebuild branch contains:
+- `metro-eats-logo.png` — canonical header logo asset replaced on the rebuild branch.
+- `icon-180.png` and `icon-512.png` — canonical app icon filenames, preserved for existing manifest/touch-icon references.
+- `metro-eats-vertical-logo.PNG` — uploaded vertical logo variant.
+- A duplicate upload named `metro-eats-vertical-logo.png.PNG` was removed from this branch.
 
-When uploaded:
-- Replace only the clean rebuild's hero image/reference with the new wide banner.
-- Replace root `icon-512.png` and `icon-180.png` on the clean-rebuild branch with the prepared square PNG exports, preserving these filenames because `manifest.json` and the Apple touch-icon reference use them.
-- Confirm the manifest and Apple touch-icon links resolve and update cache/version references as appropriate.
-- Do not modify the known-good baseline branch or production.
-- Do not merge or deploy without explicit user approval.
+The manifest continues to refer to `icon-180.png` and `icon-512.png`. The known-good baseline branch and production were not changed by this cleanup.
 
-## Existing canonical references
+## Deployment and verification status
 
-- Header/brand logo: `/metro-eats-logo.png`
-- iOS Home Screen touch icon: `/icon-180.png`
-- PWA manifest icons: `/icon-180.png` and `/icon-512.png`, declared in root `/manifest.json`
-- Baseline home hero currently uses CSS gradient and fleur-de-lis glyph; it does not currently use a separate hero photo.
+- The Vercel preview had a READY deployment for an earlier branch commit.
+- The cleanup commit is newer than that deployment. The latest deployment list did not yet show a deployment for the cleanup commit.
+- The Vercel CI check reported a build-rate-limit failure. Therefore, do not describe the newest cleanup as deployed or visually verified yet.
+- Automated repository tests had passed on an earlier architecture commit; the newest commit needs a fresh CI/deployment check.
+- Browser/iPhone visual comparison remains pending.
 
 ## Safety checks before completion
 
-- Verify all asset files exist on the clean-rebuild branch and inspect their dimensions.
-- Verify only intended files changed in the clean-rebuild branch.
-- Run the available tests and inspect CI.
-- Browser/iPhone visual comparison remains pending; do not claim visual parity or a live deployment until verified.
+- Verify the canonical image assets exist on the continuing clean-rebuild branch and inspect dimensions.
+- Verify the manifest and Apple touch-icon links resolve.
+- Re-run available tests and inspect CI once Vercel build limits allow.
+- Do not claim visual parity or a live deployment until verified.
+- Do not merge the draft PR or deploy production without explicit user approval.
 
 ## Checkpoints
 
