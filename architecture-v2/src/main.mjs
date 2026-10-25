@@ -21,32 +21,36 @@ function renderHome() {
 function renderImportPanel() {
   return `<section class="content-panel import-panel" aria-labelledby="import-title">
     <div class="panel-heading"><div><p class="eyebrow">Recipe tools · Early preview</p><h2 id="import-title">Import a recipe</h2></div><span class="status">Preview only</span></div>
-    <p class="import-intro">Paste recipe text or the page's JSON-LD recipe data. Metro Eats will extract the title, ingredients, directions, and basic metadata without copying the surrounding article.</p>
-    <label class="field-label" for="import-mode">What are you pasting?</label>
-    <select id="import-mode" class="import-select"><option value="text">Recipe text</option><option value="jsonld">Recipe webpage HTML / JSON-LD</option></select>
-    <label class="field-label" for="import-source">Recipe content</label>
-    <textarea id="import-source" class="import-source" rows="9" maxlength="250000" placeholder="Paste a recipe with Ingredients and Directions sections…"></textarea>
+    <p class="import-intro">Import from a public recipe URL, paste recipe text, or paste webpage HTML / JSON-LD. Metro Eats extracts recipe-specific fields instead of copying the surrounding article.</p>
+    <label class="field-label" for="import-mode">Import source</label>
+    <select id="import-mode" class="import-select"><option value="text">Pasted recipe text</option><option value="jsonld">Pasted webpage HTML / JSON-LD</option><option value="url">Recipe webpage URL</option></select>
+    <div id="import-text-fields"><label class="field-label" for="import-source">Recipe content</label><textarea id="import-source" class="import-source" rows="9" maxlength="250000" placeholder="Paste a recipe with Ingredients and Directions sections…"></textarea></div>
+    <div id="import-url-fields" class="is-hidden"><label class="field-label" for="import-url">Public recipe webpage URL</label><input id="import-url" class="import-url" type="url" inputmode="url" autocomplete="url" maxlength="2048" placeholder="https://example.com/recipe"></div>
     <div class="hero-actions import-actions"><button class="primary" type="button" data-action="parse-recipe">Extract recipe</button><button class="secondary" type="button" data-action="clear-recipe">Clear</button></div>
     <p id="import-feedback" class="import-feedback" role="status" aria-live="polite">Nothing has been extracted yet.</p>
     <div id="import-preview" class="import-preview"></div>
-    <p class="note">Safety checkpoint: this preview does not save or overwrite recipes. Direct URL fetching is intentionally not connected until the server-side fetcher has redirect and response-size protections.</p>
+    <p class="note">Safety checkpoint: extraction only. Nothing is saved or overwritten. URL fetching is server-side, validates every redirect, pins checked public IPv4 addresses, times out, and limits response size.</p>
   </section>`;
 }
 function renderList(title, eyebrow, items, kind) {
   const isRecipe = kind === "recipes";
-  const rows = items.map(item => `<li><strong>${escapeHtml(isRecipe ? item.title : item.name)}</strong><small>${escapeHtml(isRecipe ? [item.category, item.subcategory, item.ingredients.length ? `${item.ingredients.length} ingredients` : "", item.time].filter(Boolean).join(" · ") : [item.cuisine, item.address, item.rating != null ? `Rating ${item.rating}` : ""].filter(Boolean).join(" · ") || "No additional details saved")}</small>${isRecipe && item.directions.length ? `<details><summary>View directions</summary><ol>${item.directions.map(step => `<li>${escapeHtml(step)}</li>`).join("")}</ol></details>` : ""}</li>`).join("");
+  const rows = items.map(item => {
+    const ingredients = Array.isArray(item.ingredients) ? item.ingredients : [];
+    const directions = Array.isArray(item.directions) ? item.directions : [];
+    return `<li><strong>${escapeHtml(isRecipe ? item.title : item.name)}</strong><small>${escapeHtml(isRecipe ? [item.category, item.subcategory, ingredients.length ? `${ingredients.length} ingredients` : "", item.time].filter(Boolean).join(" · ") : [item.cuisine, item.address, item.rating != null ? `Rating ${item.rating}` : ""].filter(Boolean).join(" · ") || "No additional details saved")}</small>${isRecipe && directions.length ? `<details><summary>View directions</summary><ol>${directions.map(step => `<li>${escapeHtml(step)}</li>`).join("")}</ol></details>` : ""}</li>`;
+  }).join("");
   root.innerHTML = `<section class="hero"><p class="eyebrow">${eyebrow}</p><h1>${title}</h1><p class="lede">A read-only view of your current saved ${kind}.</p></section>${isRecipe ? renderImportPanel() : ""}<section class="content-panel list-panel"><div class="panel-heading"><div><p class="eyebrow">${items.length} saved</p><h2>${title}</h2></div><span class="status">Read only</span></div>${rows ? `<ul class="item-list">${rows}</ul>` : `<p class="empty">No ${kind} were found in the data source this preview can read.</p>`}<p class="note">Nothing in this screen can change or delete your existing records.</p></section>`;
 }
 function renderImportPreview(recipe) {
   const preview = document.querySelector("#import-preview");
   if (!preview) return;
   if (!recipe) { preview.innerHTML = ""; return; }
-  const metadata = [["Servings", recipe.servings], ["Prep time", recipe.prepTime], ["Cook time", recipe.cookTime], ["Total time", recipe.totalTime]].filter(([,value]) => value);
-  preview.innerHTML = `<article class="parsed-recipe"><p class="eyebrow">Extracted recipe</p><h3>${escapeHtml(recipe.title)}</h3>${metadata.length ? `<dl>${metadata.map(([label,value]) => `<div><dt>${label}</dt><dd>${escapeHtml(value)}</dd></div>`).join("")}</dl>` : ""}<div class="parsed-columns"><section><h4>Ingredients · ${recipe.ingredients.length}</h4><ul>${recipe.ingredients.map(item => `<li>${escapeHtml(item)}</li>`).join("")}</ul></section><section><h4>Directions · ${recipe.directions.length}</h4><ol>${recipe.directions.map(item => `<li>${escapeHtml(item)}</li>`).join("")}</ol></section></div></article>`;
+  const metadata = [["Servings", recipe.servings], ["Prep time", recipe.prepTime], ["Cook time", recipe.cookTime], ["Total time", recipe.totalTime]].filter(([, value]) => value);
+  preview.innerHTML = `<article class="parsed-recipe"><p class="eyebrow">Extracted recipe</p><h3>${escapeHtml(recipe.title)}</h3>${metadata.length ? `<dl>${metadata.map(([label, value]) => `<div><dt>${label}</dt><dd>${escapeHtml(value)}</dd></div>`).join("")}</dl>` : ""}${recipe.source ? `<p class="note">Source: ${escapeHtml(recipe.source)}</p>` : ""}<div class="parsed-columns"><section><h4>Ingredients · ${recipe.ingredients.length}</h4><ul>${recipe.ingredients.map(item => `<li>${escapeHtml(item)}</li>`).join("")}</ul></section><section><h4>Directions · ${recipe.directions.length}</h4><ol>${recipe.directions.map(item => `<li>${escapeHtml(item)}</li>`).join("")}</ol></section></div></article>`;
 }
 function render() {
   document.querySelectorAll("[data-view]").forEach(button => {
-    const active = button.classList.contains("tab") && button.dataset.view === activeView;
+    const active = button.dataset.view === activeView;
     button.classList.toggle("is-active", active);
     if (button.classList.contains("tab")) {
       if (active) button.setAttribute("aria-current", "page"); else button.removeAttribute("aria-current");
@@ -56,9 +60,20 @@ function render() {
   else if (activeView === "dining") renderList("Dining", "Your restaurants", dataset.restaurants, "dining");
   else renderHome();
 }
-document.addEventListener("click", event => {
+function syncImportMode() {
+  const mode = document.querySelector("#import-mode")?.value || "text";
+  document.querySelector("#import-text-fields")?.classList.toggle("is-hidden", mode === "url");
+  document.querySelector("#import-url-fields")?.classList.toggle("is-hidden", mode !== "url");
+  const label = document.querySelector("#import-source");
+  if (label) label.placeholder = mode === "jsonld" ? "Paste webpage HTML containing Recipe JSON-LD…" : "Paste a recipe with Ingredients and Directions sections…";
+}
+document.addEventListener("change", event => {
+  if (event.target?.id === "import-mode") syncImportMode();
+});
+document.addEventListener("click", async event => {
   const viewButton = event.target.closest("[data-view]");
   if (viewButton) {
+    event.preventDefault();
     activeView = viewButton.dataset.view;
     render();
     root.focus({ preventScroll: true });
@@ -68,22 +83,49 @@ document.addEventListener("click", event => {
   if (!actionButton) return;
   if (actionButton.dataset.action === "clear-recipe") {
     const source = document.querySelector("#import-source");
+    const url = document.querySelector("#import-url");
     const feedback = document.querySelector("#import-feedback");
     if (source) source.value = "";
+    if (url) url.value = "";
     if (feedback) feedback.textContent = "Content cleared. Nothing was saved.";
     renderImportPreview(null);
     return;
   }
   if (actionButton.dataset.action === "parse-recipe") {
-    const source = document.querySelector("#import-source")?.value || "";
     const mode = document.querySelector("#import-mode")?.value || "text";
+    const source = document.querySelector("#import-source")?.value || "";
+    const url = document.querySelector("#import-url")?.value.trim() || "";
     const feedback = document.querySelector("#import-feedback");
-    const result = mode === "jsonld" ? parseRecipeJsonLd(source) : parsePastedRecipeText(source);
-    if (feedback) feedback.textContent = result
-      ? "Recipe fields extracted. Review them below; nothing has been saved."
-      : mode === "jsonld"
-        ? "No complete recipe was found in the pasted HTML/JSON-LD. Try copying the recipe text instead."
-        : "Couldn't identify both ingredients and directions. Include clear Ingredients and Directions headings and try again.";
+    let result = null;
+    actionButton.disabled = true;
+    const previousLabel = actionButton.textContent;
+    actionButton.textContent = mode === "url" ? "Fetching safely…" : "Extracting…";
+    if (feedback) feedback.textContent = mode === "url" ? "Checking the webpage and extracting recipe fields. Nothing is being saved." : "Extracting recipe-specific fields…";
+    try {
+      if (mode === "url") {
+        if (!url) throw new Error("Enter a recipe webpage URL first.");
+        const response = await fetch("/api/import-recipe-v2", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "Accept": "application/json" },
+          body: JSON.stringify({ url })
+        });
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(payload.error || "Recipe import failed. Nothing was saved.");
+        result = payload.recipe || null;
+      } else {
+        result = mode === "jsonld" ? parseRecipeJsonLd(source) : parsePastedRecipeText(source);
+      }
+      if (feedback) feedback.textContent = result
+        ? "Recipe fields extracted. Review them below; nothing has been saved."
+        : mode === "jsonld"
+          ? "No complete recipe was found in the pasted HTML/JSON-LD. Try copying the recipe text instead."
+          : "Couldn't identify both ingredients and directions. Include clear Ingredients and Directions headings and try again.";
+    } catch (error) {
+      if (feedback) feedback.textContent = error?.message || "Couldn't import that recipe. Nothing was saved.";
+    } finally {
+      actionButton.disabled = false;
+      actionButton.textContent = previousLabel;
+    }
     renderImportPreview(result);
   }
 });
