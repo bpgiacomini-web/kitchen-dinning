@@ -1481,8 +1481,8 @@ function meDiningAction(action,id){
 function restaurantCard(r){
   let s=r.survey,history=Array.isArray(r.reviewHistory)?r.reviewHistory:[],summary=s?topRatedSummary(s):'',id=restaurantIdArg(r.id);
   return '<article class="restaurant">'+
-    '<div class="recipeHead"><div><button type="button" class="restaurantTitle" data-restaurant-id="'+esc(String(r.id))+'" aria-label="Open '+esc(r.name)+' restaurant information">'+esc(r.name)+' <span aria-hidden="true">›</span></button><div class="meta">'+esc(r.location||'')+' '+(r.type?'• '+esc(r.type):'')+'</div>'+stamp('Added',r.createdAt)+(r.updatedAt?stamp('Last updated',r.updatedAt):'')+'</div>'+
-    '<button type="button" class="btn restaurantEditButton" data-restaurant-id="'+esc(String(r.id))+'">Edit</button></div>'+
+    '<div class="recipeHead"><div><button type="button" class="restaurantTitle" data-restaurant-id="'+esc(String(r.id))+'" aria-label="Open '+esc(r.name)+' restaurant information" onclick="window.meV3Open('+id+',\'edit\')">'+esc(r.name)+' <span aria-hidden="true">›</span></button><div class="meta">'+esc(r.location||'')+' '+(r.type?'• '+esc(r.type):'')+'</div>'+stamp('Added',r.createdAt)+(r.updatedAt?stamp('Last updated',r.updatedAt):'')+'</div>'+
+    '<button type="button" class="btn restaurantEditButton" data-restaurant-id="'+esc(String(r.id))+'" onclick="window.meV3Open('+id+',\'edit\')">Edit</button></div>'+
     (s?'<div class="restaurantScoreCard"><div><div class="restaurantScore">'+Number(s.overall||0).toFixed(1)+'<span style="font-size:.45em;letter-spacing:0"> / 10</span></div><div class="restaurantScoreLabel">Overall Experience</div></div><div><div class="topRated"><strong>Top Rated:</strong> '+(summary||'Complete another visit for more detail.')+'</div>'+stamp('Reviewed',s.createdAt)+'<div class="restaurantLinks"><button type="button" class="btn primary" onclick="meDiningAction(\'review\','+id+')">Review Again</button><button type="button" class="btn" onclick="meDiningAction(\'history\','+id+')">Visit History ('+history.length+')</button></div></div></div>':
     '<div class="actions"><button type="button" class="btn primary" onclick="meDiningAction(\'review\','+id+')">★ Rate This Restaurant</button></div>')+
     (r.notes?'<p>'+esc(r.notes)+'</p>':'')+
@@ -1955,8 +1955,9 @@ function showVisitHistory(id){
     event.preventDefault();
     event.stopPropagation();
     var id=button.getAttribute('data-restaurant-id');
-    if(typeof window.openRestaurant==='function')window.openRestaurant(id);
+    if(typeof window.meV3Open==='function')window.meV3Open(id,'edit');
+    else if(typeof window.openRestaurant==='function')window.openRestaurant(id);
     else if(typeof window.meDiningAction==='function')window.meDiningAction('edit',id);
-    else console.error('Metro Eats: restaurant editor handler is unavailable');
+    else { console.error('Metro Eats: restaurant editor handler is unavailable'); alert('The restaurant editor did not load. Please refresh Metro Eats.'); }
   },true);
 })();
