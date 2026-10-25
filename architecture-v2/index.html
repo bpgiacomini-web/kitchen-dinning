@@ -4,6 +4,11 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#0b0d10">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <meta name="apple-mobile-web-app-title" content="Metro Eats">
+  <link rel="manifest" href="../manifest.json">
+  <link rel="apple-touch-icon" href="../icon-180.png">
   <title>Metro Eats — Architecture Preview</title>
   <link rel="stylesheet" href="../styles.css?v=20261025-safe-area-1">
   <link rel="stylesheet" href="./styles.css?v=2">
@@ -22,14 +27,14 @@
     <main id="app" tabindex="-1" aria-live="polite">
 <section class="section active" id="home">
   <div class="hero"><div class="heroIn"><div class="eyebrow">St. Louis • Metro East</div><h2>Metro Eats<br><span class="fl">⚜</span> Recipes & Dining</h2><p>Your personal recipe book and restaurant journal — built around the food you actually love.</p><div class="homeFeatureButtons"><button class="homeFeatureButton recipeButton" data-view="recipes"><span class="homeFeatureIcon">✦</span><span><strong>Recipes</strong><small>Your Kitchen</small></span><span class="homeFeatureArrow">→</span></button><button class="homeFeatureButton diningButton" data-view="dining"><span class="homeFeatureIcon">⚜</span><span><strong>Dining Experience</strong><small>Your Restaurants & Reviews</small></span><span class="homeFeatureArrow">→</span></button></div></div></div>
-  <div class="homeColumns"><article class="featureCard"><div><div class="sectionKicker">Your Collection</div><h3>Saved with care</h3><p><strong id="recipe-count">—</strong> recipes and <strong id="dining-count">—</strong> restaurants available to this preview.</p></div><div class="actions"><button class="btn primary" data-view="recipes">Open Recipes →</button><button class="btn" data-view="dining">Open Dining →</button></div></article><article class="featureCard accent"><div><div class="sectionKicker">Safety First</div><h3>Existing data stays safe.</h3><p>This preview reads available records only. No recipe, restaurant, or review can be changed or overwritten here.</p></div><span class="status">Read only</span></article></div>
+  <div class="homeColumns"><article class="featureCard"><div><div class="sectionKicker">Your Collection</div><h3>Saved with care</h3><p>Your recipes and restaurant notes, kept together in one place.</p></div><div class="actions"><button class="btn primary" data-view="recipes">Open Recipes →</button><button class="btn" data-view="dining">Open Dining →</button></div></article><article class="featureCard accent"><div><div class="sectionKicker">Safety First</div><h3>Existing data stays safe.</h3><p>This preview reads available records only. No recipe, restaurant, or review can be changed or overwritten here.</p></div><span class="status">Read only</span></article></div>
 </section>
 <section id="recipes" class="section recipeSection"></section>
 <section id="dining" class="section diningSection"></section>
 </main>
     <footer>Metro Eats · Architecture preview · Existing app remains unchanged</footer>
   </div>
-  <nav class="bottomNav" aria-label="Primary navigation"><button class="active" type="button" data-view="home">⌂<br>Home</button><button  type="button" data-view="recipes">▱<br>Recipes</button><button class="tab" type="button" data-view="dining">◉<br>Dining</button></nav>
+  <nav class="bottomNav" aria-label="Primary navigation"><button class="active" type="button" data-view="home">⌂<br>Home</button><button  type="button" data-view="recipes">▱<br>Recipes</button><button type="button" data-view="dining">◉<br>Dining</button></nav>
   <script type="module" src="./src/main.mjs"></script>
 </body>
 </html>
