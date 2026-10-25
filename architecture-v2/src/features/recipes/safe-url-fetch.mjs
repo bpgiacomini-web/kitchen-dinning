@@ -17,7 +17,7 @@ function isPublicIPv4(address) {
   if (a === 100 && b >= 64 && b <= 127) return false;
   if (a === 169 && b === 254) return false;
   if (a === 172 && b >= 16 && b <= 31) return false;
-  if (a === 192 && (b === 168 || (b === 0 && c === 0) || (b === 0 && c === 2) || (b === 88 && c === 99) || (b === 0 && c === 2))) return false;
+  if (a === 192 && (b === 168 || b === 0 || (b === 88 && c === 99) || (b === 52 && c === 193) || (b === 175 && c === 48))) return false;
   if (a === 198 && (b === 18 || b === 19 || (b === 51 && c === 100))) return false;
   if (a === 203 && b === 0 && c === 113) return false;
   return true;
@@ -99,17 +99,17 @@ function requestOnce(url, pinnedAddress) {
 }
 
 /** Fetch with pinned, checked IPv4 DNS results, manual redirects, timeout, and a streamed byte cap. */
-export async function fetchPublicRecipePage(input) {
+export async function fetchPublicRecipePage(input, { resolveAddress = resolvePublicIPv4, request = requestOnce } = {}) {
   let url = validateRecipeUrl(input);
   for (let redirects = 0; redirects <= MAX_REDIRECTS; redirects += 1) {
-    const pinnedAddress = await resolvePublicIPv4(url.hostname);
-    const result = await requestOnce(url, pinnedAddress);
+    const pinnedAddress = await resolveAddress(url.hostname);
+    const result = await request(url, pinnedAddress);
+    if (result.tooLarge) throw new Error("response_too_large");
     if ([301, 302, 303, 307, 308].includes(result.status)) {
       if (redirects === MAX_REDIRECTS || !result.location) throw new Error("too_many_redirects");
       url = validateRecipeUrl(new URL(result.location, url).href);
       continue;
     }
-    if (result.tooLarge) throw new Error("response_too_large");
     return { ...result, finalUrl: url.href };
   }
   throw new Error("too_many_redirects");
