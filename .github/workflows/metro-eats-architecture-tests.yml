@@ -22,3 +22,6 @@ jobs:
         with:
           node-version: 20
       - run: npm test
+      - run: node --check src/main.mjs
+      - run: node --check src/domain/normalize.mjs
+      - run: node --check src/data/repository.mjs
