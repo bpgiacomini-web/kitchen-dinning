@@ -10,7 +10,7 @@
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="icon-180.png">
 <title>Metro Eats</title>
-<link rel="stylesheet" href="styles.css?v=20261025-review-title-tap-1">
+<link rel="stylesheet" href="styles.css?v=20261025-review-destination-fix-2">
 </head>
 <body>
 <div class="app">
@@ -38,7 +38,7 @@
       var card=document.createElement('article');card.className='restaurantSpotlightCard';
       var kicker=document.createElement('div');kicker.className='sectionKicker';kicker.textContent='Your Top Restaurant';card.appendChild(kicker);
       var row=document.createElement('div');row.className='restaurantSpotlightTitleRow';
-      var left=document.createElement('div'),title=document.createElement('button');title.type='button';title.className='restaurantTitle';title.setAttribute('aria-label','Open '+(r.name||'restaurant')+' review');title.textContent=(r.name||'Unnamed restaurant')+' ›';title.addEventListener('click',function(){if(typeof window.meDiningReview==='function')window.meDiningReview(r.id);});left.appendChild(title);
+      var left=document.createElement('div'),title=document.createElement('button');title.type='button';title.className='restaurantTitle';title.setAttribute('aria-label','Open '+(r.name||'restaurant')+' review');title.textContent=(r.name||'Unnamed restaurant')+' ›';title.addEventListener('click',function(){if(typeof window.openRestaurant==='function')window.openRestaurant(r.id);});left.appendChild(title);
       var meta=document.createElement('div');meta.className='meta';meta.textContent=(r.location||'')+(r.type?' • '+r.type:'');left.appendChild(meta);
       var scoreEl=document.createElement('div');scoreEl.className='restaurantSpotlightScore';scoreEl.textContent=scoreValue.toFixed(1);
       var small=document.createElement('small');small.textContent='/10';scoreEl.appendChild(small);row.appendChild(left);row.appendChild(scoreEl);card.appendChild(row);
