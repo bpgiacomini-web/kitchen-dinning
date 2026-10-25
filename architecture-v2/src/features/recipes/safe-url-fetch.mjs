@@ -53,6 +53,7 @@ function requestOnce(url, pinnedAddress) {
     const transport = url.protocol === "https:" ? https : http;
     const request = transport.request(url, {
       method: "GET",
+      family: 4,
       timeout: TIMEOUT_MS,
       headers: {
         "User-Agent": "MetroEatsRecipeImporter/2.0",
@@ -61,7 +62,9 @@ function requestOnce(url, pinnedAddress) {
         "Connection": "close"
       },
       servername: url.protocol === "https:" ? url.hostname : undefined,
-      lookup: (_hostname, _options, callback) => callback(null, pinnedAddress, 4)
+      lookup: (_hostname, options, callback) => options?.all
+        ? callback(null, [{ address: pinnedAddress, family: 4 }])
+        : callback(null, pinnedAddress, 4)
     }, response => {
       const status = response.statusCode || 0;
       const location = response.headers.location || "";
