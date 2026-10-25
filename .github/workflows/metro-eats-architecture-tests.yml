@@ -1,0 +1,24 @@
+name: Metro Eats architecture preview tests
+on:
+  push:
+    branches:
+      - architecture/metro-eats-clean-rebuild-2026-10-25
+    paths:
+      - 'architecture-v2/**'
+      - '.github/workflows/metro-eats-architecture-tests.yml'
+  pull_request:
+    paths:
+      - 'architecture-v2/**'
+      - '.github/workflows/metro-eats-architecture-tests.yml'
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: architecture-v2
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npm test
