@@ -8,6 +8,9 @@ test("only public HTTP(S) URLs on standard ports are accepted", () => {
   assert.throws(() => validateRecipeUrl("https://user:pass@example.com/"));
   assert.throws(() => validateRecipeUrl("https://example.com:8443/"));
   assert.throws(() => validateRecipeUrl("http://127.0.0.1/"));
+  assert.throws(() => validateRecipeUrl("http://localhost./"));
+  assert.throws(() => validateRecipeUrl("http://router.local/"));
+  assert.throws(() => validateRecipeUrl("http://example.com:8080/"));
 });
 
 test("local and special-use hostnames are rejected before network access", async () => {
