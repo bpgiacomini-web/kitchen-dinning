@@ -47,3 +47,23 @@
 @media(min-width:761px){
   .brandLogo{width:clamp(260px,42vw,460px);max-width:100%;height:auto;object-fit:contain}
 }
+
+
+/* Focused mobile polish for the clean rebuild preview only. */
+@media(max-width:520px){
+  .app{padding-bottom:calc(112px + env(safe-area-inset-bottom))}
+  .top{
+    gap:0;
+    padding:calc(6px + env(safe-area-inset-top)) 12px 8px;
+    margin:calc(-10px - env(safe-area-inset-top)) -12px 14px;
+  }
+  .brand{justify-content:center}
+  .brandLogo{display:block;width:100%;max-width:560px;height:auto}
+  #previewNotice{margin:0 0 12px;font-size:12px}
+  #app .hero{margin-bottom:16px}
+  #app .heroIn{padding:26px 22px}
+  #app .hero h2{font-size:clamp(38px,8.5vw,58px);line-height:.98}
+  #app .hero p{font-size:17px;line-height:1.5}
+  .bottomNav{padding-top:7px;padding-bottom:calc(8px + env(safe-area-inset-bottom))}
+  .bottomNav button{min-height:48px}
+}
