@@ -25,7 +25,8 @@ function isPublicIPv4(address) {
 
 export async function resolvePublicIPv4(hostname) {
   const host = String(hostname || "").toLowerCase().replace(/\.$/, "");
-  if (!host || host === "localhost" || host.endsWith(".localhost") || host.endsWith(".local") || net.isIP(host)) {
+  const ipCandidate = host.replace(/^\[|\]$/g, "");
+  if (!host || host === "localhost" || host.endsWith(".localhost") || host.endsWith(".local") || net.isIP(ipCandidate)) {
     throw new Error("blocked_host");
   }
   const records = await lookup(host, { all: true, family: 4, verbatim: true });
@@ -38,7 +39,8 @@ export function validateRecipeUrl(input) {
   try { url = new URL(String(input || "")); } catch { throw new Error("invalid_url"); }
   if (!["http:", "https:"].includes(url.protocol) || url.username || url.password || !url.hostname) throw new Error("invalid_url");
   const host = url.hostname.toLowerCase().replace(/\.$/, "");
-  if (host === "localhost" || host.endsWith(".localhost") || host.endsWith(".local") || net.isIP(host)) throw new Error("blocked_host");
+  const ipCandidate = host.replace(/^\[|\]$/g, "");
+  if (host === "localhost" || host.endsWith(".localhost") || host.endsWith(".local") || net.isIP(ipCandidate)) throw new Error("blocked_host");
   if (url.port && !((url.protocol === "http:" && url.port === "80") || (url.protocol === "https:" && url.port === "443"))) {
     throw new Error("blocked_port");
   }
