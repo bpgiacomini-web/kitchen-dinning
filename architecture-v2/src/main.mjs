@@ -49,12 +49,15 @@ function renderImportPreview(recipe) {
   preview.innerHTML = `<article class="parsedRecipe"><p class="sectionKicker">Extracted recipe</p><h3>${escapeHtml(recipe.title)}</h3>${metadata.length ? `<dl>${metadata.map(([label, value]) => `<div><dt>${label}</dt><dd>${escapeHtml(value)}</dd></div>`).join("")}</dl>` : ""}${recipe.source ? `<p class="note">Source: ${escapeHtml(recipe.source)}</p>` : ""}<div class="parsedColumns"><section><h4>Ingredients · ${recipe.ingredients.length}</h4><ul>${recipe.ingredients.map(item => `<li>${escapeHtml(item)}</li>`).join("")}</ul></section><section><h4>Directions · ${recipe.directions.length}</h4><ol>${recipe.directions.map(item => `<li>${escapeHtml(item)}</li>`).join("")}</ol></section></div></article>`;
 }
 function render() {
+  root.classList.add("section", "active");
+  root.classList.remove("recipeSection", "diningSection");
+  if (activeView === "recipes") root.classList.add("recipeSection");
+  if (activeView === "dining") root.classList.add("diningSection");
   document.querySelectorAll("[data-view]").forEach(button => {
     const active = button.dataset.view === activeView;
     button.classList.toggle("active", active);
     if (active) button.setAttribute("aria-current", "page"); else button.removeAttribute("aria-current");
   });
-  document.querySelectorAll("#app > .section").forEach(section => section.classList.toggle("active", section.id === activeView));
   if (activeView === "recipes") renderList("Recipes", "Your kitchen", dataset.recipes, "recipes");
   else if (activeView === "dining") renderList("Dining", "Your restaurants", dataset.restaurants, "dining");
   else renderHome();
