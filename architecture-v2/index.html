@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0b0d10">
+  <title>Metro Eats — Architecture Preview</title>
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <div class="app-shell">
+    <header class="app-header">
+      <a class="brand" href="#home" aria-label="Metro Eats home"><span class="brand-mark" aria-hidden="true">⚜</span><span><strong>Metro Eats</strong><small>Recipes · Restaurants · Local Flavor</small></span></a>
+      <nav class="tabs" aria-label="Main navigation">
+        <button class="tab is-active" type="button" data-view="home" aria-current="page">Home</button>
+        <button class="tab" type="button" data-view="recipes">Recipes</button>
+        <button class="tab" type="button" data-view="dining">Dining</button>
+      </nav>
+    </header>
+    <main id="app" tabindex="-1" aria-live="polite">
+      <section class="hero"><p class="eyebrow">St. Louis · Metro East</p><h1>Your food life,<br><span>all in one place.</span></h1><p class="lede">A cleaner foundation for the recipes you keep and the restaurants you remember.</p><div class="hero-actions"><button class="primary" data-view="recipes">Explore recipes</button><button class="secondary" data-view="dining">Explore dining</button></div></section>
+      <section class="content-panel"><div class="panel-heading"><div><p class="eyebrow">Your collection</p><h2>Saved with care</h2></div><span id="connection-state" class="status">Loading data…</span></div><div class="summary-grid"><article class="summary-card"><span class="summary-icon" aria-hidden="true">✦</span><p>Recipes</p><strong id="recipe-count">—</strong></article><article class="summary-card"><span class="summary-icon" aria-hidden="true">⚜</span><p>Restaurants</p><strong id="dining-count">—</strong></article></div><p class="note">This is a read-only architecture preview. It will not edit, delete, or overwrite your existing data.</p></section>
+    </main>
+    <footer>Metro Eats · Architecture preview · Existing app remains unchanged</footer>
+  </div>
+  <script type="module" src="./src/main.mjs"></script>
+</body>
+</html>
