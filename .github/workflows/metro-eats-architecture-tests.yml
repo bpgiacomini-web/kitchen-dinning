@@ -25,3 +25,4 @@ jobs:
       - run: node --check src/main.mjs
       - run: node --check src/domain/normalize.mjs
       - run: node --check src/data/repository.mjs
+      - run: node --check src/domain/contracts.mjs
