@@ -27,3 +27,5 @@ jobs:
       - run: node --check src/data/repository.mjs
       - run: node --check src/domain/contracts.mjs
       - run: node --check src/features/recipes/import-parser.mjs
+      - run: node --check src/features/recipes/safe-url-fetch.mjs
+      - run: node --check ../api/import-recipe-v2.js
