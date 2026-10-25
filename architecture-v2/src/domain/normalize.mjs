@@ -1,4 +1,4 @@
-/** Defensive adapters for the legacy Metro Eats data shape. Inputs are never mutated. */
+/** Defensive, non-mutating adapters for the actual legacy Metro Eats record shapes. */
 export function asText(value) {
   if (value == null) return "";
   if (typeof value === "string" || typeof value === "number") return String(value).trim();
@@ -7,41 +7,62 @@ export function asText(value) {
   return "";
 }
 
+function asList(value) {
+  if (value == null || value === "") return [];
+  return (Array.isArray(value) ? value : [value]).map(asText).filter(Boolean);
+}
+
 export function normalizeRecipe(record, index = 0) {
-  const item = record && typeof record === "object" ? record : {};
+  const item = record && typeof record === "object" && !Array.isArray(record) ? record : {};
   const ingredients = item.ingredients ?? item.recipeIngredient ?? item.ingredientList ?? [];
-  const directions = item.directions ?? item.steps ?? item.recipeInstructions ?? item.instructions ?? [];
+  // Metro Eats stores saved recipe instructions under "steps"; imported Schema.org data uses recipeInstructions.
+  const directions = item.steps ?? item.directions ?? item.recipeInstructions ?? item.instructions ?? [];
   return {
     id: asText(item.id ?? item._id) || `legacy-recipe-${index}`,
     title: asText(item.title ?? item.name ?? item.recipeName) || "Untitled recipe",
-    category: asText(item.category ?? item.subcategory),
-    ingredients: (Array.isArray(ingredients) ? ingredients : [ingredients]).map(asText).filter(Boolean),
-    directions: (Array.isArray(directions) ? directions : [directions]).map(asText).filter(Boolean),
+    category: asText(item.category),
+    subcategory: asText(item.subcategory),
+    ingredients: asList(ingredients),
+    directions: asList(directions),
     servings: asText(item.servings ?? item.yield),
     time: asText(item.time ?? item.totalTime ?? item.cookTime),
     favorite: item.favorite === true || item.isFavorite === true,
-    source: asText(item.source ?? item.url)
+    source: asText(item.source ?? item.url),
+    photos: asList(item.photos),
+    createdAt: asText(item.createdAt),
+    updatedAt: asText(item.updatedAt)
   };
 }
 
 export function normalizeRestaurant(record, index = 0) {
-  const item = record && typeof record === "object" ? record : {};
-  const address = item.address ?? item.location ?? "";
+  const item = record && typeof record === "object" && !Array.isArray(record) ? record : {};
+  const address = item.location ?? item.address ?? "";
+  const history = Array.isArray(item.reviewHistory) ? item.reviewHistory : [];
+  const reviewCount = history.length || (item.survey ? 1 : 0);
   return {
     id: asText(item.id ?? item._id) || `legacy-restaurant-${index}`,
     name: asText(item.name ?? item.title) || "Unnamed restaurant",
-    cuisine: asText(item.cuisine ?? item.type ?? item.category),
-    address: asText(typeof address === "object" ? [address.street, address.city, address.state].filter(Boolean).join(", ") : address),
-    rating: Number.isFinite(Number(item.rating)) && item.rating !== "" ? Number(item.rating) : null,
+    cuisine: asText(item.type ?? item.cuisine ?? item.category),
+    address: asText(typeof address === "object" && !Array.isArray(address)
+      ? [address.street, address.city, address.state].filter(Boolean).join(", ")
+      : address),
+    rating: Number.isFinite(Number(item.rating)) && item.rating !== "" && item.rating != null ? Number(item.rating) : null,
     favorite: item.favorite === true || item.isFavorite === true,
-    reviewCount: Array.isArray(item.reviewHistory) ? item.reviewHistory.length : (item.survey ? 1 : 0)
+    reviewCount,
+    latestReviewAt: asText(item.survey?.createdAt ?? history.at(-1)?.createdAt),
+    website: asText(item.website),
+    notes: asText(item.notes),
+    photos: asList(item.photos),
+    createdAt: asText(item.createdAt),
+    updatedAt: asText(item.updatedAt)
   };
 }
 
 export function normalizeDataset(value) {
-  const data = value && typeof value === "object" ? value : {};
+  const data = value && typeof value === "object" && !Array.isArray(value) ? value : {};
   return {
     recipes: (Array.isArray(data.recipes) ? data.recipes : []).map(normalizeRecipe),
-    restaurants: (Array.isArray(data.restaurants) ? data.restaurants : []).map(normalizeRestaurant)
+    restaurants: (Array.isArray(data.restaurants) ? data.restaurants : []).map(normalizeRestaurant),
+    cats: Array.isArray(data.cats) ? data.cats : []
   };
 }
