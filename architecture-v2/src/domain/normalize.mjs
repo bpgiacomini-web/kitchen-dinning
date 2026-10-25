@@ -12,6 +12,18 @@ function asList(value) {
   return (Array.isArray(value) ? value : [value]).map(asText).filter(Boolean);
 }
 
+function instructionList(value) {
+  if (value == null || value === "") return [];
+  if (Array.isArray(value)) return value.flatMap(instructionList);
+  if (typeof value === "object") {
+    if (value.text != null) return instructionList(value.text);
+    if (value.itemListElement != null) return instructionList(value.itemListElement);
+    if (value.name != null) return instructionList(value.name);
+    return [];
+  }
+  return asList(value);
+}
+
 export function normalizeRecipe(record, index = 0) {
   const item = record && typeof record === "object" && !Array.isArray(record) ? record : {};
   const ingredients = item.ingredients ?? item.recipeIngredient ?? item.ingredientList ?? [];
@@ -23,7 +35,7 @@ export function normalizeRecipe(record, index = 0) {
     category: asText(item.category),
     subcategory: asText(item.subcategory),
     ingredients: asList(ingredients),
-    directions: asList(directions),
+    directions: instructionList(directions),
     servings: asText(item.servings ?? item.yield),
     time: asText(item.time ?? item.totalTime ?? item.cookTime),
     favorite: item.favorite === true || item.isFavorite === true,
@@ -63,6 +75,6 @@ export function normalizeDataset(value) {
   return {
     recipes: (Array.isArray(data.recipes) ? data.recipes : []).map(normalizeRecipe),
     restaurants: (Array.isArray(data.restaurants) ? data.restaurants : []).map(normalizeRestaurant),
-    cats: Array.isArray(data.cats) ? data.cats : []
+    cats: data.cats && typeof data.cats === "object" ? data.cats : []
   };
 }
