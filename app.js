@@ -1652,6 +1652,16 @@ function showVisitHistory(id){
     if(id==='new')r=prefill||{id:'new',name:'',type:'Other',location:'',website:'',menuUrl:'',notes:'',photos:[],survey:null,reviewHistory:[],createdAt:null,updatedAt:null};
     else r=(db.restaurants||[]).find(function(x){return String(x.id)===String(id)});
     if(!r){alert('That restaurant could not be found in Metro Eats.');return}
+    /* Review mode must use the critic review renderer, not the restaurant editor renderer. */
+    if(mode==='review'){
+      pendingRestaurant=null;
+      pendingReviewRestaurant=Object.assign({},r,{photos:Array.isArray(r.photos)?r.photos.slice():[]});
+      restaurantEditMode=false;
+      window._editingPhotos=Array.isArray(r.photos)?r.photos.slice():[];
+      meDiningLoadReviewState(r);
+      renderSurvey();
+      return;
+    }
     load(r,mode||'edit');render();
   };
   window.meDiningReview=function(id){meV3Open(String(id),'review')};
