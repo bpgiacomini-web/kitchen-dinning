@@ -37,6 +37,8 @@ export function validateRecipeUrl(input) {
   let url;
   try { url = new URL(String(input || "")); } catch { throw new Error("invalid_url"); }
   if (!["http:", "https:"].includes(url.protocol) || url.username || url.password || !url.hostname) throw new Error("invalid_url");
+  const host = url.hostname.toLowerCase().replace(/\\.$/, "");
+  if (host === "localhost" || host.endsWith(".localhost") || host.endsWith(".local") || net.isIP(host)) throw new Error("blocked_host");
   if (url.port && !((url.protocol === "http:" && url.port === "80") || (url.protocol === "https:" && url.port === "443"))) {
     throw new Error("blocked_port");
   }
