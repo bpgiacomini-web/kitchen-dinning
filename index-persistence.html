@@ -38,7 +38,7 @@
       var card=document.createElement('article');card.className='restaurantSpotlightCard';
       var kicker=document.createElement('div');kicker.className='sectionKicker';kicker.textContent='Your Top Restaurant';card.appendChild(kicker);
       var row=document.createElement('div');row.className='restaurantSpotlightTitleRow';
-      var left=document.createElement('div'),title=document.createElement('h3');title.textContent=r.name||'Unnamed restaurant';left.appendChild(title);
+      var left=document.createElement('div'),title=document.createElement('h3');title.textContent=r.name||'Unnamed restaurant';title.setAttribute('role','button');title.setAttribute('tabindex','0');title.style.cursor='pointer';title.onclick=function(){if(typeof window.meDiningAction==='function')window.meDiningAction('edit',r.id);};title.onkeydown=function(e){if(e.key==='Enter'||e.key===' '){e.preventDefault();title.click();}};left.appendChild(title);
       var meta=document.createElement('div');meta.className='meta';meta.textContent=(r.location||'')+(r.type?' • '+r.type:'');left.appendChild(meta);
       var scoreEl=document.createElement('div');scoreEl.className='restaurantSpotlightScore';scoreEl.textContent=scoreValue.toFixed(1);
       var small=document.createElement('small');small.textContent='/10';scoreEl.appendChild(small);row.appendChild(left);row.appendChild(scoreEl);card.appendChild(row);
@@ -121,7 +121,7 @@ document.addEventListener('DOMContentLoaded',function(){
   });
 });
 </script>
-<script src="app.js?v=20261025-restaurant-tap-fix-1" defer></script>
+<script src="app.js?v=20261025-restaurant-tap-fix-2" defer></script>
 <script>
 /* Dining controls fallback: run after the deferred app script has had a chance to initialize. */
 (function(){
