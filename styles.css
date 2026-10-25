@@ -92,3 +92,7 @@
 
 /* Keep cloud backup status in normal document flow; never float over the logo or follow scrolling. */
 #metroCloudStatus{position:relative!important;top:auto!important;right:auto!important;bottom:auto!important;left:auto!important;z-index:2!important;display:block!important;visibility:visible!important;opacity:1!important;width:100%;margin:0 0 14px!important;padding:12px 10px!important;border:3px solid #e7c17a!important;border-radius:0!important;box-sizing:border-box!important;box-shadow:none!important;}
+
+
+/* Make restaurant names obvious, accessible review-opening controls. */
+.restaurantTitle{display:inline-flex;align-items:center;gap:6px;max-width:100%;padding:0;border:0;background:transparent;color:var(--text);font:inherit;font-size:22px;font-weight:850;letter-spacing:-.02em;text-align:left;line-height:1.2;cursor:pointer;text-decoration:underline;text-decoration-color:#d6a85b80;text-underline-offset:4px;overflow-wrap:anywhere}.restaurantTitle:focus-visible{outline:2px solid var(--accent);outline-offset:4px;border-radius:4px}.restaurantSpotlightTitleRow .restaurantTitle{font-size:clamp(22px,5vw,32px)}
