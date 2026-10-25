@@ -5,6 +5,7 @@ on:
       - architecture/metro-eats-clean-rebuild-2026-10-25
     paths:
       - 'architecture-v2/**'
+      - 'api/import-recipe-v2.js'
       - '.github/workflows/metro-eats-architecture-tests.yml'
   pull_request:
     paths:
