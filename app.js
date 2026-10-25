@@ -1374,17 +1374,10 @@ function showRankings(){
   function route(action,id){
     try{
       id=id==null?'':String(id);
-      if(action==='create'){
-        meDiningOpen('new',null,false);
-      }else if(action==='edit'){
-        meDiningOpen(id,null,false);
-      }else if(action==='review'){
-        showReviewResults(id);
-      }else if(action==='history'){
-        showVisitHistory(id);
-      }else if(action==='rankings'){
-        showRankings();
+      if(typeof window.meDiningAction!=='function'){
+        throw new Error('Dining action handler is not available');
       }
+      window.meDiningAction(action,id);
     }catch(e){
       console.error('Metro Eats Dining action error',e);
       alert('Metro Eats could not open that Dining action. '+(e&&e.message?e.message:'Please try again.'));
