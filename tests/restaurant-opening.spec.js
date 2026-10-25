@@ -19,15 +19,20 @@ const sampleDb = {
 };
 
 test.beforeEach(async ({ page }) => {
-  await page.addInitScript((db) => {
+  await page.goto('/');
+  // Seed after the page has an origin, then reload so the app's initial
+  // migration reads the controlled fixture. This never touches real user data.
+  await page.evaluate(db => {
     localStorage.setItem('metro_eats_v2', JSON.stringify(db));
     localStorage.removeItem('metro_eats_v1');
   }, sampleDb);
-  await page.goto('/');
+  await page.reload();
+  await page.waitForFunction(() => typeof window.openRestaurant === 'function');
 });
 
 test('saved restaurant name opens restaurant information editor', async ({ page }) => {
   await page.locator('#desktopNav button[data-tab="restaurants"]').click();
+  await page.evaluate(() => window.renderRestaurants());
   const title = page.locator('#restaurants .restaurantTitle').filter({ hasText: 'Regression Test Restaurant' });
   await expect(title).toBeVisible();
   await title.click();
@@ -37,6 +42,10 @@ test('saved restaurant name opens restaurant information editor', async ({ page 
 });
 
 test('home restaurant spotlight opens restaurant information editor', async ({ page }) => {
+  // Refresh the spotlight after loading the test fixture.
+  await page.evaluate(() => {
+    if (typeof window.updateStory === 'function') window.updateStory();
+  });
   const title = page.locator('#restaurantSpotlight .restaurantTitle');
   await expect(title).toContainText('Regression Test Restaurant');
   await title.click();
