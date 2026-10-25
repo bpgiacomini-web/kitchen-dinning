@@ -3,8 +3,6 @@ import { parsePastedRecipeText, parseRecipeJsonLd } from "./features/recipes/imp
 
 const root = document.querySelector("#app");
 const status = document.querySelector("#previewNotice");
-const recipeCount = document.querySelector("#recipe-count");
-const diningCount = document.querySelector("#dining-count");
 let dataset = { recipes: [], restaurants: [], cats: [] };
 let activeView = "home";
 
@@ -16,7 +14,7 @@ function setStatus(label, kind = "") {
   status.className = `status ${kind}`.trim();
 }
 function renderHome() {
-  root.innerHTML = `<section class="hero"><div class="heroIn"><div class="eyebrow">St. Louis • Metro East</div><h2>Metro Eats<br><span class="fl">⚜</span> Recipes & Dining</h2><p>Your personal recipe book and restaurant journal — built around the food you actually love.</p><div class="homeFeatureButtons"><button class="homeFeatureButton recipeButton" data-view="recipes"><span class="homeFeatureIcon">✦</span><span><strong>Recipes</strong><small>Your Kitchen</small></span><span class="homeFeatureArrow">→</span></button><button class="homeFeatureButton diningButton" data-view="dining"><span class="homeFeatureIcon">⚜</span><span><strong>Dining Experience</strong><small>Your Restaurants & Reviews</small></span><span class="homeFeatureArrow">→</span></button></div></div></section><div class="homeColumns"><article class="featureCard"><div><div class="sectionKicker">Your Collection</div><h3>Saved with care</h3><p><strong>${dataset.recipes.length}</strong> recipes and <strong>${dataset.restaurants.length}</strong> restaurants available to this preview.</p></div><div class="actions"><button class="btn primary" data-view="recipes">Open Recipes →</button><button class="btn" data-view="dining">Open Dining →</button></div></article><article class="featureCard accent"><div><div class="sectionKicker">Safety First</div><h3>Existing data stays safe.</h3><p>This preview reads available records only. No recipe, restaurant, or review can be changed or overwritten here.</p></div><span class="status">Read only</span></article></div>`;
+  root.innerHTML = `<section class="hero"><div class="heroIn"><div class="eyebrow">St. Louis • Metro East</div><h2>Metro Eats<br><span class="fl">⚜</span> Recipes & Dining</h2><p>Your personal recipe book and restaurant journal — built around the food you actually love.</p><div class="homeFeatureButtons"><button class="homeFeatureButton recipeButton" data-view="recipes"><span class="homeFeatureIcon">✦</span><span><strong>Recipes</strong><small>Your Kitchen</small></span><span class="homeFeatureArrow">→</span></button><button class="homeFeatureButton diningButton" data-view="dining"><span class="homeFeatureIcon">⚜</span><span><strong>Dining Experience</strong><small>Your Restaurants & Reviews</small></span><span class="homeFeatureArrow">→</span></button></div></div></section><div class="homeColumns"><article class="featureCard"><div><div class="sectionKicker">Your Collection</div><h3>Saved with care</h3><p>Your recipes and restaurant notes, kept together in one place.</p></div><div class="actions"><button class="btn primary" data-view="recipes">Open Recipes →</button><button class="btn" data-view="dining">Open Dining →</button></div></article><article class="featureCard accent"><div><div class="sectionKicker">Safety First</div><h3>Existing data stays safe.</h3><p>This preview reads available records only. No recipe, restaurant, or review can be changed or overwritten here.</p></div><span class="status">Read only</span></article></div>`;
 }
 function renderImportPanel() {
   return `<section class="importPanel" aria-labelledby="import-title">
@@ -135,8 +133,6 @@ document.addEventListener("click", async event => {
 try {
   const result = await loadDataset();
   dataset = result.data;
-  recipeCount.textContent = String(dataset.recipes.length);
-  diningCount.textContent = String(dataset.restaurants.length);
   if (result.source.startsWith("local:")) setStatus("Loaded from this device", "ok");
   else if (result.source === "cloud") setStatus("Loaded from cloud", "ok");
   else setStatus(result.staleFallback ? "Data source unavailable" : "No saved data found", "warn");
