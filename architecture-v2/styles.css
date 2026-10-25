@@ -29,3 +29,10 @@
 #app button:focus-visible{outline:2px solid var(--section-accent,var(--accent));outline-offset:3px}
 #app button:disabled{opacity:.65;cursor:wait}
 @media(max-width:560px){#app .parsedColumns{grid-template-columns:1fr}#app .importPanel{padding:14px}#app .parsedRecipe{padding:14px}}
+
+.is-hidden{display:none!important}
+#app .content-panel{margin-top:18px;padding:18px;border:1px solid var(--line);border-radius:20px;background:linear-gradient(145deg,#151b20,#101419);box-shadow:var(--shadow)}
+#app .panel-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+#app .panel-heading h2{margin:4px 0;font-size:24px}
+#app .panel-heading .eyebrow{margin:0}
+#app .note{font-size:12px;color:var(--muted);line-height:1.5}
