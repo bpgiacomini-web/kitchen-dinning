@@ -53,3 +53,16 @@ test("plainText safely handles Schema.org property values", () => {
   assert.equal(plainText("<b>Fresh</b>&nbsp;tomatoes"), "Fresh tomatoes");
   assert.equal(normalizeImportedRecipe(null), null);
 });
+
+test("pasted recipe title is taken from the pre-ingredients heading, not later story text", () => {
+  const result = parsePastedRecipeText(`Chicken Alfredo
+https://example.com/story
+A long article paragraph that should not become the recipe title.
+Ingredients
+- 1 lb pasta
+Directions
+- Boil pasta.`);
+  assert.equal(result.title, "Chicken Alfredo");
+  assert.deepEqual(result.ingredients, ["1 lb pasta"]);
+  assert.deepEqual(result.directions, ["Boil pasta."]);
+});
