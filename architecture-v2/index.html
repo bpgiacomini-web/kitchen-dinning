@@ -10,7 +10,7 @@
 <body>
   <div class="app-shell">
     <header class="app-header">
-      <a class="brand" href="#home" aria-label="Metro Eats home"><span class="brand-mark" aria-hidden="true">⚜</span><span><strong>Metro Eats</strong><small>Recipes · Restaurants · Local Flavor</small></span></a>
+      <a class="brand" href="#home" data-view="home" aria-label="Metro Eats home"><img class="brand-logo" src="../metro-eats-logo.png" alt="Metro Eats — Recipes, Restaurants, Good Food, Local Flavor"></a>
       <nav class="tabs" aria-label="Main navigation">
         <button class="tab is-active" type="button" data-view="home" aria-current="page">Home</button>
         <button class="tab" type="button" data-view="recipes">Recipes</button>
@@ -23,6 +23,7 @@
     </main>
     <footer>Metro Eats · Architecture preview · Existing app remains unchanged</footer>
   </div>
+  <nav class="bottomNav" aria-label="Primary navigation"><button class="tab is-active" type="button" data-view="home">⌂<br>Home</button><button class="tab" type="button" data-view="recipes">▱<br>Recipes</button><button class="tab" type="button" data-view="dining">◉<br>Dining</button></nav>
   <script type="module" src="./src/main.mjs"></script>
 </body>
 </html>
