@@ -20,12 +20,16 @@
     </header>
     <div id="previewNotice" class="status" role="status">Architecture preview · read-only · existing app unchanged</div>
     <main id="app" tabindex="-1" aria-live="polite">
-      <section class="hero"><p class="eyebrow">St. Louis · Metro East</p><h1>Your food life,<br><span>all in one place.</span></h1><p class="lede">A cleaner foundation for the recipes you keep and the restaurants you remember.</p><div class="hero-actions"><button class="primary" data-view="recipes">Explore recipes</button><button class="secondary" data-view="dining">Explore dining</button></div></section>
-      <section class="content-panel"><div class="panel-heading"><div><p class="eyebrow">Your collection</p><h2>Saved with care</h2></div><span id="connection-state" class="status">Loading data…</span></div><div class="summary-grid"><article class="summary-card"><span class="summary-icon" aria-hidden="true">✦</span><p>Recipes</p><strong id="recipe-count">—</strong></article><article class="summary-card"><span class="summary-icon" aria-hidden="true">⚜</span><p>Restaurants</p><strong id="dining-count">—</strong></article></div><p class="note">This is a read-only architecture preview. It will not edit, delete, or overwrite your existing data.</p></section>
-    </main>
+<section class="section active" id="home">
+  <div class="hero"><div class="heroIn"><div class="eyebrow">St. Louis • Metro East</div><h2>Metro Eats<br><span class="fl">⚜</span> Recipes & Dining</h2><p>Your personal recipe book and restaurant journal — built around the food you actually love.</p><div class="homeFeatureButtons"><button class="homeFeatureButton recipeButton" data-view="recipes"><span class="homeFeatureIcon">✦</span><span><strong>Recipes</strong><small>Your Kitchen</small></span><span class="homeFeatureArrow">→</span></button><button class="homeFeatureButton diningButton" data-view="dining"><span class="homeFeatureIcon">⚜</span><span><strong>Dining Experience</strong><small>Your Restaurants & Reviews</small></span><span class="homeFeatureArrow">→</span></button></div></div></div>
+  <div class="homeColumns"><article class="featureCard"><div><div class="sectionKicker">Your Collection</div><h3>Saved with care</h3><p><strong id="recipe-count">—</strong> recipes and <strong id="dining-count">—</strong> restaurants available to this preview.</p></div><div class="actions"><button class="btn primary" data-view="recipes">Open Recipes →</button><button class="btn" data-view="dining">Open Dining →</button></div></article><article class="featureCard accent"><div><div class="sectionKicker">Safety First</div><h3>Existing data stays safe.</h3><p>This preview reads available records only. No recipe, restaurant, or review can be changed or overwritten here.</p></div><span class="status">Read only</span></article></div>
+</section>
+<section id="recipes" class="section recipeSection"></section>
+<section id="dining" class="section diningSection"></section>
+</main>
     <footer>Metro Eats · Architecture preview · Existing app remains unchanged</footer>
   </div>
-  <nav class="bottomNav" aria-label="Primary navigation"><button class="tab is-active" type="button" data-view="home">⌂<br>Home</button><button class="tab" type="button" data-view="recipes">▱<br>Recipes</button><button class="tab" type="button" data-view="dining">◉<br>Dining</button></nav>
+  <nav class="bottomNav" aria-label="Primary navigation"><button class="active" type="button" data-view="home">⌂<br>Home</button><button  type="button" data-view="recipes">▱<br>Recipes</button><button class="tab" type="button" data-view="dining">◉<br>Dining</button></nav>
   <script type="module" src="./src/main.mjs"></script>
 </body>
 </html>
