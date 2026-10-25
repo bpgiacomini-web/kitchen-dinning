@@ -24,10 +24,10 @@ test("recipe normalization supports the fields used by the current Metro Eats ap
 });
 
 test("recipe normalization accepts imported Schema.org fields", () => {
-  const result = normalizeRecipe({ name: "Imported", recipeIngredient: ["flour"], recipeInstructions: [{ text: "Mix" }] });
+  const result = normalizeRecipe({ name: "Imported", recipeIngredient: ["flour"], recipeInstructions: [{ "@type": "HowToSection", itemListElement: [{ "@type": "HowToStep", text: "Mix" }, { "@type": "HowToStep", text: "Bake" }] }] });
   assert.equal(result.title, "Imported");
   assert.deepEqual(result.ingredients, ["flour"]);
-  assert.deepEqual(result.directions, ["Mix"]);
+  assert.deepEqual(result.directions, ["Mix", "Bake"]);
 });
 
 test("restaurant normalization retains current Metro Eats fields and review history", () => {
@@ -59,6 +59,7 @@ test("restaurant normalization handles object addresses and a legacy single surv
 
 test("dataset normalization safely handles malformed top-level shapes", () => {
   assert.deepEqual(normalizeDataset(null), { recipes: [], restaurants: [], cats: [] });
+  assert.deepEqual(normalizeDataset({ cats: { Beef: ["Main Dishes", "Beef"] } }).cats, { Beef: ["Main Dishes", "Beef"] });
   assert.equal(normalizeDataset({ recipes: [null], restaurants: [null] }).recipes[0].title, "Untitled recipe");
   assert.deepEqual(normalizeDataset({ recipes: "bad", restaurants: {} }).restaurants, []);
 });
