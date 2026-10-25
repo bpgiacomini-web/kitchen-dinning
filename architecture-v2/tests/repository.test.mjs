@@ -1,0 +1,34 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import { loadDataset, readLegacyDataset } from "../src/data/repository.mjs";
+
+function fakeStorage(entries = {}) {
+  return { getItem(key) { return Object.hasOwn(entries, key) ? entries[key] : null; } };
+}
+
+test("legacy reader prefers v2 and does not write to storage", () => {
+  const storage = fakeStorage({ metro_eats_v2: JSON.stringify({ recipes: [{ name: "New" }], restaurants: [] }), metro_eats_v1: JSON.stringify({ recipes: [{ name: "Old" }], restaurants: [] }) });
+  const result = readLegacyDataset(storage);
+  assert.equal(result.source, "local:metro_eats_v2");
+  assert.equal(result.data.recipes[0].title, "New");
+});
+
+test("loadDataset uses local data without a network request", async () => {
+  let called = false;
+  const result = await loadDataset({ storage: fakeStorage({ metro_eats_v2: JSON.stringify({ recipes: [{ name: "Local" }], restaurants: [] }) }), fetchImpl: async () => { called = true; throw new Error("must not call"); } });
+  assert.equal(result.data.recipes[0].title, "Local");
+  assert.equal(called, false);
+});
+
+test("loadDataset falls back to remote data when local records are absent", async () => {
+  const result = await loadDataset({ storage: fakeStorage(), fetchImpl: async (url, options) => { assert.equal(url, "/api/data"); assert.equal(options.method, "GET"); return { ok: true, json: async () => ({ recipes: [{ name: "Cloud" }], restaurants: [] }) }; } });
+  assert.equal(result.source, "cloud");
+  assert.equal(result.data.recipes[0].title, "Cloud");
+});
+
+test("loadDataset fails safely when sources are unavailable", async () => {
+  const result = await loadDataset({ storage: fakeStorage(), fetchImpl: async () => { throw new Error("offline"); } });
+  assert.equal(result.source, "empty");
+  assert.equal(result.staleFallback, true);
+  assert.deepEqual(result.data, { recipes: [], restaurants: [] });
+});
