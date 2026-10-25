@@ -38,7 +38,7 @@
       var card=document.createElement('article');card.className='restaurantSpotlightCard';
       var kicker=document.createElement('div');kicker.className='sectionKicker';kicker.textContent='Your Top Restaurant';card.appendChild(kicker);
       var row=document.createElement('div');row.className='restaurantSpotlightTitleRow';
-      var left=document.createElement('div'),title=document.createElement('h3');title.textContent=r.name||'Unnamed restaurant';left.appendChild(title);
+      var left=document.createElement('div'),title=document.createElement('button');title.type='button';title.className='restaurantTitle';title.setAttribute('aria-label','Open '+(r.name||'restaurant')+' review');title.textContent=(r.name||'Unnamed restaurant')+' ›';title.addEventListener('click',function(){if(typeof window.meDiningReview==='function')window.meDiningReview(r.id);});left.appendChild(title);
       var meta=document.createElement('div');meta.className='meta';meta.textContent=(r.location||'')+(r.type?' • '+r.type:'');left.appendChild(meta);
       var scoreEl=document.createElement('div');scoreEl.className='restaurantSpotlightScore';scoreEl.textContent=scoreValue.toFixed(1);
       var small=document.createElement('small');small.textContent='/10';scoreEl.appendChild(small);row.appendChild(left);row.appendChild(scoreEl);card.appendChild(row);
