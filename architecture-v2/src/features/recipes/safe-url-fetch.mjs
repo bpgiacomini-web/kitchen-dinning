@@ -6,7 +6,7 @@ import net from "node:net";
 export const MAX_RESPONSE_BYTES = 1_500_000;
 export const MAX_REDIRECTS = 3;
 const TIMEOUT_MS = 10_000;
-const ALLOWED_TYPES = /^(text\/html|application\/xhtml\+xml|text\/plain|text\/markdown|application\/json)(?:\s*;|$)/i;
+const ALLOWED_TYPES = /^(text\/html|application\/xhtml\+xml|text\/plain|text\/markdown|application\/json|application\/ld\+json)(?:\s*;|$)/i;
 
 function isPublicIPv4(address) {
   if (net.isIP(address) !== 4) return false;
