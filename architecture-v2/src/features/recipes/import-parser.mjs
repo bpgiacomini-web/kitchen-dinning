@@ -97,9 +97,11 @@ export function parsePastedRecipeText(input) {
     .filter(Boolean);
   if (!lines.length) return null;
   const titleLine = lines.find(line => /^title\s*:/i.test(line));
+  const ingredientsStart = lines.findIndex(line => /^ingredients?(\s*\([^)]*\))?\s*:?$/i.test(line));
+  const preRecipeLines = lines.slice(0, ingredientsStart < 0 ? lines.length : ingredientsStart);
   const title = titleLine
     ? titleLine.replace(/^title\s*:\s*/i, "").trim()
-    : lines.find(line => line.length > 3 && !/^https?:\/\//i.test(line) && !/^(ingredients|directions|instructions|method|steps)\s*:?$/i.test(line)) || "";
+    : (preRecipeLines.find(line => line.length > 3 && !/^https?:\/\//i.test(line) && !/^(recipe|print|jump to recipe|ingredients|directions|instructions|method|steps)\s*:?$/i.test(line)) || "");
   const ingredients = [];
   const directions = [];
   let section = "";
