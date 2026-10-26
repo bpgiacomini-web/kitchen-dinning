@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="300" viewBox="0 0 1200 300" role="img" aria-labelledby="title desc">
+<title id="title">Metro Eats</title><desc id="desc">Horizontal Metro Eats logo with a golden Gateway Arch, sunset, and fleur-de-lis on a dark background.</desc>
+<defs>
+ <linearGradient id="sun" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffcf77"/><stop offset=".58" stop-color="#ed783f"/><stop offset="1" stop-color="#9c3e2e"/></linearGradient>
+ <linearGradient id="gold" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fff0b4"/><stop offset=".48" stop-color="#d7aa50"/><stop offset="1" stop-color="#8b6328"/></linearGradient>
+ <clipPath id="sunclip"><circle cx="150" cy="145" r="90"/></clipPath>
+</defs>
+<rect width="1200" height="300" rx="28" fill="#101216"/>
+<rect x="7" y="7" width="1186" height="286" rx="23" fill="none" stroke="#9e783c" stroke-width="2"/>
+<circle cx="150" cy="145" r="101" fill="#17191b" stroke="url(#gold)" stroke-width="4"/>
+<circle cx="150" cy="145" r="90" fill="url(#sun)"/>
+<g clip-path="url(#sunclip)" fill="none" stroke="#f8d58c" stroke-width="3" opacity=".8">
+ <path d="M48 172H252M55 185H245M67 198H233"/>
+ <path d="M101 225Q150 13 199 225" stroke="#fff0bd" stroke-width="12"/>
+ <path d="M112 225Q150 39 188 225" stroke="#a66d30" stroke-width="3"/>
+</g>
+<path d="M150 71 C136 71 127 81 127 95 C127 106 134 113 140 120 L140 142 L160 142 L160 120 C166 113 173 106 173 95 C173 81 164 71 150 71Z" fill="#17191b" stroke="url(#gold)" stroke-width="3"/>
+<path d="M142 143H158V211H142Z" fill="#17191b" stroke="url(#gold)" stroke-width="3"/>
+<path d="M138 210H162L170 222H130Z" fill="#17191b" stroke="url(#gold)" stroke-width="3"/>
+<text x="292" y="133" fill="#fff0c2" font-family="Georgia, 'Times New Roman', serif" font-size="94" font-weight="700" letter-spacing="5">METRO EATS</text>
+<path d="M300 158H1090" stroke="url(#gold)" stroke-width="3"/>
+<text x="304" y="205" fill="#e8bd6d" font-family="Arial, Helvetica, sans-serif" font-size="26" font-weight="700" letter-spacing="7">RECIPES • RESTAURANTS • LOCAL FLAVOR</text>
+<text x="1095" y="244" fill="#e8bd6d" font-family="Georgia, serif" font-size="54" text-anchor="middle">⚜</text>
+</svg>
