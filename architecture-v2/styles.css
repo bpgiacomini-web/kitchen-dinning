@@ -234,3 +234,19 @@
      interrupt the polished mobile home screen; keep it available on desktop. */
   #previewNotice { display: none; }
 }
+
+/* Tighten the full-bleed mobile banner vertically: preserve edge-to-edge width,
+   but remove the oversized black gaps above and below the artwork. */
+@media (max-width: 520px) {
+  .app > .top {
+    padding-top: 0;
+    padding-bottom: 0;
+    margin-top: calc(-12px - env(safe-area-inset-top));
+    margin-bottom: 8px;
+  }
+  .app > .top > .brand,
+  .app > .top > .brand > .brandLogo {
+    margin-top: 0;
+    margin-bottom: 0;
+  }
+}
