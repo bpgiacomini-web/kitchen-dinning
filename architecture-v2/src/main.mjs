@@ -47,6 +47,13 @@ function renderImportPanel() {
     <p class="hint">Safety checkpoint: extraction only. Nothing is saved or overwritten. URL fetching is server-side, validates redirects, pins checked public IPv4 addresses, times out, and limits response size.</p>
   </section>`;
 }
+function ratingValue(value, key = "") {
+  const number = Number(value);
+  if (value == null || value === "" || !Number.isFinite(number)) return value;
+  if (!/^(rating|overall)$/i.test(key)) return value;
+  // Convert legacy restaurant/review ratings on a 5-point scale for display only.
+  return number >= 0 && number <= 5 ? number * 2 : number;
+}
 function renderList(title, eyebrow, items, kind) {
   const isRecipe = kind === "recipes";
   const rows = items.map(item => {
