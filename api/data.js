@@ -1,51 +1,38 @@
-import { put, head } from '@vercel/blob';
+import { head } from '@vercel/blob';
 
-const PATH = 'metro-eats/data.json';
+// This branch is a read-only architecture preview. Never read or write production data.
+const PATH = 'metro-eats/architecture-preview-data.json';
 
 export default async function handler(req, res) {
   res.setHeader('Cache-Control', 'no-store, max-age=0');
-  try {
-    if (!process.env.BLOB_READ_WRITE_TOKEN) {
-      return res.status(500).json({ error: 'Blob storage is not configured.' });
-    }
+  res.setHeader('X-Content-Type-Options', 'nosniff');
 
-    if (req.method === 'GET') {
-      try {
-        const blob = await head(PATH, { token: process.env.BLOB_READ_WRITE_TOKEN });
-        const response = await fetch(blob.url, {
-          headers: { Authorization: `Bearer ${process.env.BLOB_READ_WRITE_TOKEN}` }
-        });
-        if (!response.ok) throw new Error(`Blob read failed: ${response.status}`);
-        const data = await response.json();
-        return res.status(200).json(data);
-      } catch (e) {
-        if (e?.name === 'BlobNotFoundError' || e?.statusCode === 404 || e?.status === 404 || e?.code === 'BLOB_NOT_FOUND' || e?.code === 'not_found' || /requested blob does not exist/i.test(String(e?.message || ''))) {
-          return res.status(200).json({ recipes: [], restaurants: [] });
-        }
-        throw e;
-      }
-    }
-
-    if (req.method === 'PUT') {
-      const data = req.body;
-      if (!data || !Array.isArray(data.recipes) || !Array.isArray(data.restaurants)) {
-        return res.status(400).json({ error: 'Invalid Metro Eats data.' });
-      }
-      const blob = await put(PATH, JSON.stringify(data), {
-        access: 'private',
-        addRandomSuffix: false,
-        allowOverwrite: true,
-        cacheControlMaxAge: 60,
-        contentType: 'application/json',
-        token: process.env.BLOB_READ_WRITE_TOKEN
-      });
-      return res.status(200).json({ ok: true, url: blob.url });
-    }
-
-    res.setHeader('Allow', 'GET, PUT');
+  if (req.method !== 'GET') {
+    res.setHeader('Allow', 'GET');
     return res.status(405).json({ error: 'Method not allowed.' });
+  }
+
+  const token = process.env.BLOB_READ_WRITE_TOKEN;
+  if (!token) {
+    return res.status(503).json({ error: 'Preview data storage is not configured.' });
+  }
+
+  try {
+    const blob = await head(PATH, { token });
+    const response = await fetch(blob.url, {
+      headers: { Authorization: `Bearer ${token}` },
+      cache: 'no-store'
+    });
+    if (!response.ok) throw new Error(`Blob read failed: ${response.status}`);
+    return res.status(200).json(await response.json());
   } catch (error) {
-    console.error('Metro Eats data API error', error);
-    return res.status(500).json({ error: 'Metro Eats data service unavailable.' });
+    if (error?.name === 'BlobNotFoundError' || error?.statusCode === 404 ||
+        error?.status === 404 || error?.code === 'BLOB_NOT_FOUND' ||
+        error?.code === 'not_found' ||
+        /requested blob does not exist/i.test(String(error?.message || ''))) {
+      return res.status(200).json({ recipes: [], restaurants: [] });
+    }
+    console.error('Metro Eats preview data read failed', error);
+    return res.status(503).json({ error: 'Preview data service unavailable.' });
   }
 }
