@@ -91,3 +91,15 @@
 .brand{display:flex;align-items:center;justify-content:center;min-width:0}
 .brandLogo{display:block;width:min(100%,720px);height:auto;max-height:none;object-fit:contain}
 @media(max-width:520px){.brandLogo{width:100%;max-width:560px;max-height:none}.top{padding-top:calc(6px + env(safe-area-inset-top))}}
+
+
+/* Local food-news section for the architecture preview. */
+#app .localNewsPanel{margin:22px 0 26px;padding:20px;border:1px solid #4a3b24;border-radius:22px;background:linear-gradient(145deg,#211a10,#111519);box-shadow:var(--shadow)}
+#app .localNewsPanel .panel-heading h2{margin:4px 0;font-size:clamp(24px,5vw,32px)}
+#app .newsIntro{color:var(--muted);line-height:1.5}
+#app .localNewsList{display:grid;gap:0;margin-top:12px}
+#app .localNewsItem{padding:15px 0;border-top:1px solid #3b3327}
+#app .localNewsItem a{color:var(--text);font-size:17px;font-weight:750;line-height:1.4;text-decoration:none}
+#app .localNewsItem a:hover{text-decoration:underline;color:#e0b563}
+#app .localNewsItem .newsMeta{margin-bottom:6px;color:#d6a85b;font-size:12px;font-weight:750;letter-spacing:.035em}
+@media(max-width:520px){#app .localNewsPanel{padding:16px}#app .localNewsItem a{font-size:16px}}
