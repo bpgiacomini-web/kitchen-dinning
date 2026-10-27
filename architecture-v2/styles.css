@@ -287,3 +287,19 @@
     object-fit: contain;
   }
 }
+
+/* Header policy: keep the branded header available on Home only.
+   On collection/detail sections, let the banner and header scroll away;
+   the dedicated bottom navigation remains fixed by its existing rules. */
+@media (max-width: 520px) {
+  .app > .top { position: relative; top: auto; z-index: 1; }
+  .app:has(#home.active) > .top {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  .app:not(:has(#home.active)) > .top {
+    position: relative;
+    top: auto;
+  }
+}
