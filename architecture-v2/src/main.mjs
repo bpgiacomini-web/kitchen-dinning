@@ -213,9 +213,15 @@ document.addEventListener("click", async event => {
 try {
   const result = await loadDataset();
   dataset = result.data;
-  if (result.source.startsWith("local:")) setStatus("Loaded from this device", "ok");
-  else if (result.source === "cloud") setStatus("Loaded from cloud", "ok");
-  else setStatus(result.staleFallback ? "Data source unavailable" : "No saved data found", "warn");
+  if (result.source.startsWith("local:")) {
+    const hasRecords = result.data.recipes.length > 0 || result.data.restaurants.length > 0;
+    setStatus(hasRecords ? "Loaded from this device" : "This device has no saved records", hasRecords ? "ok" : "warn");
+  } else if (result.source === "cloud") {
+    const hasRecords = result.data.recipes.length > 0 || result.data.restaurants.length > 0;
+    setStatus(hasRecords ? "Preview data connected" : "Preview connected · no preview records yet", hasRecords ? "ok" : "warn");
+  } else {
+    setStatus(result.staleFallback ? "Data source unavailable" : "No saved data found", "warn");
+  }
   render();
   if (activeView === "home") loadLocalFoodNews();
 } catch {
