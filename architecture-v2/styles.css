@@ -151,3 +151,31 @@
   #app .parsedRecipe dl{gap:7px}
   #app .parsedRecipe dl div{padding:8px 9px}
 }
+
+
+/* Recipe collection first: import is a separate workflow. */
+#app .recipeCollectionPanel .sectionTitle{align-items:center;gap:12px}
+#app .recipeBrowseTools{display:grid;grid-template-columns:minmax(0,2fr) minmax(0,1fr);gap:12px;margin:12px 0 20px}
+#app .recipeBrowseTools .field{margin:0;min-width:0}
+#app .recipeBrowseTools input,#app .recipeBrowseTools select{width:100%;min-width:0}
+#app .readOnlyItem[hidden],#app #recipe-filter-empty[hidden]{display:none!important}
+#app .addRecipeIntro{margin-bottom:20px}
+#app .addRecipeChoices{display:grid;gap:10px;margin:16px 0 22px}
+#app .addRecipeChoice{display:grid;grid-template-columns:36px minmax(0,1fr) 18px;align-items:center;gap:12px;text-align:left;padding:15px;border:1px solid var(--line);border-radius:15px;background:#101419;color:var(--text);min-height:76px}
+#app .addRecipeChoice:hover,#app .addRecipeChoice:focus-visible{border-color:#d6a85b;outline-offset:2px}
+#app .addRecipeChoice .choiceIcon{display:grid;place-items:center;width:36px;height:36px;border-radius:11px;background:#2b2418;color:#e0b45f;font-size:22px}
+#app .addRecipeChoice strong,#app .addRecipeChoice small{display:block}
+#app .addRecipeChoice strong{font-size:16px}
+#app .addRecipeChoice small{color:var(--muted);font-size:13px;line-height:1.45;margin-top:3px}
+#app .advancedImport{border-top:1px solid var(--line);padding-top:14px;margin:10px 0 20px}
+#app .advancedImport summary{cursor:pointer;font-weight:750}
+#app .advancedImport p{color:var(--muted);font-size:14px;line-height:1.5}
+#app .importPanel{margin-top:20px}
+@media(max-width:520px){
+  #app .recipeBrowseTools{grid-template-columns:1fr;gap:8px}
+  #app .recipeCollectionPanel .sectionTitle{align-items:flex-start;flex-wrap:wrap}
+  #app .recipeCollectionPanel .sectionTitle .btn{width:100%}
+  /* Restore a full-bleed logo banner while retaining a slightly shorter mobile header. */
+  .top{width:100%;padding-left:0;padding-right:0;margin-left:0;margin-right:0}
+  .brandLogo{display:block;width:100%;height:auto;max-height:132px;object-fit:contain}
+}
