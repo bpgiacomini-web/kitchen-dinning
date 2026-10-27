@@ -19,7 +19,7 @@ export function readLegacyDataset(storage = globalThis.localStorage) {
 }
 
 /** Read-only remote fallback. This module intentionally has no write method. */
-export async function loadDataset({ storage = globalThis.localStorage, fetchImpl = globalThis.fetch, endpoint = "/architecture-v2/api/data" } = {}) {
+export async function loadDataset({ storage = globalThis.localStorage, fetchImpl = globalThis.fetch, endpoint = "/api/data" } = {}) {
   const local = readLegacyDataset(storage);
   if (local) return { ...local, staleFallback: false };
   if (typeof fetchImpl !== "function") return { source: "empty", data: normalizeDataset({}), staleFallback: false };
