@@ -16,3 +16,9 @@
 .bottomNav button[data-view="pizzas"]::after{content:"My Frozen Pizzas";font-size:12px}
 .bottomNav button[data-view="pizzas"].active::before{filter:brightness(1.25)}
 @media(max-width:520px){#app .homeFeatureButton.pizzaButton{min-height:92px}#app .homeFeatureButton.pizzaButton .homeFeatureIcon{width:42px;height:42px}#app .homeFeatureButton.pizzaButton .homeFeatureIcon::before{width:42px;height:42px}.bottomNav button[data-view="pizzas"]::before{width:20px;height:20px}}
+
+/* Matching line-art icon beside the frozen-pizza review heading; preserve current font. */
+#app .pizzaSection .hero h2{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+#app .pizzaHeadingIcon{display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto;width:48px;height:48px;color:#d6a85b}
+#app .pizzaHeadingIcon svg{display:block;width:100%;height:100%;fill:none;stroke:currentColor;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round}
+@media(max-width:520px){#app .pizzaHeadingIcon{width:38px;height:38px}}
