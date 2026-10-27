@@ -14,7 +14,24 @@ function setStatus(label, kind = "") {
   status.className = `status ${kind}`.trim();
 }
 function renderHome() {
-  root.innerHTML = `<section class="hero"><div class="heroIn"><div class="eyebrow">St. Louis • Metro East</div><h2>Metro Eats<br><span class="fl">⚜</span> Recipes & Dining</h2><p>Your personal recipe book and restaurant journal — built around the food you actually love.</p><div class="homeFeatureButtons"><button class="homeFeatureButton recipeButton" data-view="recipes"><span class="homeFeatureIcon">✦</span><span><strong>Recipes</strong><small>Your Kitchen</small></span><span class="homeFeatureArrow">→</span></button><button class="homeFeatureButton diningButton" data-view="dining"><span class="homeFeatureIcon">⚜</span><span><strong>Dining Experience</strong><small>Your Restaurants & Reviews</small></span><span class="homeFeatureArrow">→</span></button></div></div></section><div class="homeColumns"><article class="featureCard"><div><div class="sectionKicker">Your Collection</div><h3>Saved with care</h3><p>Your recipes and restaurant notes, kept together in one place.</p></div><div class="actions"><button class="btn primary" data-view="recipes">Open Recipes →</button><button class="btn" data-view="dining">Open Dining →</button></div></article><article class="featureCard accent"><div><div class="sectionKicker">Safety First</div><h3>Existing data stays safe.</h3><p>This preview reads available records only. No recipe, restaurant, or review can be changed or overwritten here.</p></div><span class="status">Read only</span></article></div>`;
+  root.innerHTML = `<section class="hero"><div class="heroIn"><div class="eyebrow">St. Louis • Metro East</div><h2>Metro Eats<br><span class="fl">⚜</span> Recipes & Dining</h2><p>Your personal recipe book and restaurant journal — built around the food you actually love.</p><div class="homeFeatureButtons"><button class="homeFeatureButton recipeButton" data-view="recipes"><span class="homeFeatureIcon">✦</span><span><strong>Recipes</strong><small>Your Kitchen</small></span><span class="homeFeatureArrow">→</span></button><button class="homeFeatureButton diningButton" data-view="dining"><span class="homeFeatureIcon">⚜</span><span><strong>Dining Experience</strong><small>Your Restaurants & Reviews</small></span><span class="homeFeatureArrow">→</span></button></div></div></section><div class="homeColumns"><article class="featureCard"><div><div class="sectionKicker">Your Collection</div><h3>Saved with care</h3><p>Your recipes and restaurant notes, kept together in one place.</p></div><div class="actions"><button class="btn primary" data-view="recipes">Open Recipes →</button><button class="btn" data-view="dining">Open Dining →</button></div></article><article class="featureCard accent"><div><div class="sectionKicker">Safety First</div><h3>Existing data stays safe.</h3><p>This preview reads available records only. No recipe, restaurant, or review can be changed or overwritten here.</p></div><span class="status">Read only</span></article></div><section class="localNewsPanel" aria-labelledby="local-news-title"><div class="panel-heading"><div><p class="eyebrow">St. Louis • Metro East</p><h2 id="local-news-title">Local Food News</h2></div><span class="status">Food & restaurants</span></div><p class="newsIntro">Restaurant openings, local food stories, dining news, and Sauce Magazine highlights.</p><div id="local-food-news" class="localNewsList" aria-live="polite"><p class="hint">Loading local food stories…</p></div><p class="hint" id="local-news-updated"></p></section>`;
+}
+async function loadLocalFoodNews() {
+  const list = document.querySelector("#local-food-news");
+  const updated = document.querySelector("#local-news-updated");
+  if (!list) return;
+  try {
+    const response = await fetch("../news.json", { headers: { Accept: "application/json" }, cache: "no-cache" });
+    if (!response.ok) throw new Error("News feed unavailable");
+    const payload = await response.json();
+    const items = Array.isArray(payload.items) ? payload.items.filter(item => {
+      if (!item || !item.title || !item.url) return false;
+      try { const u = new URL(item.url); return u.protocol === "https:" || u.protocol === "http:"; } catch { return false; }
+    }).slice(0, 8) : [];
+    if (!items.length) { list.innerHTML = '<p class="empty">No local food stories are available right now. Please check back soon.</p>'; return; }
+    list.innerHTML = items.map(item => '<article class="localNewsItem"><div class="newsMeta">' + escapeHtml(item.source || "Local food news") + (item.date ? " · " + escapeHtml(item.date) : "") + '</div><a href="' + escapeHtml(item.url) + '" target="_blank" rel="noopener noreferrer">' + escapeHtml(item.title) + '</a></article>').join("");
+    if (updated && payload.updated) { const date = new Date(payload.updated); if (!Number.isNaN(date.getTime())) updated.textContent = "Feed last updated " + date.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" }) + "."; }
+  } catch { list.innerHTML = '<p class="empty">Local food news could not be loaded. Your recipes and restaurant data are unaffected.</p>'; }
 }
 function renderImportPanel() {
   return `<section class="importPanel" aria-labelledby="import-title">
@@ -137,7 +154,9 @@ try {
   else if (result.source === "cloud") setStatus("Loaded from cloud", "ok");
   else setStatus(result.staleFallback ? "Data source unavailable" : "No saved data found", "warn");
   render();
+  if (activeView === "home") loadLocalFoodNews();
 } catch {
   setStatus("Data unavailable", "warn");
   render();
+  if (activeView === "home") loadLocalFoodNews();
 }
