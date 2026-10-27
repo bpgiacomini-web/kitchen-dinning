@@ -304,15 +304,15 @@
   }
 }
 
-/* Home-only sticky header: preserve the approved banner/layout; other sections scroll normally. */
+/* Home-only sticky header, driven by the app's active-view state. */
 @media (max-width: 520px) {
-  .app:has(#home.active) > .top {
+  .app > .top.homeStickyHeader {
     position: sticky;
     top: 0;
     z-index: 100;
     align-self: stretch;
   }
-  .app:not(:has(#home.active)) > .top {
+  .app > .top:not(.homeStickyHeader) {
     position: relative;
     top: auto;
   }
