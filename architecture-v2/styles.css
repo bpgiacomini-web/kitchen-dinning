@@ -312,7 +312,22 @@
   .app:has(> .top.homeStickyHeader) #app {
     padding-top: 132px;
   }
-  .app > .top.homeStickyHeader .brandLogo {
-    max-height: 132px;
+  .app > .top.homeStickyHeader > .brand {
+    display: flex;
+    width: 100%;
+    min-width: 0;
+    flex: 0 0 auto;
+    align-self: stretch;
+    justify-content: center;
+    margin: 0;
+  }
+  .app > .top.homeStickyHeader > .brand > .brandLogo {
+    display: block;
+    width: 100vw;
+    max-width: none;
+    height: auto;
+    max-height: none;
+    object-fit: contain;
+    border-radius: 0;
   }
 }
