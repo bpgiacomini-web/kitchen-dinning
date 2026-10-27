@@ -203,6 +203,7 @@ function renderImportPreview(recipe) {
   preview.innerHTML = `<article class="parsedRecipe"><p class="sectionKicker">Extracted recipe</p><h3>${escapeHtml(recipe.title)}</h3>${metadata.length ? `<dl>${metadata.map(([label, value]) => `<div><dt>${label}</dt><dd>${escapeHtml(value)}</dd></div>`).join("")}</dl>` : ""}${recipe.source ? `<p class="note">Source: ${escapeHtml(recipe.source)}</p>` : ""}<div class="parsedColumns"><section><h4>Ingredients · ${ingredients.length}</h4><ul>${ingredients.map(item => `<li>${escapeHtml(item)}</li>`).join("")}</ul></section><section><h4>Directions · ${directions.length}</h4><ol>${directions.map(item => `<li>${escapeHtml(item)}</li>`).join("")}</ol></section></div></article>`;
 }
 function render() {
+  document.querySelector(".app > .top")?.classList.toggle("homeStickyHeader", activeView === "home");
   root.classList.add("section", "active");
   root.classList.remove("recipeSection", "diningSection");
   if (activeView === "recipes") root.classList.add("recipeSection");
