@@ -75,7 +75,7 @@ function renderList(title, eyebrow, items, kind) {
       if (!review || typeof review !== "object") return "";
       const ignored = new Set(["id", "_id", "restaurantId", "photos", "image", "images"]);
       const fields = Object.entries(review).filter(([key, value]) => !ignored.has(key) && value != null && value !== "" && typeof value !== "object" && !Array.isArray(value));
-      return fields.length ? `<section class="restaurantDetailBlock"><h4>${reviewRecords.length > 1 ? `Review ${reviewIndex + 1}` : "Saved review"}</h4><dl>${fields.map(([key, value]) => `<div><dt>${escapeHtml(fieldLabel(key))}</dt><dd>${displayValue(value)}</dd></div>`).join("")}</dl></section>` : "";
+      return fields.length ? `<section class="restaurantDetailBlock"><h4>${reviewRecords.length > 1 ? `Review ${reviewIndex + 1}` : "Saved review"}</h4><dl>${fields.map(([key, value]) => `<div><dt>${escapeHtml(fieldLabel(key))}</dt><dd>${displayValue(value, key)}</dd></div>`).join("")}</dl></section>` : "";
     }).join("");
     const restaurantPhotos = Array.isArray(item.photos) ? item.photos : [];
     const reviewSummary = item.reviewCount ? `${item.reviewCount} saved review${item.reviewCount === 1 ? "" : "s"}` : "";
