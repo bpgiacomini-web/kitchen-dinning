@@ -196,3 +196,41 @@
   .top .brand { width: 100%; min-width: 0; }
   .top .brandLogo { display: block; width: 100%; max-width: none; height: auto; max-height: 132px; object-fit: contain; }
 }
+
+/* Definitive mobile banner fix: make both the link and image viewport-wide,
+   independent of the centered/padded app shell. Preserve the logo's aspect ratio. */
+@media (max-width: 520px) {
+  .app > .top {
+    box-sizing: border-box;
+    width: 100vw;
+    max-width: none;
+    margin-left: calc(50% - 50vw);
+    margin-right: calc(50% - 50vw);
+    padding-left: 0;
+    padding-right: 0;
+    gap: 0;
+  }
+  .app > .top > .brand {
+    box-sizing: border-box;
+    display: flex;
+    flex: 0 0 100vw;
+    width: 100vw;
+    max-width: none;
+    min-width: 0;
+    margin-left: 0;
+    margin-right: 0;
+    padding: 0;
+  }
+  .app > .top > .brand > .brandLogo {
+    display: block;
+    flex: 0 0 100vw;
+    width: 100vw;
+    max-width: none;
+    height: auto;
+    max-height: none;
+    object-fit: contain;
+  }
+  /* The preview-only connection badge is useful while debugging, but shouldn't
+     interrupt the polished mobile home screen; keep it available on desktop. */
+  #previewNotice { display: none; }
+}
