@@ -14,7 +14,7 @@ function setStatus(label, kind = "") {
   status.className = `status ${kind}`.trim();
 }
 function renderHome() {
-  root.innerHTML = `<section class="hero"><div class="heroIn"><div class="eyebrow">St. Louis • Metro East</div><h2>Metro Eats<br><span class="fl">⚜</span> Recipes & Dining</h2><p>Your personal recipe book and restaurant journal — built around the food you actually love.</p><div class="homeFeatureButtons"><button class="homeFeatureButton recipeButton" data-view="recipes"><span class="homeFeatureIcon">✦</span><span><strong>My Recipes</strong><small>Your Kitchen</small></span><span class="homeFeatureArrow">→</span></button><button class="homeFeatureButton diningButton" data-view="dining"><span class="homeFeatureIcon">⚜</span><span><strong>My Restaurants</strong><small>Your Restaurants & Reviews</small></span><span class="homeFeatureArrow">→</span></button></div></div></section><div class="homeColumns"><article class="featureCard"><div><div class="sectionKicker">Your Collection</div><h3>Saved with care</h3><p>Your recipes and restaurant notes, kept together in one place.</p></div><div class="actions"><button class="btn primary" data-view="recipes">Open My Recipes →</button><button class="btn" data-view="dining">Open My Restaurants →</button></div></article><article class="featureCard accent"><div><div class="sectionKicker">Safety First</div><h3>Existing data stays safe.</h3><p>This preview reads available records only. No recipe, restaurant, or review can be changed or overwritten here.</p></div><span class="status">Read only</span></article></div><section class="localNewsPanel" aria-labelledby="local-news-title"><div class="panel-heading"><div><p class="eyebrow">St. Louis • Metro East</p><h2 id="local-news-title">Local Food News</h2></div><span class="status">Food & restaurants</span></div><p class="newsIntro">Restaurant openings, local food stories, dining news, and Sauce Magazine highlights.</p><div id="local-food-news" class="localNewsList" aria-live="polite"><p class="hint">Loading local food stories…</p></div><p class="hint" id="local-news-updated"></p></section>`;
+  root.innerHTML = `<section class="hero"><div class="heroIn"><div class="eyebrow">St. Louis • Metro East</div><h2>Metro Eats<br><span class="fl">⚜</span> Recipes & Dining</h2><p>Your personal recipe book and restaurant journal — built around the food you actually love.</p><div class="homeFeatureButtons"><button class="homeFeatureButton recipeButton" data-view="recipes"><span class="homeFeatureIcon">✦</span><span><strong>My Recipes</strong><small>Your Kitchen</small></span><span class="homeFeatureArrow">→</span></button><button class="homeFeatureButton diningButton" data-view="dining"><span class="homeFeatureIcon">⚜</span><span><strong>My Restaurants</strong><small>Your Restaurants & Reviews</small></span><span class="homeFeatureArrow">→</span></button><button class="homeFeatureButton pizzaButton" data-view="pizzas"><span class="homeFeatureIcon">🍕</span><span><strong>My Frozen Pizzas</strong><small>Scan, rate, and compare</small></span><span class="homeFeatureArrow">→</span></button></div></div></section><div class="homeColumns"><article class="featureCard"><div><div class="sectionKicker">Your Collection</div><h3>Saved with care</h3><p>Your recipes and restaurant notes, kept together in one place.</p></div><div class="actions"><button class="btn primary" data-view="recipes">Open My Recipes →</button><button class="btn" data-view="dining">Open My Restaurants →</button><button class="btn" data-view="pizzas">Open My Frozen Pizzas →</button></div></article><article class="featureCard accent"><div><div class="sectionKicker">Safety First</div><h3>Existing data stays safe.</h3><p>This preview reads available records only. No recipe, restaurant, or review can be changed or overwritten here.</p></div><span class="status">Read only</span></article></div><section class="localNewsPanel" aria-labelledby="local-news-title"><div class="panel-heading"><div><p class="eyebrow">St. Louis • Metro East</p><h2 id="local-news-title">Local Food News</h2></div><span class="status">Food & restaurants</span></div><p class="newsIntro">Restaurant openings, local food stories, dining news, and Sauce Magazine highlights.</p><div id="local-food-news" class="localNewsList" aria-live="polite"><p class="hint">Loading local food stories…</p></div><p class="hint" id="local-news-updated"></p></section>`;
 }
 async function loadLocalFoodNews() {
   const list = document.querySelector("#local-food-news");
@@ -104,6 +104,19 @@ function renderList(title, eyebrow, items, kind) {
   }).join("");
   root.innerHTML = `<section class="hero"><div class="heroIn"><div class="eyebrow">${eyebrow}</div><h2>${title}</h2><p>A read-only view of your current saved ${kind}.</p></div></section>${isRecipe ? renderImportPanel() : ""}<section class="content-panel"><div class="sectionTitle"><div><div class="sectionKicker">${items.length} saved</div><h3>${title}</h3></div><span class="status">Read only</span></div>${rows ? `<div class="readOnlyList">${rows}</div>` : `<div class="empty">No ${kind} were found in the data source this preview can read.</div>`}<p class="hint">Nothing in this screen can change or delete your existing records.</p></section>`;
 }
+function renderFrozenPizzas() {
+  root.innerHTML = `<section class="hero"><div class="heroIn"><div class="eyebrow">Your freezer • Your ratings</div><h2>My Frozen Pizzas 🍕</h2><p>Build your personal frozen-pizza rankings with product details, category scores, photos, and an overall rating out of 10.</p></div></section>
+  <section class="content-panel"><div class="sectionTitle"><div><div class="sectionKicker">Product lookup</div><h3>Find a frozen pizza</h3></div><span class="status">Preview concept</span></div>
+  <p>Barcode lookup is planned to fill in brand and product details when a matching UPC is available. Live barcode scanning and product lookup are not connected in this preview yet.</p>
+  <div class="field"><label for="pizza-upc">UPC barcode (manual fallback)</label><input id="pizza-upc" inputmode="numeric" autocomplete="off" placeholder="Enter UPC digits"></div>
+  <div class="field"><label for="pizza-brand">Brand</label><input id="pizza-brand" placeholder="e.g. DiGiorno"></div>
+  <div class="field"><label for="pizza-name">Pizza name / variety</label><input id="pizza-name" placeholder="e.g. Rising Crust Pepperoni"></div>
+  <div class="field"><label for="pizza-price">Purchase price</label><input id="pizza-price" inputmode="decimal" placeholder="$"></div>
+  <div class="pizzaScoreGrid"><div class="field"><label for="pizza-taste">Taste (0–10)</label><input id="pizza-taste" type="number" min="0" max="10" step=".1"></div><div class="field"><label for="pizza-crust">Crust (0–10)</label><input id="pizza-crust" type="number" min="0" max="10" step=".1"></div><div class="field"><label for="pizza-sauce">Sauce (0–10)</label><input id="pizza-sauce" type="number" min="0" max="10" step=".1"></div><div class="field"><label for="pizza-cheese">Cheese (0–10)</label><input id="pizza-cheese" type="number" min="0" max="10" step=".1"></div><div class="field"><label for="pizza-toppings">Toppings (0–10)</label><input id="pizza-toppings" type="number" min="0" max="10" step=".1"></div><div class="field"><label for="pizza-value">Value (0–10)</label><input id="pizza-value" type="number" min="0" max="10" step=".1"></div></div>
+  <div class="field"><label for="pizza-overall">Overall score (0–10)</label><input id="pizza-overall" type="number" min="0" max="10" step=".1"></div>
+  <div class="field"><label for="pizza-notes">Review notes</label><textarea id="pizza-notes" rows="3" placeholder="What stood out? Would you buy it again?"></textarea></div>
+  <p class="hint">This is a layout prototype only. It does not save data, change existing records, or connect to a barcode database. We will wire up scanning, product lookup, and private account storage separately.</p></section>`;
+}
 function renderImportPreview(recipe) {
   const preview = document.querySelector("#import-preview");
   if (!preview) return;
@@ -116,6 +129,7 @@ function render() {
   root.classList.remove("recipeSection", "diningSection");
   if (activeView === "recipes") root.classList.add("recipeSection");
   if (activeView === "dining") root.classList.add("diningSection");
+  if (activeView === "pizzas") root.classList.add("pizzaSection");
   document.querySelectorAll("[data-view]").forEach(button => {
     const active = button.dataset.view === activeView;
     button.classList.toggle("active", active);
@@ -123,6 +137,7 @@ function render() {
   });
   if (activeView === "recipes") renderList("My Recipes", "Your kitchen", dataset.recipes, "recipes");
   else if (activeView === "dining") renderList("My Restaurants", "Your restaurants", dataset.restaurants, "dining");
+  else if (activeView === "pizzas") renderFrozenPizzas();
   else renderHome();
 }
 function syncImportMode() {
