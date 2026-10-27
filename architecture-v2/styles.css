@@ -303,3 +303,17 @@
     top: auto;
   }
 }
+
+/* Home-only sticky header: preserve the approved banner/layout; other sections scroll normally. */
+@media (max-width: 520px) {
+  .app:has(#home.active) > .top {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    align-self: stretch;
+  }
+  .app:not(:has(#home.active)) > .top {
+    position: relative;
+    top: auto;
+  }
+}
