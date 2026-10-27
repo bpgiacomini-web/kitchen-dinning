@@ -253,6 +253,8 @@ document.addEventListener("click", async event => {
     event.preventDefault();
     activeView = viewButton.dataset.view;
     render();
+    // Every explicit section navigation starts at the top of the new page.
+    window.scrollTo({ top: 0, left: 0, behavior: "instant" });
     root.focus({ preventScroll: true });
     return;
   }
