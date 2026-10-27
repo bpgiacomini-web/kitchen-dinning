@@ -176,6 +176,7 @@
   #app .recipeCollectionPanel .sectionTitle{align-items:flex-start;flex-wrap:wrap}
   #app .recipeCollectionPanel .sectionTitle .btn{width:100%}
   /* Restore a full-bleed logo banner while retaining a slightly shorter mobile header. */
-  .top{width:100%;padding-left:0;padding-right:0;margin-left:0;margin-right:0}
+  .top{width:calc(100% + 36px);margin-left:-18px;margin-right:-18px;padding-left:18px;padding-right:18px}
+  .brand{width:100%;flex:1}
   .brandLogo{display:block;width:100%;height:auto;max-height:132px;object-fit:contain}
 }
