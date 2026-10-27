@@ -1,6 +1,7 @@
 import { head } from '@vercel/blob';
 
-const PATH = 'metro-eats/data.json';
+// A distinct key prevents the read-only preview from exposing production records.
+const PATH = 'metro-eats/architecture-preview-data.json';
 
 /**
  * Read-only data endpoint for the isolated architecture preview.
