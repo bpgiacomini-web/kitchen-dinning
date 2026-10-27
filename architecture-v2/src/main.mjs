@@ -36,8 +36,8 @@ async function loadLocalFoodNews() {
 function renderImportPanel() {
   return `<section class="importPanel" aria-labelledby="import-title">
     <div class="panel-heading"><div><p class="eyebrow">Recipe tools · Early preview</p><h2 id="import-title">Import a recipe</h2></div><span class="status">Preview only</span></div>
-    <p class="importIntro">Import from a public recipe URL, paste recipe text, or paste webpage HTML / JSON-LD. Metro Eats extracts recipe-specific fields instead of copying the surrounding article.</p>
-    <div class="field"><span class="fieldLabel" id="import-mode-label">Choose import method</span>
+    <p class="importIntro">Paste recipe text or import from a public recipe URL. If URL extraction doesn't work, copy the recipe text from the website and paste it here. Advanced HTML / JSON-LD is available above if needed.</p>
+    <div class="field is-hidden"><span class="fieldLabel" id="import-mode-label">Choose import method</span>
     <div class="importModeChoices" role="group" aria-labelledby="import-mode-label">
       <button class="importModeChoice active" type="button" data-import-mode="text" aria-pressed="true">Paste Recipe Text</button>
       <button class="importModeChoice" type="button" data-import-mode="url" aria-pressed="false">Import Webpage URL</button>
@@ -106,7 +106,56 @@ function renderList(title, eyebrow, items, kind) {
     const restaurantDetails = !isRecipe ? `<details><summary>View restaurant details</summary><section class="restaurantDetailBlock"><h4>Restaurant information</h4><dl>${[["Address",item.address],["Cuisine",item.cuisine],["Rating",restaurantRating == null ? "" : `${restaurantRating.toFixed(1)}/10`],["Favorite",item.favorite ? "Yes" : ""],["Notes",item.notes],["Website",item.website],["Last updated",item.updatedAt ? formatDateTime(item.updatedAt) : ""]].filter(([,value])=>value!==""&&value!=null).map(([label,value])=>`<div><dt>${label}</dt><dd>${label === "Website" && /^https?:\/\//i.test(String(value)) ? `<a href="${escapeHtml(value)}" target="_blank" rel="noopener noreferrer">${escapeHtml(value)}</a>` : displayValue(value)}</dd></div>`).join("")}</dl></section>${reviewRecords.length ? reviewFields : `<p class="hint">No saved review details were found for this restaurant.</p>`}${restaurantPhotos.length ? `<section class="restaurantDetailBlock"><h4>Photos</h4><ul>${restaurantPhotos.map(photo=>`<li>${displayValue(photo)}</li>`).join("")}</ul></section>` : ""}</details>` : "";
     return `<article class="readOnlyItem"><strong>${escapeHtml(isRecipe ? item.title : item.name)}</strong><small>${escapeHtml(isRecipe ? [item.category, item.subcategory, ingredients.length ? `${ingredients.length} ingredients` : "", ...timeParts].filter(Boolean).join(" · ") : [item.cuisine, item.address, restaurantRating != null ? `Rating ${restaurantRating.toFixed(1)}/10` : "", item.favorite ? "Favorite" : "", reviewSummary].filter(Boolean).join(" · ") || "No additional details saved")}</small>${isRecipe && (ingredients.length || directions.length) ? `<details><summary>View recipe</summary>${ingredients.length ? `<section class="recipeDetailBlock"><h4>Ingredients</h4><ul>${ingredients.map(ingredient => `<li>${escapeHtml(ingredient)}</li>`).join("")}</ul></section>` : `<p class="hint">No ingredients were found for this recipe.</p>`}${directions.length ? `<section class="recipeDetailBlock"><h4>Directions</h4><ol>${directions.map(step => `<li>${escapeHtml(cleanStep(step))}</li>`).join("")}</ol></section>` : ""}</details>` : restaurantDetails}</article>`;
   }).join("");
-  root.innerHTML = `<section class="hero"><div class="heroIn"><div class="eyebrow">${eyebrow}</div><h2>${title}</h2><p>A read-only view of your current saved ${kind}.</p></div></section>${isRecipe ? renderImportPanel() : ""}<section class="content-panel"><div class="sectionTitle"><div><div class="sectionKicker">${items.length} saved</div><h3>${title}</h3></div><span class="status">Read only</span></div>${rows ? `<div class="readOnlyList">${rows}</div>` : `<div class="empty">No ${kind} were found in the data source this preview can read.</div>`}<p class="hint">Nothing in this screen can change or delete your existing records.</p></section>`;
+  if (isRecipe) {
+    const categories = [...new Set(items.map(item => item.category).filter(Boolean))].sort((a,b)=>String(a).localeCompare(String(b)));
+    root.innerHTML = `<section class="hero"><div class="heroIn"><div class="eyebrow">Your kitchen</div><h2>My Recipes</h2><p>Your saved recipes first. Search, browse categories, and open a recipe whenever you're ready to cook.</p></div></section>
+      <section class="content-panel recipeCollectionPanel">
+        <div class="sectionTitle"><div><div class="sectionKicker">Your collection</div><h3>Saved recipes</h3></div><button class="btn primary" type="button" data-view="add-recipe">＋ Add a Recipe</button></div>
+        <div class="recipeBrowseTools"><div class="field"><label for="recipe-search">Search your recipes</label><input id="recipe-search" type="search" placeholder="Search by name, ingredient, or direction"></div><div class="field"><label for="recipe-category">Category</label><select id="recipe-category"><option value="">All categories</option>${categories.map(category=>`<option value="${escapeHtml(category)}">${escapeHtml(category)}</option>`).join("")}</select></div></div>
+        <div id="recipe-collection-list" class="readOnlyList">${rows ? rows : `<div class="empty">No recipes were found in the data source this preview can read.</div>`}</div>
+        <p class="hint">This preview is read-only. Adding, editing, and deleting saved recipes will be connected after the data and account workflow is finalized.</p>
+      </section>`;
+    const search = document.querySelector("#recipe-search");
+    const category = document.querySelector("#recipe-category");
+    const applyFilter = () => {
+      const query = (search?.value || "").trim().toLocaleLowerCase();
+      const selected = category?.value || "";
+      const cards = [...document.querySelectorAll("#recipe-collection-list .readOnlyItem")];
+      let visible = 0;
+      cards.forEach(card => {
+        const text = card.textContent.toLocaleLowerCase();
+        const matchesQuery = !query || text.includes(query);
+        const matchesCategory = !selected || (card.dataset.category || "") === selected;
+        card.hidden = !(matchesQuery && matchesCategory);
+        if (!card.hidden) visible++;
+      });
+      let empty = document.querySelector("#recipe-filter-empty");
+      if (!empty) {
+        empty = document.createElement("p");
+        empty.id = "recipe-filter-empty";
+        empty.className = "empty";
+        empty.textContent = "No saved recipes match those filters.";
+        document.querySelector("#recipe-collection-list")?.append(empty);
+      }
+      empty.hidden = visible > 0;
+    };
+    document.querySelectorAll("#recipe-collection-list .readOnlyItem").forEach((card,index) => {
+      const item = items[index];
+      if (item?.category) card.dataset.category = item.category;
+    });
+    search?.addEventListener("input", applyFilter);
+    category?.addEventListener("change", applyFilter);
+    return;
+  }
+  root.innerHTML = `<section class="hero"><div class="heroIn"><div class="eyebrow">${eyebrow}</div><h2>${title}</h2><p>A read-only view of your current saved ${kind}.</p></div></section><section class="content-panel"><div class="sectionTitle"><div><div class="sectionKicker">${items.length} saved</div><h3>${title}</h3></div><span class="status">Read only</span></div>${rows ? `<div class="readOnlyList">${rows}</div>` : `<div class="empty">No ${kind} were found in the data source this preview can read.</div>`}<p class="hint">Nothing in this screen can change or delete your existing records.</p></section>`;
+}
+function renderAddRecipe() {
+  root.innerHTML = `<section class="hero"><div class="heroIn"><div class="eyebrow">Your kitchen</div><h2>Add a Recipe</h2><p>Choose the easiest way to bring a recipe into Metro Eats. If a webpage import fails, copying the recipe text from the site and pasting it here is a perfectly good fallback.</p><div class="actions"><button class="btn" type="button" data-view="recipes">← Back to My Recipes</button></div></div></section>
+    <section class="content-panel addRecipeIntro"><div class="sectionTitle"><div><div class="sectionKicker">Choose an import method</div><h3>How would you like to add it?</h3></div><span class="status">Preview only</span></div><p>We'll extract the recipe fields for you to review. Nothing is saved by this preview yet.</p>
+      <div class="addRecipeChoices"><button class="addRecipeChoice" type="button" data-import-mode="text"><span class="choiceIcon">✎</span><span><strong>Paste Recipe Text</strong><small>Copy the ingredients and directions from any website, then paste them here.</small></span><span aria-hidden="true">→</span></button><button class="addRecipeChoice" type="button" data-import-mode="url"><span class="choiceIcon">↗</span><span><strong>Import from URL</strong><small>Paste a public recipe webpage link and let Metro Eats try to extract the recipe.</small></span><span aria-hidden="true">→</span></button><details class="advancedImport"><summary>Advanced options</summary><p>If a supported recipe page contains structured recipe data, you can paste its HTML / JSON-LD here. Most people will never need this.</p><button class="btn" type="button" data-import-mode="jsonld">Paste Webpage HTML / JSON-LD</button></details></div>
+      ${renderImportPanel()}
+    </section>`;
+  syncImportMode("text");
 }
 function renderFrozenPizzas() {
   root.innerHTML = `<section class="hero"><div class="heroIn"><div class="eyebrow">Your freezer • Your ratings</div><h2>My Frozen Pizzas <span class="pizzaHeadingIcon" aria-hidden="true"><svg viewBox="0 0 64 64" focusable="false"><circle cx="32" cy="32" r="25"/><circle cx="32" cy="32" r="21"/><path d="M32 11 L49 46 Q32 39 15 46 Z"/><circle cx="29" cy="25" r="2.3"/><circle cx="35" cy="32" r="2.3"/><circle cx="29" cy="36" r="2.3"/></svg></span></h2><p>Build your personal frozen-pizza rankings with product details, category scores, photos, and an overall rating out of 10.</p></div></section>
@@ -165,6 +214,7 @@ function render() {
     if (active) button.setAttribute("aria-current", "page"); else button.removeAttribute("aria-current");
   });
   if (activeView === "recipes") renderList("My Recipes", "Your kitchen", dataset.recipes, "recipes");
+  else if (activeView === "add-recipe") renderAddRecipe();
   else if (activeView === "dining") renderList("My Restaurants", "Your restaurants", dataset.restaurants, "dining");
   else if (activeView === "pizzas") renderFrozenPizzas();
   else renderHome();
@@ -179,6 +229,8 @@ function syncImportMode(mode = importMode) {
   });
   document.querySelector("#import-text-fields")?.classList.toggle("is-hidden", mode === "url");
   document.querySelector("#import-url-fields")?.classList.toggle("is-hidden", mode !== "url");
+  document.querySelector("#import-source")?.closest(".field")?.classList.toggle("is-hidden", mode === "url");
+  document.querySelector("#import-source-label")?.closest(".field")?.classList.toggle("is-hidden", mode === "url");
   const label = document.querySelector("#import-source-label");
   const source = document.querySelector("#import-source");
   if (label) label.textContent = mode === "jsonld" ? "Webpage HTML / JSON-LD" : "Recipe content";
@@ -190,6 +242,9 @@ document.addEventListener("click", async event => {
   if (importModeButton) {
     event.preventDefault();
     syncImportMode(importModeButton.dataset.importMode);
+    const sourceField = document.querySelector("#import-url-fields input")?.closest(".field");
+    const textField = document.querySelector("#import-source")?.closest(".field");
+    (importMode === "url" ? sourceField : textField)?.scrollIntoView({ behavior: "smooth", block: "center" });
     return;
   }
   const viewButton = event.target.closest("[data-view]");
