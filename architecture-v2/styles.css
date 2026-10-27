@@ -288,32 +288,31 @@
   }
 }
 
-/* Header policy: keep the branded header available on Home only.
-   On collection/detail sections, let the banner and header scroll away;
-   the dedicated bottom navigation remains fixed by its existing rules. */
+/* Mobile header behavior: one explicit rule set, driven by active-view state.
+   Home uses fixed positioning for reliable iOS Safari behavior; its reserved
+   space prevents content jumping. Other views keep the normal scrolling header. */
 @media (max-width: 520px) {
-  .app > .top { position: relative; top: auto; z-index: 1; }
-  .app:has(#home.active) > .top {
-    position: sticky;
-    top: 0;
-    z-index: 100;
-  }
-  .app:not(:has(#home.active)) > .top {
+  .app > .top {
     position: relative;
     top: auto;
+    z-index: 1;
   }
-}
-
-/* Home-only sticky header, driven by the app's active-view state. */
-@media (max-width: 520px) {
   .app > .top.homeStickyHeader {
-    position: sticky;
+    position: fixed;
     top: 0;
+    left: 0;
+    right: 0;
+    width: 100%;
+    max-width: none;
+    margin: 0;
+    padding-top: env(safe-area-inset-top);
     z-index: 100;
-    align-self: stretch;
+    background: rgba(9,11,14,.98);
   }
-  .app > .top:not(.homeStickyHeader) {
-    position: relative;
-    top: auto;
+  .app > .top.homeStickyHeader + #previewNotice {
+    margin-top: 132px;
+  }
+  .app > .top.homeStickyHeader .brandLogo {
+    max-height: 132px;
   }
 }
