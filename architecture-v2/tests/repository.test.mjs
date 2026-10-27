@@ -34,7 +34,7 @@ test("loadDataset uses local data without a network request", async () => {
 });
 
 test("loadDataset falls back to remote data when local records are absent", async () => {
-  const result = await loadDataset({ storage: fakeStorage(), fetchImpl: async (url, options) => { assert.equal(url, "/architecture-v2/api/data"); assert.equal(options.method, "GET"); return { ok: true, json: async () => ({ recipes: [{ name: "Cloud" }], restaurants: [] }) }; } });
+  const result = await loadDataset({ storage: fakeStorage(), fetchImpl: async (url, options) => { assert.equal(url, "/api/data"); assert.equal(options.method, "GET"); return { ok: true, json: async () => ({ recipes: [{ name: "Cloud" }], restaurants: [] }) }; } });
   assert.equal(result.source, "cloud");
   assert.equal(result.data.recipes[0].title, "Cloud");
 });
