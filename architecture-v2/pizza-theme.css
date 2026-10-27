@@ -138,3 +138,16 @@
 #app .homeFeatureButton.diningButton .homeFeatureIcon{font-size:0;display:grid;place-items:center;width:48px;height:48px}
 #app .homeFeatureButton.diningButton .homeFeatureIcon::before{content:"";display:block;width:44px;height:44px;background:center/contain no-repeat url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64' fill='none' stroke='%23d6a85b' stroke-width='2.7' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M32 4C29 14 22 17 18 25c-4 8 2 14 11 12-2 7-1 13 3 22 4-9 5-15 3-22 9 2 15-4 11-12C42 17 35 14 32 4Z'/%3E%3Cpath d='M18 25c-7-2-11 3-9 8 2 5 7 6 13 4M46 25c7-2 11 3 9 8-2 5-7 6-13 4M22 45c3 3 7 3 10 0 3 3 7 3 10 0M32 37v22'/%3E%3C/svg%3E")}
 #app .homeFeatureButton.pizzaButton .homeFeatureIcon::before{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64' fill='none' stroke='%23d6a85b' stroke-width='2.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M7 6Q39 16 57 57Q29 43 7 6Z'/%3E%3Cpath d='M7 6Q13 15 19 20M13 13Q33 23 49 48'/%3E%3Ccircle cx='25' cy='23' r='3.1'/%3E%3Ccircle cx='37' cy='35' r='3.1'/%3E%3Ccircle cx='44' cy='46' r='3.1'/%3E%3C/svg%3E")}
+
+/* Corrected per user's explicit reference: keep original fleur on card; use fork + knife ONLY in bottom nav. */
+#app .homeFeatureButton.diningButton .homeFeatureIcon{font-size:32px!important;display:flex!important;align-items:center;justify-content:center;width:48px;height:48px}
+#app .homeFeatureButton.diningButton .homeFeatureIcon::before{content:none!important;display:none!important;background-image:none!important}
+.bottomNav button[data-view="dining"]::before{
+ background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64' fill='none' stroke='%23d6a85b' stroke-width='3.1' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M14 7v18M20 7v18M26 7v18M14 25c0 8 12 8 12 0M20 33v24'/%3E%3Cpath d='M44 7c-7 7-9 17-9 27h10v29M45 7v26'/%3E%3C/svg%3E");
+}
+.bottomNav button[data-view="pizzas"]::before{
+ background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64' fill='none' stroke='%23d6a85b' stroke-width='3.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M8 8 Q40 17 56 56 Q29 44 8 8Z'/%3E%3Cpath d='M8 8 Q13 16 20 21'/%3E%3Cpath d='M12 12 Q32 24 49 49'/%3E%3Ccircle cx='25' cy='24' r='3.2'/%3E%3Ccircle cx='37' cy='36' r='3.2'/%3E%3Ccircle cx='44' cy='47' r='3.2'/%3E%3C/svg%3E");
+}
+#app .homeFeatureButton.pizzaButton .homeFeatureIcon::before{
+ background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64' fill='none' stroke='%23d6a85b' stroke-width='2.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M8 8 Q40 17 56 56 Q29 44 8 8Z'/%3E%3Cpath d='M8 8 Q13 16 20 21M12 12 Q32 24 49 49'/%3E%3Ccircle cx='25' cy='24' r='3.2'/%3E%3Ccircle cx='37' cy='36' r='3.2'/%3E%3Ccircle cx='44' cy='47' r='3.2'/%3E%3C/svg%3E");
+}
