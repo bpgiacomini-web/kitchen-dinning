@@ -77,7 +77,19 @@ function renderList(title, eyebrow, items, kind) {
       return escapeHtml(value);
     };
     const fieldLabel = key => ({ createdAt: "Review date", updatedAt: "Last updated", orderAgain: "Order again" }[key] || key.replace(/([A-Z])/g, " $1").replace(/^./, c => c.toUpperCase()));
-    const reviewRecords = [...(Array.isArray(item.reviewHistory) ? item.reviewHistory : []), ...(item.survey ? [item.survey] : [])];
+    const allReviewRecords = [...(Array.isArray(item.reviewHistory) ? item.reviewHistory : []), ...(item.survey ? [item.survey] : [])];
+    // Legacy data may expose the same saved review in both reviewHistory and survey.
+    // Deduplicate identical review payloads for display only; never mutate stored data.
+    const reviewSignature = review => review && typeof review === "object"
+      ? JSON.stringify(Object.keys(review).filter(key => !["id", "_id", "restaurantId"].includes(key)).sort().map(key => [key, review[key]]))
+      : String(review);
+    const seenReviewSignatures = new Set();
+    const reviewRecords = allReviewRecords.filter(review => {
+      const signature = reviewSignature(review);
+      if (seenReviewSignatures.has(signature)) return false;
+      seenReviewSignatures.add(signature);
+      return true;
+    });
     const reviewFields = reviewRecords.map((review, reviewIndex) => {
       if (!review || typeof review !== "object") return "";
       const ignored = new Set(["id", "_id", "restaurantId", "photos", "image", "images"]);
