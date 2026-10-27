@@ -125,7 +125,7 @@ function formatRecipeDuration(value) {
   const raw = String(value ?? "").trim();
   if (!raw) return "";
   // Humanize ISO-8601 recipe durations (e.g. PT10M, PT1H30M) without changing source data.
-  const match = raw.match(/^P(?:(\\d+)D)?(?:T(?:(\\d+)H)?(?:(\\d+)M)?(?:(\\d+(?:\\.\\d+)?)S)?)?$/i);
+  const match = raw.match(/^P(?:(\d+)D)?(?:T(?:(\d+)H)?(?:(\d+)M)?(?:(\d+(?:\\.\d+)?)S)?)?$/i);
   if (!match) return raw;
   const days = Number(match[1] || 0);
   const hours = Number(match[2] || 0) + Math.floor(Number(match[3] || 0) / 60);
@@ -140,7 +140,7 @@ function formatRecipeDuration(value) {
 }
 function cleanImportedIngredient(value) {
   return String(value ?? "")
-    .replace(/\\s*\\(\\s*\\$\\s*\\d+(?:\\.\\d{1,2})?\\s*\\)/g, "")
+    .replace(/\\s*\\(\\s*\\$\\s*\d+(?:\\.\d{1,2})?\\s*\\)/g, "")
     .replace(/\\s{2,}/g, " ")
     .trim();
 }
