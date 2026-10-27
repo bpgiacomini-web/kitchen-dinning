@@ -309,8 +309,8 @@
     z-index: 100;
     background: rgba(9,11,14,.98);
   }
-  .app > .top.homeStickyHeader + #previewNotice {
-    margin-top: 132px;
+  .app:has(> .top.homeStickyHeader) #app {
+    padding-top: 132px;
   }
   .app > .top.homeStickyHeader .brandLogo {
     max-height: 132px;
