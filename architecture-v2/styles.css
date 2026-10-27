@@ -124,3 +124,30 @@
 #app .restaurantDetailBlock dd{margin:0;overflow-wrap:anywhere}
 #app .restaurantDetailBlock a{color:#e3c477;text-decoration:underline}
 #app .readOnlyItem details summary{cursor:pointer;touch-action:manipulation}
+
+
+/* Recipe import UX: clear touch-friendly choices instead of the native select popup. */
+#app .fieldLabel{display:block;color:#c6ccd2;font-size:13px;font-weight:750;margin:0 0 8px}
+#app .importModeChoices{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+#app .importModeChoice{min-height:48px;padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:#0d1115;color:var(--text);font-size:14px;font-weight:750;line-height:1.25;text-align:center;touch-action:manipulation}
+#app .importModeChoice.active{border-color:#d6a85b;background:linear-gradient(145deg,#2a2114,#191610);color:#f0d28d;box-shadow:inset 0 0 0 1px #d6a85b66}
+#app .importModeChoice:focus-visible{outline:2px solid #d6a85b;outline-offset:2px}
+#app .parsedRecipe .parsedColumns{grid-template-columns:1fr;gap:24px}
+#app .parsedRecipe .parsedColumns section{min-width:0}
+#app .parsedRecipe .parsedColumns h4{font-size:13px;margin-bottom:12px}
+#app .parsedRecipe .parsedColumns ul,
+#app .parsedRecipe .parsedColumns ol{padding-left:25px;line-height:1.65}
+#app .parsedRecipe .parsedColumns li{padding-left:3px;overflow-wrap:anywhere}
+#app .parsedRecipe .parsedColumns li+li{margin-top:10px}
+#app .parsedRecipe .parsedColumns ol li+li{margin-top:16px}
+@media(max-width:520px){
+  #app .importModeChoices{grid-template-columns:1fr;gap:7px}
+  #app .importModeChoice{text-align:left;min-height:46px}
+  /* Compact sticky banner so recipe content gets more of the phone viewport. */
+  .top{padding-top:calc(4px + env(safe-area-inset-top));padding-bottom:5px;margin-bottom:10px}
+  .brandLogo{width:100%;height:104px;max-height:104px;object-fit:contain}
+  #app .parsedRecipe{padding:13px}
+  #app .parsedRecipe h3{font-size:24px;line-height:1.15}
+  #app .parsedRecipe dl{gap:7px}
+  #app .parsedRecipe dl div{padding:8px 9px}
+}
