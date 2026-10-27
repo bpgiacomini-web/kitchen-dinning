@@ -37,9 +37,13 @@ function renderImportPanel() {
   return `<section class="importPanel" aria-labelledby="import-title">
     <div class="panel-heading"><div><p class="eyebrow">Recipe tools · Early preview</p><h2 id="import-title">Import a recipe</h2></div><span class="status">Preview only</span></div>
     <p class="importIntro">Import from a public recipe URL, paste recipe text, or paste webpage HTML / JSON-LD. Metro Eats extracts recipe-specific fields instead of copying the surrounding article.</p>
-    <div class="field"><label for="import-mode">Import source</label>
-    <select id="import-mode" class="importMode"><option value="text">Pasted recipe text</option><option value="jsonld">Pasted webpage HTML / JSON-LD</option><option value="url">Recipe webpage URL</option></select></div>
-    <div id="import-text-fields" class="field"><label for="import-source">Recipe content</label><textarea id="import-source" class="importSource" rows="9" maxlength="250000" placeholder="Paste a recipe with Ingredients and Directions sections…"></textarea></div>
+    <div class="field"><span class="fieldLabel" id="import-mode-label">Choose import method</span>
+    <div class="importModeChoices" role="group" aria-labelledby="import-mode-label">
+      <button class="importModeChoice active" type="button" data-import-mode="text" aria-pressed="true">Paste Recipe Text</button>
+      <button class="importModeChoice" type="button" data-import-mode="url" aria-pressed="false">Import Webpage URL</button>
+      <button class="importModeChoice" type="button" data-import-mode="jsonld" aria-pressed="false">Paste Webpage HTML</button>
+    </div></div>
+    <div id="import-text-fields" class="field"><label id="import-source-label" for="import-source">Recipe content</label><textarea id="import-source" class="importSource" rows="9" maxlength="250000" placeholder="Paste a recipe with Ingredients and Directions sections…"></textarea></div>
     <div id="import-url-fields" class="field is-hidden"><label for="import-url">Public recipe webpage URL</label><input id="import-url" class="importUrl" type="url" inputmode="url" autocomplete="url" maxlength="2048" placeholder="https://example.com/recipe"></div>
     <div class="actions importActions"><button class="btn primary" type="button" data-action="parse-recipe">Extract recipe</button><button class="btn" type="button" data-action="clear-recipe">Clear</button></div>
     <p id="import-feedback" class="importFeedback" role="status" aria-live="polite">Nothing has been extracted yet.</p>
@@ -117,12 +121,37 @@ function renderFrozenPizzas() {
   <div class="field"><label for="pizza-notes">Review notes</label><textarea id="pizza-notes" rows="3" placeholder="What stood out? Would you buy it again?"></textarea></div>
   <p class="hint">This is a layout prototype only. It does not save data, change existing records, or connect to a barcode database. We will wire up scanning, product lookup, and private account storage separately.</p></section>`;
 }
+function formatRecipeDuration(value) {
+  const raw = String(value ?? "").trim();
+  if (!raw) return "";
+  // Humanize ISO-8601 recipe durations (e.g. PT10M, PT1H30M) without changing source data.
+  const match = raw.match(/^P(?:(\\d+)D)?(?:T(?:(\\d+)H)?(?:(\\d+)M)?(?:(\\d+(?:\\.\\d+)?)S)?)?$/i);
+  if (!match) return raw;
+  const days = Number(match[1] || 0);
+  const hours = Number(match[2] || 0) + Math.floor(Number(match[3] || 0) / 60);
+  const minutes = Number(match[3] || 0) % 60;
+  const seconds = Number(match[4] || 0);
+  const parts = [];
+  if (days) parts.push(`${days} day${days === 1 ? "" : "s"}`);
+  if (hours) parts.push(`${hours} hour${hours === 1 ? "" : "s"}`);
+  if (minutes) parts.push(`${minutes} minute${minutes === 1 ? "" : "s"}`);
+  if (seconds) parts.push(`${seconds} second${seconds === 1 ? "" : "s"}`);
+  return parts.join(" ") || "0 minutes";
+}
+function cleanImportedIngredient(value) {
+  return String(value ?? "")
+    .replace(/\\s*\\(\\s*\\$\\s*\\d+(?:\\.\\d{1,2})?\\s*\\)/g, "")
+    .replace(/\\s{2,}/g, " ")
+    .trim();
+}
 function renderImportPreview(recipe) {
   const preview = document.querySelector("#import-preview");
   if (!preview) return;
   if (!recipe) { preview.innerHTML = ""; return; }
-  const metadata = [["Servings", recipe.servings], ["Prep time", recipe.prepTime], ["Cook time", recipe.cookTime], ["Total time", recipe.totalTime]].filter(([, value]) => value);
-  preview.innerHTML = `<article class="parsedRecipe"><p class="sectionKicker">Extracted recipe</p><h3>${escapeHtml(recipe.title)}</h3>${metadata.length ? `<dl>${metadata.map(([label, value]) => `<div><dt>${label}</dt><dd>${escapeHtml(value)}</dd></div>`).join("")}</dl>` : ""}${recipe.source ? `<p class="note">Source: ${escapeHtml(recipe.source)}</p>` : ""}<div class="parsedColumns"><section><h4>Ingredients · ${recipe.ingredients.length}</h4><ul>${recipe.ingredients.map(item => `<li>${escapeHtml(item)}</li>`).join("")}</ul></section><section><h4>Directions · ${recipe.directions.length}</h4><ol>${recipe.directions.map(item => `<li>${escapeHtml(item)}</li>`).join("")}</ol></section></div></article>`;
+  const metadata = [["Servings", recipe.servings], ["Prep time", formatRecipeDuration(recipe.prepTime)], ["Cook time", formatRecipeDuration(recipe.cookTime)], ["Total time", formatRecipeDuration(recipe.totalTime)]].filter(([, value]) => value);
+  const ingredients = (Array.isArray(recipe.ingredients) ? recipe.ingredients : []).map(cleanImportedIngredient);
+  const directions = Array.isArray(recipe.directions) ? recipe.directions : [];
+  preview.innerHTML = `<article class="parsedRecipe"><p class="sectionKicker">Extracted recipe</p><h3>${escapeHtml(recipe.title)}</h3>${metadata.length ? `<dl>${metadata.map(([label, value]) => `<div><dt>${label}</dt><dd>${escapeHtml(value)}</dd></div>`).join("")}</dl>` : ""}${recipe.source ? `<p class="note">Source: ${escapeHtml(recipe.source)}</p>` : ""}<div class="parsedColumns"><section><h4>Ingredients · ${ingredients.length}</h4><ul>${ingredients.map(item => `<li>${escapeHtml(item)}</li>`).join("")}</ul></section><section><h4>Directions · ${directions.length}</h4><ol>${directions.map(item => `<li>${escapeHtml(item)}</li>`).join("")}</ol></section></div></article>`;
 }
 function render() {
   root.classList.add("section", "active");
@@ -140,17 +169,29 @@ function render() {
   else if (activeView === "pizzas") renderFrozenPizzas();
   else renderHome();
 }
-function syncImportMode() {
-  const mode = document.querySelector("#import-mode")?.value || "text";
+let importMode = "text";
+function syncImportMode(mode = importMode) {
+  importMode = mode;
+  document.querySelectorAll("[data-import-mode]").forEach(button => {
+    const active = button.dataset.importMode === mode;
+    button.classList.toggle("active", active);
+    button.setAttribute("aria-pressed", String(active));
+  });
   document.querySelector("#import-text-fields")?.classList.toggle("is-hidden", mode === "url");
   document.querySelector("#import-url-fields")?.classList.toggle("is-hidden", mode !== "url");
-  const label = document.querySelector("#import-source");
-  if (label) label.placeholder = mode === "jsonld" ? "Paste webpage HTML containing Recipe JSON-LD…" : "Paste a recipe with Ingredients and Directions sections…";
+  const label = document.querySelector("#import-source-label");
+  const source = document.querySelector("#import-source");
+  if (label) label.textContent = mode === "jsonld" ? "Webpage HTML / JSON-LD" : "Recipe content";
+  if (source) source.placeholder = mode === "jsonld" ? "Paste webpage HTML containing Recipe JSON-LD…" : "Paste a recipe with Ingredients and Directions sections…";
 }
-document.addEventListener("change", event => {
-  if (event.target?.id === "import-mode") syncImportMode();
-});
+
 document.addEventListener("click", async event => {
+  const importModeButton = event.target.closest("[data-import-mode]");
+  if (importModeButton) {
+    event.preventDefault();
+    syncImportMode(importModeButton.dataset.importMode);
+    return;
+  }
   const viewButton = event.target.closest("[data-view]");
   if (viewButton) {
     event.preventDefault();
@@ -172,7 +213,7 @@ document.addEventListener("click", async event => {
     return;
   }
   if (actionButton.dataset.action === "parse-recipe") {
-    const mode = document.querySelector("#import-mode")?.value || "text";
+    const mode = importMode;
     const source = document.querySelector("#import-source")?.value || "";
     const url = document.querySelector("#import-url")?.value.trim() || "";
     const feedback = document.querySelector("#import-feedback");
