@@ -111,3 +111,14 @@
 #app .recipeDetailBlock ul,#app .recipeDetailBlock ol{padding-left:24px;margin:0;line-height:1.55}
 #app .recipeDetailBlock li+li{margin-top:5px}
 #app .recipeDetailBlock ul{list-style:disc}
+
+
+/* Expandable restaurant information and saved review details. */
+#app .restaurantDetailBlock{margin-top:14px}
+#app .restaurantDetailBlock h4{margin:0 0 8px;color:#d6b46c;font-size:14px;letter-spacing:.04em;text-transform:uppercase}
+#app .restaurantDetailBlock dl{display:grid;grid-template-columns:minmax(100px,.7fr) minmax(0,1.3fr);gap:8px 12px;margin:0}
+#app .restaurantDetailBlock dl div{display:contents}
+#app .restaurantDetailBlock dt{color:#9ca3af;font-weight:600}
+#app .restaurantDetailBlock dd{margin:0;overflow-wrap:anywhere}
+#app .restaurantDetailBlock a{color:#e3c477;text-decoration:underline}
+#app .readOnlyItem details summary{cursor:pointer;touch-action:manipulation}
