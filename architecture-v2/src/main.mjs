@@ -184,7 +184,7 @@ document.addEventListener("click", async event => {
     try {
       if (mode === "url") {
         if (!url) throw new Error("Enter a recipe webpage URL first.");
-        const response = await fetch("/architecture-v2/api/import-recipe-v2", {
+        const response = await fetch("/api/import-recipe-v2", {
           method: "POST",
           headers: { "Content-Type": "application/json", "Accept": "application/json" },
           body: JSON.stringify({ url })
