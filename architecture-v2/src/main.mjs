@@ -189,8 +189,8 @@ function formatRecipeDuration(value) {
 }
 function cleanImportedIngredient(value) {
   return String(value ?? "")
-    .replace(/\\s*\\(\\s*\\$\\s*\d+(?:\.\d{1,2})?\\s*\\)/g, "")
-    .replace(/\\s{2,}/g, " ")
+    .replace(/\s*\(\s*\$\s*\d+(?:\.\d{1,2})?\s*\)/g, "")
+    .replace(/\s{2,}/g, " ")
     .trim();
 }
 function renderImportPreview(recipe) {
