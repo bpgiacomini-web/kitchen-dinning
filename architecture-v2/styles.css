@@ -180,3 +180,19 @@
   .brand{width:100%;flex:1}
   .brandLogo{display:block;width:100%;height:auto;max-height:132px;object-fit:contain}
 }
+
+/* Final full-bleed header override: extend past the padded app shell to the viewport edges. */
+#app { }
+@media (max-width: 520px) {
+  .top {
+    box-sizing: border-box;
+    width: 100vw;
+    max-width: 100vw;
+    margin-left: calc(50% - 50vw);
+    margin-right: calc(50% - 50vw);
+    padding-left: max(12px, env(safe-area-inset-left));
+    padding-right: max(12px, env(safe-area-inset-right));
+  }
+  .top .brand { width: 100%; min-width: 0; }
+  .top .brandLogo { display: block; width: 100%; max-width: none; height: auto; max-height: 132px; object-fit: contain; }
+}
