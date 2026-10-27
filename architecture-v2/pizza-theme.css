@@ -94,3 +94,25 @@
 .bottomNav button[data-view="recipes"]::before{
  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64' fill='none' stroke='%23d6a85b' stroke-width='3.1' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M15 27h34l-3 25H18zM11 27h42M23 21h18M27 16h10M9 31h6M49 31h6'/%3E%3Cpath d='M27 12h10'/%3E%3C/svg%3E");
 }
+
+/* Final icon refinement based on the approved home-screen screenshot. Keep the existing font. */
+.bottomNav button[data-view="home"]::before{
+ background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64' fill='none' stroke='%23d6a85b' stroke-width='3.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 29 32 7 58 29M13 25v32h15V40h8v17h15V25'/%3E%3C/svg%3E");
+}
+.bottomNav button[data-view="recipes"]::before{
+ background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64' fill='none' stroke='%23d6a85b' stroke-width='3.1' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M15 25h34l-3 27H18zM10 25h44M24 20h16M26 15h12M8 30h7M49 30h7M23 20l-3-4M41 20l3-4'/%3E%3C/svg%3E");
+}
+.bottomNav button[data-view="dining"]::before{
+ background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64' fill='none' stroke='%23d6a85b' stroke-width='2.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M32 5C29 15 22 18 19 25c-4 8 2 14 10 12-1 7 0 13 3 20 3-7 4-13 3-20 8 2 14-4 10-12-3-7-10-10-13-20Z'/%3E%3Cpath d='M19 25c-7-2-10 3-8 8 2 4 6 5 11 4M45 25c7-2 10 3 8 8-2 4-6 5-11 4M22 45c3 3 6 3 10 0 4 3 7 3 10 0M32 37v20'/%3E%3C/svg%3E");
+}
+.bottomNav button[data-view="pizzas"]::before{
+ background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64' fill='none' stroke='%23d6a85b' stroke-width='3.1' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M8 7C23 13 43 29 56 56 37 49 20 30 8 7Z'/%3E%3Cpath d='M8 7Q13 15 19 19'/%3E%3Ccircle cx='25' cy='24' r='3.2'/%3E%3Ccircle cx='37' cy='35' r='3.2'/%3E%3Ccircle cx='44' cy='46' r='3.2'/%3E%3C/svg%3E");
+}
+/* Replace the circular pizza-wheel on the home feature card with the same true slice. */
+#app .homeFeatureButton.pizzaButton .homeFeatureIcon::before{
+ background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64' fill='none' stroke='%23d6a85b' stroke-width='2.7' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M8 7C23 13 43 29 56 56 37 49 20 30 8 7Z'/%3E%3Cpath d='M8 7Q13 15 19 19'/%3E%3Ccircle cx='25' cy='24' r='3.2'/%3E%3Ccircle cx='37' cy='35' r='3.2'/%3E%3Ccircle cx='44' cy='46' r='3.2'/%3E%3C/svg%3E");
+}
+/* Keep page-heading pizza aligned with the navigation and feature-card slice. */
+#app .pizzaHeadingIcon svg{stroke-width:2.7}
+#app .pizzaHeadingIcon svg path:first-child{d:path("M8 7 C23 13 43 29 56 56 C37 49 20 30 8 7 Z")}
+#app .pizzaHeadingIcon svg path:nth-child(2){d:path("M8 7 Q13 15 19 19")}
