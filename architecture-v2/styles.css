@@ -250,3 +250,40 @@
     margin-bottom: 0;
   }
 }
+
+/* Correct the mobile header's actual container height/position, not just padding.
+   Earlier overrides left the banner centered inside a tall empty header region. */
+@media (max-width: 520px) {
+  .app > .top {
+    display: flex;
+    position: relative;
+    inset: auto;
+    height: auto;
+    min-height: 0;
+    max-height: none;
+    flex: 0 0 auto;
+    align-items: stretch;
+    justify-content: flex-start;
+    gap: 0;
+    padding: 0;
+    margin-top: 0;
+    margin-bottom: 8px;
+    transform: none;
+  }
+  .app > .top > .brand {
+    align-self: stretch;
+    align-items: stretch;
+    justify-content: flex-start;
+    height: auto;
+    min-height: 0;
+    flex: 0 0 auto;
+  }
+  .app > .top > .brand > .brandLogo {
+    display: block;
+    width: 100vw;
+    height: auto;
+    max-height: none;
+    align-self: flex-start;
+    object-fit: contain;
+  }
+}
