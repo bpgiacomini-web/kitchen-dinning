@@ -103,3 +103,11 @@
 #app .localNewsItem a:hover{text-decoration:underline;color:#e0b563}
 #app .localNewsItem .newsMeta{margin-bottom:6px;color:#d6a85b;font-size:12px;font-weight:750;letter-spacing:.035em}
 @media(max-width:520px){#app .localNewsPanel{padding:16px}#app .localNewsItem a{font-size:16px}}
+
+
+/* Recipe card details: readable ingredients and clean, singly numbered directions. */
+#app .recipeDetailBlock{margin-top:14px}
+#app .recipeDetailBlock h4{margin:0 0 8px;color:#d6b46c;font-size:14px;letter-spacing:.04em;text-transform:uppercase}
+#app .recipeDetailBlock ul,#app .recipeDetailBlock ol{padding-left:24px;margin:0;line-height:1.55}
+#app .recipeDetailBlock li+li{margin-top:5px}
+#app .recipeDetailBlock ul{list-style:disc}
