@@ -68,6 +68,8 @@ export function normalizeRestaurant(record, index = 0) {
     website: asText(item.website),
     notes: asText(item.notes),
     photos: asList(item.photos),
+    survey: item.survey && typeof item.survey === "object" ? item.survey : null,
+    reviewHistory: history,
     createdAt: asText(item.createdAt),
     updatedAt: asText(item.updatedAt)
   };
