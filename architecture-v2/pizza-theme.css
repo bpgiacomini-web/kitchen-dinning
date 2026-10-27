@@ -70,3 +70,22 @@
  .bottomNav button[data-view="home"]::after,.bottomNav button[data-view="recipes"]::after,
  .bottomNav button[data-view="dining"]::after,.bottomNav button[data-view="pizzas"]::after{font-size:11px}
 }
+
+/* Refined icon set: confident, rounded line art and a recognizable tapered pizza wedge. */
+.bottomNav button[data-view="home"]::before,
+.bottomNav button[data-view="recipes"]::before,
+.bottomNav button[data-view="dining"]::before,
+.bottomNav button[data-view="pizzas"]::before{filter:none;opacity:.92}
+.bottomNav button[data-view="home"]::before{
+ background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64' fill='none' stroke='%23d6a85b' stroke-width='3.3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 29 32 7 58 29M13 25v32h15V40h8v17h15V25'/%3E%3C/svg%3E");
+}
+.bottomNav button[data-view="recipes"]::before{
+ background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64' fill='none' stroke='%23d6a85b' stroke-width='3.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M14 23h36l-3 29H17zM9 23h46M20 18h24M26 12c-4-3 1-5-1-8M34 13c-4-3 1-5-1-8M42 18c-4-3 1-5-1-8'/%3E%3C/svg%3E");
+}
+.bottomNav button[data-view="dining"]::before{
+ background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64' fill='none' stroke='%23d6a85b' stroke-width='3.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M32 5c-2 9-8 13-13 20-5 8 1 15 10 13-2 6-1 12 3 19 4-7 5-13 3-19 9 2 15-5 10-13C50 18 42 14 32 5Z'/%3E%3Cpath d='M13 32c-1 8 3 13 11 14M51 32c1 8-3 13-11 14M21 49c4 2 7 1 11-2 4 3 7 4 11 2'/%3E%3C/svg%3E");
+}
+.bottomNav button[data-view="pizzas"]::before{
+ background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64' fill='none' stroke='%23d6a85b' stroke-width='3.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M8 8 Q39 17 56 56 Q30 40 8 8Z'/%3E%3Cpath d='M8 8 Q14 15 21 21'/%3E%3Ccircle cx='25' cy='22' r='3.2'/%3E%3Ccircle cx='38' cy='32' r='3.2'/%3E%3Ccircle cx='43' cy='44' r='3.2'/%3E%3C/svg%3E");
+}
+#app .pizzaHeadingIcon svg{stroke-width:2.6}
