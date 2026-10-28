@@ -133,10 +133,12 @@ export function parsePastedRecipeText(input) {
     return Object.prototype.hasOwnProperty.call(sectionAliases, normalized);
   };
   const titleLine = lines.find(line => /^title\s*:/i.test(line));
-  const firstContent = lines.find(line => !isSectionHeading(line) && !/^https?:\/\//i.test(line));
+  const firstSectionIndex = lines.findIndex(isSectionHeading);
+  const titleCandidates = lines.slice(0, firstSectionIndex < 0 ? lines.length : firstSectionIndex)
+    .filter(line => !/^https?:\\/\\//i.test(line) && !/^(recipe|print|jump to recipe)\\s*:?$/i.test(line));
   const title = titleLine
-    ? titleLine.replace(/^title\s*:\s*/i, "").trim()
-    : (firstContent && !/^(recipe|print|jump to recipe)\s*:?$/i.test(firstContent) ? firstContent : "Imported Recipe");
+    ? titleLine.replace(/^title\\s*:\\s*/i, "").trim()
+    : (titleCandidates[0] || "Imported Recipe");
 
   const ingredients = [];
   const directions = [];
