@@ -341,3 +341,51 @@
 /* Source is a compact actionable link, never a long visible URL. */
 #app .parsedRecipe .recipeSourceLink{display:inline-flex;align-items:center;gap:6px;color:#e3c477;font-weight:750;text-decoration:underline;text-underline-offset:3px}
 #app .parsedRecipe .recipeSourceLink:focus-visible{outline:2px solid #d6a85b;outline-offset:3px;border-radius:4px}
+
+
+/* Recipe editor: stack fields vertically and keep controls inside the card on mobile. */
+#app .recipeEditPanel {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  margin: 14px 0;
+  padding: 0;
+}
+#app .recipeEditPanel > summary {
+  display: list-item;
+  margin-bottom: 14px;
+}
+#app .recipeEditPanel > label {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  margin: 0 0 16px;
+  line-height: 1.4;
+}
+#app .recipeEditPanel > label input,
+#app .recipeEditPanel > label textarea {
+  display: block;
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  margin: 8px 0 0;
+  font: inherit;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+#app .recipeEditPanel > label textarea {
+  resize: vertical;
+  min-height: 150px;
+}
+#app .recipeEditPanel > .btn {
+  display: inline-flex;
+  max-width: 100%;
+  margin: 4px 0 12px;
+}
+#app .recipeEditPanel .edit-status {
+  margin: 8px 0 0;
+  overflow-wrap: anywhere;
+}
