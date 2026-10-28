@@ -272,6 +272,34 @@ document.addEventListener("click", async event => {
   }
   const actionButton = event.target.closest("[data-action]");
   if (!actionButton) return;
+  if (actionButton.dataset.action === "save-recipe-edit") {
+    const id = actionButton.dataset.recipeId;
+    const panel = actionButton.closest(".recipeEditPanel");
+    const title = panel?.querySelector('[data-edit-field="title"]')?.value.trim() || "";
+    const ingredients = (panel?.querySelector('[data-edit-field="ingredients"]')?.value || "").split("\n").map(value => value.trim()).filter(Boolean);
+    const directions = (panel?.querySelector('[data-edit-field="directions"]')?.value || "").split("\n").map(value => value.trim()).filter(Boolean);
+    const status = panel?.querySelector(".edit-status");
+    if (!title || !ingredients.length || !directions.length) {
+      if (status) status.textContent = "Please enter a title, at least one ingredient, and at least one direction.";
+      return;
+    }
+    try {
+      const saved = readPreviewSavedRecipes();
+      const index = saved.findIndex(item => String(item.id) === String(id));
+      if (index < 0) {
+        if (status) status.textContent = "Could not find this preview-saved recipe. Nothing was changed.";
+        return;
+      }
+      saved[index] = { ...saved[index], title, ingredients, directions, updatedAt: new Date().toISOString() };
+      localStorage.setItem(PREVIEW_RECIPE_STORAGE_KEY, JSON.stringify(saved));
+      mergePreviewSavedRecipes();
+      render();
+      return;
+    } catch {
+      if (status) status.textContent = "Could not save your changes in this browser. Please try again.";
+    }
+    return;
+  }
   if (actionButton.dataset.action === "save-recipe") {
     const feedback = document.querySelector("#import-feedback");
     if (!extractedRecipe || !extractedRecipe.title || !extractedRecipe.ingredients.length || !extractedRecipe.directions.length) {
