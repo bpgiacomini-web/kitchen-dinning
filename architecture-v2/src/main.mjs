@@ -185,7 +185,7 @@ function formatRecipeDuration(value) {
   if (hours) parts.push(`${hours} hour${hours === 1 ? "" : "s"}`);
   if (minutes) parts.push(`${minutes} minute${minutes === 1 ? "" : "s"}`);
   if (seconds) parts.push(`${seconds} second${seconds === 1 ? "" : "s"}`);
-  return parts.join(" ") || "0 minutes";
+  return parts.join(" ");
 }
 function cleanImportedIngredient(value) {
   return String(value ?? "")
