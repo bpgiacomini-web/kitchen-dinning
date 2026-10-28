@@ -86,7 +86,7 @@ export function normalizeImportedRecipe(node) {
     description: plainText(node.description),
     servings: plainText(node.recipeYield),
     prepTime: plainText(node.prepTime),
-    cookTime,
+    cookTime: plainText(node.cookTime) || inferCookTime(directions),
     totalTime: plainText(node.totalTime),
     source: cleanSourceUrl(node.url ?? node.mainEntityOfPage)
   };
@@ -111,30 +111,94 @@ export function parseRecipeJsonLd(input) {
   return null;
 }
 
-/** Parse pasted plain text only when recognizable ingredient and direction sections exist. */
+/** Parse common recipe text, including custom section headings and mixed ingredient/instruction bullets. */
 export function parsePastedRecipeText(input) {
   const lines = String(input ?? "").replace(/\r/g, "").split("\n")
     .map(line => line.replace(/^\s{0,3}#{1,6}\s*/, "").replace(/\*\*/g, "").trim())
     .filter(Boolean);
   if (!lines.length) return null;
+
+  const sectionAliases = {
+    meat: "ingredients", protein: "ingredients", proteins: "ingredients",
+    vegetables: "ingredients", vegetable: "ingredients", "dry dump": "ingredients",
+    mirepiox: "ingredients", mirepoix: "ingredients", finishes: "ingredients",
+    finish: "ingredients", sauce: "ingredients", seasoning: "ingredients",
+    seasonings: "ingredients", "for the meat": "ingredients", "for the vegetables": "ingredients",
+    ingredients: "ingredients", ingredient: "ingredients",
+    directions: "directions", direction: "directions", instructions: "directions",
+    instruction: "directions", method: "directions", preparation: "directions", steps: "directions"
+  };
+  const isSectionHeading = line => {
+    const normalized = line.toLowerCase().replace(/[:：]\s*$/, "").trim();
+    return Object.prototype.hasOwnProperty.call(sectionAliases, normalized);
+  };
   const titleLine = lines.find(line => /^title\s*:/i.test(line));
-  const ingredientsStart = lines.findIndex(line => /^ingredients?(\s*\([^)]*\))?\s*:?$/i.test(line));
-  const preRecipeLines = lines.slice(0, ingredientsStart < 0 ? lines.length : ingredientsStart);
+  const firstContent = lines.find(line => !isSectionHeading(line) && !/^https?:\/\//i.test(line));
   const title = titleLine
     ? titleLine.replace(/^title\s*:\s*/i, "").trim()
-    : (preRecipeLines.find(line => line.length > 3 && !/^https?:\/\//i.test(line) && !/^(recipe|print|jump to recipe|ingredients|directions|instructions|method|steps)\s*:?$/i.test(line)) || "");
+    : (firstContent && !/^(recipe|print|jump to recipe)\s*:?$/i.test(firstContent) ? firstContent : "Imported Recipe");
+
   const ingredients = [];
   const directions = [];
   let section = "";
+  const actionPattern = /^(?:deglaze|once\b|then\b|saute(?:e|é)?\b|sauté\b|add\b|combine\b|cover\b|bring\b|simmer\b|stir\b|mix\b|cook\b|heat\b|bake\b|roast\b|grill\b|fry\b|boil\b|serve\b|season\b|fold\b|whisk\b|pour\b|reduce\b|remove\b|transfer\b|set\b|let\b|place\b|preheat\b|chop\b|mince\b|drain\b|toss\b|thicken\b)/i;
+  const cleanBullet = raw => raw.replace(/^\s*(?:[-*•·]\s*|\d+[.)]\s*)/, "").trim();
+  const addDirection = value => {
+    const text = value.replace(/[–—-]\s*$/, "").trim();
+    if (text && !directions.includes(text)) directions.push(text);
+  };
+  const addIngredient = value => {
+    const text = value.replace(/[–—-]\s*$/, "").trim();
+    if (text && !ingredients.includes(text)) ingredients.push(text);
+  };
+
   for (const raw of lines) {
-    const line = raw.replace(/^[-*•]\s*/, "").replace(/^\d+[.)]\s*/, "").trim();
-    if (/^ingredients?(\s*\([^)]*\))?\s*:?$/i.test(line)) { section = "ingredients"; continue; }
-    if (/^(directions?|instructions?|method|preparation|steps?)\s*:?$/i.test(line)) { section = "directions"; continue; }
-    if (/^(nutrition|notes?|tips|equipment|reviews|comments|related recipes|more recipes|about the author)\b/i.test(line)) { section = ""; continue; }
-    if (!section || line.length < 2 || /^https?:\/\//i.test(line)) continue;
-    if (section === "ingredients" && line.length <= 260) ingredients.push(line);
-    if (section === "directions" && line.length <= 1200) directions.push(line);
+    const line = cleanBullet(raw);
+    const heading = line.toLowerCase().replace(/[:：]\s*$/, "").trim();
+    if (isSectionHeading(line)) {
+      section = sectionAliases[heading];
+      continue;
+    }
+    if (/^(nutrition|notes?|tips|equipment|reviews|comments|related recipes|more recipes|about the author)\b/i.test(line)) {
+      section = "";
+      continue;
+    }
+    if (/^title\s*:/i.test(line) || /^https?:\/\//i.test(line) || line.length < 2) continue;
+
+    // A bullet may contain an ingredient followed by an instruction after a dash.
+    const split = line.match(/^(.+?)\s+[–—]\s+(.+)$/);
+    if (section === "ingredients" && split) {
+      addIngredient(split[1]);
+      addDirection(split[2]);
+      continue;
+    }
+    if (section === "ingredients" && actionPattern.test(line)) {
+      addDirection(line);
+      continue;
+    }
+    if (section === "directions") {
+      addDirection(line);
+      continue;
+    }
+    if (section === "ingredients" && line.length <= 400) {
+      addIngredient(line);
+      continue;
+    }
+
+    // Standard headings are optional for recipes arranged into custom sections.
+    if (!section && actionPattern.test(line)) addDirection(line);
   }
-  if (!title || !ingredients.length || !directions.length) return null;
-  return { title, ingredients, directions, description: "", servings: "", prepTime: "", cookTime: "", totalTime: "", source: "" };
+
+  if (!ingredients.length || !directions.length) return null;
+  return {
+    title,
+    ingredients,
+    directions,
+    description: "",
+    servings: "",
+    prepTime: "",
+    cookTime: inferCookTime(directions),
+    totalTime: "",
+    source: ""
+  };
 }
