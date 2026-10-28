@@ -135,16 +135,16 @@ export function parsePastedRecipeText(input) {
   const titleLine = lines.find(line => /^title\s*:/i.test(line));
   const firstSectionIndex = lines.findIndex(isSectionHeading);
   const titleCandidates = lines.slice(0, firstSectionIndex < 0 ? lines.length : firstSectionIndex)
-    .filter(line => !/^https?:\\/\\//i.test(line) && !/^(recipe|print|jump to recipe)\\s*:?$/i.test(line));
+    .filter(line => !/^https?:\/\//i.test(line) && !/^(recipe|print|jump to recipe)\s*:?$/i.test(line));
   const title = titleLine
-    ? titleLine.replace(/^title\\s*:\\s*/i, "").trim()
+    ? titleLine.replace(/^title\s*:\s*/i, "").trim()
     : (titleCandidates[0] || "Imported Recipe");
 
   const ingredients = [];
   const directions = [];
   let section = "";
   const actionPattern = /^(?:deglaze|once\b|then\b|saute(?:e|é)?\b|sauté\b|add\b|combine\b|cover\b|bring\b|simmer\b|stir\b|mix\b|cook\b|heat\b|bake\b|roast\b|grill\b|fry\b|boil\b|serve\b|season\b|fold\b|whisk\b|pour\b|reduce\b|remove\b|transfer\b|set\b|let\b|place\b|preheat\b|chop\b|mince\b|drain\b|toss\b|thicken\b)/i;
-  const cleanBullet = raw => raw.replace(/^\s*(?:[-*•·]\s*|\d+[.)]\s*)/, "").trim();
+  const cleanBullet = raw => raw.replace(/^\s*(?:[-*•·]\s*|\d+[.)]\s*|o\s+)/i, "").trim();
   const addDirection = value => {
     const text = value.replace(/[–—-]\s*$/, "").trim();
     if (text && !directions.includes(text)) directions.push(text);
