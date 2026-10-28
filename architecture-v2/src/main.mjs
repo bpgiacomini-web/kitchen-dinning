@@ -5,6 +5,7 @@ const root = document.querySelector("#app");
 const status = document.querySelector("#previewNotice");
 let dataset = { recipes: [], restaurants: [], cats: [] };
 let activeView = "home";
+let activeRecipeId = null;
 let extractedRecipe = null;
 const RECIPE_CATEGORIES = ["Appetizers & Snacks", "Breakfast & Brunch", "Soups, Salads & Sandwiches", "Main Dishes", "Mexican & Latin", "Italian", "BBQ & Grilling", "Side Dishes", "Sauces, Gravies & Condiments", "Bread & Baking", "Desserts", "Drinks", "Other"];
 const PREVIEW_RECIPE_STORAGE_KEY = "metro_eats_architecture_preview_recipes_v1";
@@ -176,7 +177,7 @@ function renderList(title, eyebrow, items, kind) {
     const reviewSummary = item.reviewCount ? `${item.reviewCount} saved review${item.reviewCount === 1 ? "" : "s"}` : "";
     const restaurantRating = item.rating == null ? null : (Number(item.rating) <= 5 ? Number(item.rating) * 2 : Number(item.rating));
     const restaurantDetails = !isRecipe ? `<details><summary>View restaurant details</summary><section class="restaurantDetailBlock"><h4>Restaurant information</h4><dl>${[["Address",item.address],["Cuisine",item.cuisine],["Rating",restaurantRating == null ? "" : `${restaurantRating.toFixed(1)}/10`],["Favorite",item.favorite ? "Yes" : ""],["Notes",item.notes],["Website",item.website],["Last updated",item.updatedAt ? formatDateTime(item.updatedAt) : ""]].filter(([,value])=>value!==""&&value!=null).map(([label,value])=>`<div><dt>${label}</dt><dd>${label === "Website" && /^https?:\/\//i.test(String(value)) ? `<a href="${escapeHtml(value)}" target="_blank" rel="noopener noreferrer">${escapeHtml(value)}</a>` : displayValue(value)}</dd></div>`).join("")}</dl></section>${reviewRecords.length ? reviewFields : `<p class="hint">No saved review details were found for this restaurant.</p>`}${restaurantPhotos.length ? `<section class="restaurantDetailBlock"><h4>Photos</h4><ul>${restaurantPhotos.map(photo=>`<li>${displayValue(photo)}</li>`).join("")}</ul></section>` : ""}</details>` : "";
-    return `<article class="readOnlyItem" data-category="${escapeHtml(item.category || "")}"><strong>${escapeHtml(isRecipe ? item.title : item.name)}</strong><small>${escapeHtml(isRecipe ? [item.category, item.subcategory, ingredients.length ? `${ingredients.length} ingredients` : "", ...timeParts].filter(Boolean).join(" · ") : [item.cuisine, item.address, restaurantRating != null ? `Rating ${restaurantRating.toFixed(1)}/10` : "", item.favorite ? "Favorite" : "", reviewSummary].filter(Boolean).join(" · ") || "No additional details saved")}</small>${isRecipe && (item.createdAt || item.updatedAt) ? `<p class="recipeSavedDate">Saved ${escapeHtml(formatDateTime(item.createdAt || item.updatedAt))}</p>` : ""}${isRecipe && String(item.id || "").startsWith("preview-recipe-") ? `<details class="recipeEditPanel"><summary>Edit recipe</summary><label>Title<input data-edit-field="title" value="${escapeHtml(item.title)}"></label><label>Recipe category<select data-edit-field="category">${RECIPE_CATEGORIES.map(category => `<option value="${escapeHtml(category)}"${(item.category || "Other") === category ? " selected" : ""}>${escapeHtml(category)}</option>`).join("")}</select></label><label>Subcategory<input data-edit-field="subcategory" value="${escapeHtml(item.subcategory || "")}" placeholder="e.g. Beef"></label><label>Ingredients, one per line<textarea data-edit-field="ingredients" rows="6">${escapeHtml(ingredients.join("\n"))}</textarea></label><label>Directions, one per line<textarea data-edit-field="directions" rows="6">${escapeHtml(directions.join("\n"))}</textarea></label><div class="recipeEditActions"><button class="btn primary" type="button" data-action="save-recipe-edit" data-recipe-id="${escapeHtml(item.id)}">Save Changes</button><button class="btn danger" type="button" data-action="delete-recipe" data-recipe-id="${escapeHtml(item.id)}">Delete Recipe</button></div><p class="edit-status" role="status" aria-live="polite"></p></details>` : ""}${isRecipe && (ingredients.length || directions.length) ? `<details><summary>View recipe</summary>${ingredients.length ? `<section class="recipeDetailBlock"><h4>Ingredients</h4><ul>${ingredients.map(ingredient => `<li>${escapeHtml(ingredient)}</li>`).join("")}</ul></section>` : `<p class="hint">No ingredients were found for this recipe.</p>`}${directions.length ? `<section class="recipeDetailBlock"><h4>Directions</h4><ol>${directions.map(step => `<li>${escapeHtml(cleanStep(step))}</li>`).join("")}</ol></section>` : ""}</details>` : restaurantDetails}</article>`;
+    return `<article class="readOnlyItem" data-category="${escapeHtml(item.category || "")}">${isRecipe ? `<div class="recipeCardHeader"><strong>${escapeHtml(item.title)}</strong>${String(item.id || "").startsWith("preview-recipe-") ? `<button class="btn recipeEditButton" type="button" data-action="open-recipe-edit" data-recipe-id="${escapeHtml(item.id)}">Edit</button>` : ""}</div>` : `<strong>${escapeHtml(item.name)}</strong>`}<small>${escapeHtml(isRecipe ? [item.category, item.subcategory, ingredients.length ? `${ingredients.length} ingredients` : "", ...timeParts].filter(Boolean).join(" · ") : [item.cuisine, item.address, restaurantRating != null ? `Rating ${restaurantRating.toFixed(1)}/10` : "", item.favorite ? "Favorite" : "", reviewSummary].filter(Boolean).join(" · ") || "No additional details saved")}</small>${isRecipe && (item.createdAt || item.updatedAt) ? `<p class="recipeSavedDate">Saved ${escapeHtml(formatDateTime(item.updatedAt || item.createdAt))}</p>` : ""}${isRecipe && (ingredients.length || directions.length) ? `<details><summary>View recipe</summary>${ingredients.length ? `<section class="recipeDetailBlock"><h4>Ingredients</h4><ul>${ingredients.map(ingredient => `<li>${escapeHtml(ingredient)}</li>`).join("")}</ul></section>` : `<p class="hint">No ingredients were found for this recipe.</p>`}${directions.length ? `<section class="recipeDetailBlock"><h4>Directions</h4><ol>${directions.map(step => `<li>${escapeHtml(cleanStep(step))}</li>`).join("")}</ol></section>` : ""}</details>` : restaurantDetails}</article>`;
   }).join("");
   if (isRecipe) {
     const categories = RECIPE_CATEGORIES;
@@ -216,6 +217,25 @@ function renderList(title, eyebrow, items, kind) {
     return;
   }
   root.innerHTML = `<section class="hero"><div class="heroIn"><div class="eyebrow">${eyebrow}</div><h2>${title}</h2><p>A read-only view of your current saved ${kind}.</p></div></section><section class="content-panel"><div class="sectionTitle"><div><div class="sectionKicker">${items.length} saved</div><h3>${title}</h3></div><span class="status">Read only</span></div>${rows ? `<div class="readOnlyList">${rows}</div>` : `<div class="empty">No ${kind} were found in the data source this preview can read.</div>`}<p class="hint">Nothing in this screen can change or delete your existing records.</p></section>`;
+}
+function renderRecipeEditor(recipeId) {
+  const recipe = dataset.recipes.find(item => String(item.id) === String(recipeId));
+  if (!recipe || !String(recipe.id || "").startsWith("preview-recipe-")) {
+    activeView = "recipes";
+    render();
+    return;
+  }
+  const ingredients = Array.isArray(recipe.ingredients) ? recipe.ingredients : [];
+  const directions = Array.isArray(recipe.directions) ? recipe.directions : [];
+  root.innerHTML = `<section class="hero"><div class="heroIn"><div class="eyebrow">Your kitchen · Recipe editor</div><h2>Edit Recipe</h2><p>Update your recipe details, then save to return to your recipe list.</p><div class="actions"><button class="btn" type="button" data-view="recipes">← Cancel and return to recipes</button></div></div></section>
+    <section class="content-panel recipeEditorPage"><form class="recipeEditPanel recipeEditorForm" data-recipe-id="${escapeHtml(recipe.id)}">
+      <div class="sectionTitle"><div><div class="sectionKicker">Editing recipe</div><h3>${escapeHtml(recipe.title)}</h3></div></div>
+      <label>Recipe title<input data-edit-field="title" value="${escapeHtml(recipe.title)}" required maxlength="180"></label>
+      <div class="recipeEditorTaxonomy"><label>Recipe category<select data-edit-field="category">${RECIPE_CATEGORIES.map(category => `<option value="${escapeHtml(category)}"${(recipe.category || "Other") === category ? " selected" : ""}>${escapeHtml(category)}</option>`).join("")}</select></label><label>Subcategory<input data-edit-field="subcategory" value="${escapeHtml(recipe.subcategory || "")}" placeholder="e.g. Beef"></label></div>
+      <label>Ingredients, one per line<textarea data-edit-field="ingredients" rows="8" required>${escapeHtml(ingredients.join("\n"))}</textarea></label>
+      <label>Directions, one step per line<textarea data-edit-field="directions" rows="8" required>${escapeHtml(directions.join("\n"))}</textarea></label>
+      <div class="recipeEditActions"><button class="btn primary" type="button" data-action="save-recipe-edit" data-recipe-id="${escapeHtml(recipe.id)}">Save Changes</button><button class="btn danger" type="button" data-action="delete-recipe" data-recipe-id="${escapeHtml(recipe.id)}">Delete Recipe</button></div><p class="edit-status" role="status" aria-live="polite"></p>
+    </form></section>`;
 }
 function renderAddRecipe() {
   root.innerHTML = `<section class="hero"><div class="heroIn"><div class="eyebrow">Your kitchen</div><h2>Add a Recipe</h2><p>Choose the easiest way to bring a recipe into Metro Eats. If a webpage import fails, copying the recipe text from the site and pasting it here is a perfectly good fallback.</p><div class="actions"><button class="btn" type="button" data-view="recipes">← Back to My Recipes</button></div></div></section>
@@ -286,6 +306,7 @@ function render() {
   });
   if (activeView === "recipes") renderList("My Recipes", "Your kitchen", dataset.recipes, "recipes");
   else if (activeView === "add-recipe") renderAddRecipe();
+  else if (activeView === "edit-recipe") renderRecipeEditor(activeRecipeId);
   else if (activeView === "dining") renderList("My Restaurants", "Your restaurants", dataset.restaurants, "dining");
   else if (activeView === "pizzas") renderFrozenPizzas();
   else renderHome();
@@ -330,6 +351,14 @@ document.addEventListener("click", async event => {
   }
   const actionButton = event.target.closest("[data-action]");
   if (!actionButton) return;
+  if (actionButton.dataset.action === "open-recipe-edit") {
+    activeRecipeId = actionButton.dataset.recipeId;
+    activeView = "edit-recipe";
+    render();
+    window.scrollTo({ top: 0, left: 0, behavior: "instant" });
+    root.focus({ preventScroll: true });
+    return;
+  }
   if (actionButton.dataset.action === "delete-recipe") {
     const id = actionButton.dataset.recipeId;
     const saved = readPreviewSavedRecipes();
@@ -369,7 +398,10 @@ document.addEventListener("click", async event => {
       saved[index] = { ...saved[index], title, category, subcategory, ingredients, directions, updatedAt: new Date().toISOString() };
       localStorage.setItem(PREVIEW_RECIPE_STORAGE_KEY, JSON.stringify(saved));
       mergePreviewSavedRecipes();
+      activeView = "recipes";
+      activeRecipeId = null;
       render();
+      window.scrollTo({ top: 0, left: 0, behavior: "instant" });
       return;
     } catch {
       if (status) status.textContent = "Could not save your changes in this browser. Please try again.";
