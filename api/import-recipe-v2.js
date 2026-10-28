@@ -13,10 +13,10 @@ export default async function handler(req, res) {
     const { fetchPublicRecipePage } = await import("../architecture-v2/src/features/recipes/safe-url-fetch.mjs");
     const page = await fetchPublicRecipePage(input);
     if (!page.body) return res.status(422).json({ error: "The recipe page could not be read. Nothing was saved. Paste the recipe text instead." });
-    const { parseRecipeJsonLd, parsePastedRecipeText } = await import("../architecture-v2/src/features/recipes/import-parser.mjs");
+    const { parseRecipeJsonLd, parsePastedRecipeText, cleanSourceUrl } = await import("../architecture-v2/src/features/recipes/import-parser.mjs");
     const recipe = parseRecipeJsonLd(page.body) || (page.contentType.startsWith("text/plain") || page.contentType.startsWith("text/markdown") ? parsePastedRecipeText(page.body) : null);
     if (!recipe) return res.status(422).json({ error: "No complete recipe ingredients and directions were found on that page. Nothing was saved; try pasting the recipe text instead." });
-    return res.status(200).json({ recipe: { ...recipe, source: page.finalUrl, extractionMethod: "Server-side recipe structured data" } });
+    return res.status(200).json({ recipe: { ...recipe, source: cleanSourceUrl(page.finalUrl), extractionMethod: "Server-side recipe structured data" } });
   } catch (error) {
     const reason = String(error && error.message || "");
     if (["invalid_url", "blocked_host", "blocked_address", "blocked_port"].includes(reason)) return res.status(400).json({ error: "That address is not allowed. Enter a public recipe webpage using HTTP or HTTPS." });
