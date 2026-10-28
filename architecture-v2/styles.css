@@ -389,3 +389,43 @@
   margin: 8px 0 0;
   overflow-wrap: anywhere;
 }
+
+
+/* Dark-mode recipe editor controls consistent with the Metro Eats palette. */
+#app .recipeEditPanel > label input,
+#app .recipeEditPanel > label textarea {
+  color: #f4f1e8;
+  background: #0b0f13;
+  border: 1px solid #394148;
+  border-radius: 12px;
+  padding: 12px 14px;
+  box-shadow: none;
+  caret-color: #d9ad5d;
+}
+#app .recipeEditPanel > label input::placeholder,
+#app .recipeEditPanel > label textarea::placeholder {
+  color: #9ba4ad;
+}
+#app .recipeEditPanel > label input:focus,
+#app .recipeEditPanel > label textarea:focus {
+  outline: 2px solid #d9ad5d;
+  outline-offset: 2px;
+  border-color: #d9ad5d;
+}
+#app .recipeEditActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  margin: 8px 0 12px;
+}
+#app .recipeEditActions .btn { margin: 0; }
+#app .recipeEditActions .btn.danger {
+  color: #ffe9e6;
+  background: #542a2a;
+  border: 1px solid #9b5550;
+}
+#app .recipeEditActions .btn.danger:focus-visible {
+  outline: 2px solid #d9ad5d;
+  outline-offset: 3px;
+}
