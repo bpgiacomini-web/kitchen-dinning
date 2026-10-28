@@ -482,3 +482,9 @@
   .app:has(> .top.homeStickyHeader) #app > .hero{margin-top:18px}
   .app:has(> .top.homeStickyHeader) #app > .hero .heroIn{padding-top:28px}
 }
+
+
+/* Match the home logo-to-card gap to the spacing between adjacent home cards. */
+@media(max-width:600px){
+  .app:has(> .top.homeStickyHeader) #app > .hero{margin-top:24px}
+}
