@@ -18,7 +18,15 @@ function mergePreviewSavedRecipes() {
 }
 function ensureBgChiliPreviewTest() {
   const saved = readPreviewSavedRecipes();
-  if (saved.some(item => String(item.title || "").toLowerCase() === "bg’s chili — save test".toLowerCase())) return;
+  const existing = saved.find(item => String(item.title || "").toLowerCase() === "bg’s chili — save test".toLowerCase());
+  if (existing) {
+    if (existing.category !== "Main Dishes" || existing.subcategory !== "Beef") {
+      existing.category = "Main Dishes";
+      existing.subcategory = "Beef";
+      try { localStorage.setItem(PREVIEW_RECIPE_STORAGE_KEY, JSON.stringify(saved)); } catch {}
+    }
+    return;
+  }
   const now = new Date().toISOString();
   const recipe = {
     id: "preview-recipe-bg-chili-seeded-test",
@@ -168,7 +176,7 @@ function renderList(title, eyebrow, items, kind) {
     const reviewSummary = item.reviewCount ? `${item.reviewCount} saved review${item.reviewCount === 1 ? "" : "s"}` : "";
     const restaurantRating = item.rating == null ? null : (Number(item.rating) <= 5 ? Number(item.rating) * 2 : Number(item.rating));
     const restaurantDetails = !isRecipe ? `<details><summary>View restaurant details</summary><section class="restaurantDetailBlock"><h4>Restaurant information</h4><dl>${[["Address",item.address],["Cuisine",item.cuisine],["Rating",restaurantRating == null ? "" : `${restaurantRating.toFixed(1)}/10`],["Favorite",item.favorite ? "Yes" : ""],["Notes",item.notes],["Website",item.website],["Last updated",item.updatedAt ? formatDateTime(item.updatedAt) : ""]].filter(([,value])=>value!==""&&value!=null).map(([label,value])=>`<div><dt>${label}</dt><dd>${label === "Website" && /^https?:\/\//i.test(String(value)) ? `<a href="${escapeHtml(value)}" target="_blank" rel="noopener noreferrer">${escapeHtml(value)}</a>` : displayValue(value)}</dd></div>`).join("")}</dl></section>${reviewRecords.length ? reviewFields : `<p class="hint">No saved review details were found for this restaurant.</p>`}${restaurantPhotos.length ? `<section class="restaurantDetailBlock"><h4>Photos</h4><ul>${restaurantPhotos.map(photo=>`<li>${displayValue(photo)}</li>`).join("")}</ul></section>` : ""}</details>` : "";
-    return `<article class="readOnlyItem" data-category="${escapeHtml(item.category || "")}"><strong>${escapeHtml(isRecipe ? item.title : item.name)}</strong><small>${escapeHtml(isRecipe ? [item.category, item.subcategory, ingredients.length ? `${ingredients.length} ingredients` : "", ...timeParts].filter(Boolean).join(" · ") : [item.cuisine, item.address, restaurantRating != null ? `Rating ${restaurantRating.toFixed(1)}/10` : "", item.favorite ? "Favorite" : "", reviewSummary].filter(Boolean).join(" · ") || "No additional details saved")}</small>${isRecipe && (item.createdAt || item.updatedAt) ? `<p class="recipeSavedDate">Saved ${escapeHtml(formatDateTime(item.createdAt || item.updatedAt))}</p>` : ""}${isRecipe && String(item.id || "").startsWith("preview-recipe-") ? `<details class="recipeEditPanel"><summary>Edit recipe</summary><label>Title<input data-edit-field="title" value="${escapeHtml(item.title)}"></label><label>Ingredients, one per line<textarea data-edit-field="ingredients" rows="6">${escapeHtml(ingredients.join("\n"))}</textarea></label><label>Directions, one per line<textarea data-edit-field="directions" rows="6">${escapeHtml(directions.join("\n"))}</textarea></label><div class="recipeEditActions"><button class="btn primary" type="button" data-action="save-recipe-edit" data-recipe-id="${escapeHtml(item.id)}">Save Changes</button><button class="btn danger" type="button" data-action="delete-recipe" data-recipe-id="${escapeHtml(item.id)}">Delete Recipe</button></div><p class="edit-status" role="status" aria-live="polite"></p></details>` : ""}${isRecipe && (ingredients.length || directions.length) ? `<details><summary>View recipe</summary>${ingredients.length ? `<section class="recipeDetailBlock"><h4>Ingredients</h4><ul>${ingredients.map(ingredient => `<li>${escapeHtml(ingredient)}</li>`).join("")}</ul></section>` : `<p class="hint">No ingredients were found for this recipe.</p>`}${directions.length ? `<section class="recipeDetailBlock"><h4>Directions</h4><ol>${directions.map(step => `<li>${escapeHtml(cleanStep(step))}</li>`).join("")}</ol></section>` : ""}</details>` : restaurantDetails}</article>`;
+    return `<article class="readOnlyItem" data-category="${escapeHtml(item.category || "")}"><strong>${escapeHtml(isRecipe ? item.title : item.name)}</strong><small>${escapeHtml(isRecipe ? [item.category, item.subcategory, ingredients.length ? `${ingredients.length} ingredients` : "", ...timeParts].filter(Boolean).join(" · ") : [item.cuisine, item.address, restaurantRating != null ? `Rating ${restaurantRating.toFixed(1)}/10` : "", item.favorite ? "Favorite" : "", reviewSummary].filter(Boolean).join(" · ") || "No additional details saved")}</small>${isRecipe && (item.createdAt || item.updatedAt) ? `<p class="recipeSavedDate">Saved ${escapeHtml(formatDateTime(item.createdAt || item.updatedAt))}</p>` : ""}${isRecipe && String(item.id || "").startsWith("preview-recipe-") ? `<details class="recipeEditPanel"><summary>Edit recipe</summary><label>Title<input data-edit-field="title" value="${escapeHtml(item.title)}"></label><label>Recipe category<select data-edit-field="category">${RECIPE_CATEGORIES.map(category => `<option value="${escapeHtml(category)}"${(item.category || "Other") === category ? " selected" : ""}>${escapeHtml(category)}</option>`).join("")}</select></label><label>Subcategory<input data-edit-field="subcategory" value="${escapeHtml(item.subcategory || "")}" placeholder="e.g. Beef"></label><label>Ingredients, one per line<textarea data-edit-field="ingredients" rows="6">${escapeHtml(ingredients.join("\n"))}</textarea></label><label>Directions, one per line<textarea data-edit-field="directions" rows="6">${escapeHtml(directions.join("\n"))}</textarea></label><div class="recipeEditActions"><button class="btn primary" type="button" data-action="save-recipe-edit" data-recipe-id="${escapeHtml(item.id)}">Save Changes</button><button class="btn danger" type="button" data-action="delete-recipe" data-recipe-id="${escapeHtml(item.id)}">Delete Recipe</button></div><p class="edit-status" role="status" aria-live="polite"></p></details>` : ""}${isRecipe && (ingredients.length || directions.length) ? `<details><summary>View recipe</summary>${ingredients.length ? `<section class="recipeDetailBlock"><h4>Ingredients</h4><ul>${ingredients.map(ingredient => `<li>${escapeHtml(ingredient)}</li>`).join("")}</ul></section>` : `<p class="hint">No ingredients were found for this recipe.</p>`}${directions.length ? `<section class="recipeDetailBlock"><h4>Directions</h4><ol>${directions.map(step => `<li>${escapeHtml(cleanStep(step))}</li>`).join("")}</ol></section>` : ""}</details>` : restaurantDetails}</article>`;
   }).join("");
   if (isRecipe) {
     const categories = RECIPE_CATEGORIES;
@@ -342,6 +350,8 @@ document.addEventListener("click", async event => {
     const id = actionButton.dataset.recipeId;
     const panel = actionButton.closest(".recipeEditPanel");
     const title = panel?.querySelector('[data-edit-field="title"]')?.value.trim() || "";
+    const category = panel?.querySelector('[data-edit-field="category"]')?.value || "Other";
+    const subcategory = panel?.querySelector('[data-edit-field="subcategory"]')?.value.trim() || "";
     const ingredients = (panel?.querySelector('[data-edit-field="ingredients"]')?.value || "").split("\n").map(value => value.trim()).filter(Boolean);
     const directions = (panel?.querySelector('[data-edit-field="directions"]')?.value || "").split("\n").map(value => value.trim()).filter(Boolean);
     const status = panel?.querySelector(".edit-status");
@@ -356,7 +366,7 @@ document.addEventListener("click", async event => {
         if (status) status.textContent = "Could not find this preview-saved recipe. Nothing was changed.";
         return;
       }
-      saved[index] = { ...saved[index], title, ingredients, directions, updatedAt: new Date().toISOString() };
+      saved[index] = { ...saved[index], title, category, subcategory, ingredients, directions, updatedAt: new Date().toISOString() };
       localStorage.setItem(PREVIEW_RECIPE_STORAGE_KEY, JSON.stringify(saved));
       mergePreviewSavedRecipes();
       render();
