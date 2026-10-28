@@ -212,7 +212,7 @@ function renderImportPreview(recipe) {
   const metadata = [["Servings", recipe.servings], ["Prep time", formatRecipeDuration(recipe.prepTime)], ["Cook time", formatRecipeDuration(recipe.cookTime)], ["Total time", formatRecipeDuration(recipe.totalTime)]].filter(([, value]) => value);
   const ingredients = (Array.isArray(recipe.ingredients) ? recipe.ingredients : []).map(cleanImportedIngredient);
   const directions = Array.isArray(recipe.directions) ? recipe.directions : [];
-  preview.innerHTML = `<article class="parsedRecipe"><p class="sectionKicker">Extracted recipe</p><h3>${escapeHtml(recipe.title)}</h3>${metadata.length ? `<dl>${metadata.map(([label, value]) => `<div><dt>${label}</dt><dd>${escapeHtml(value)}</dd></div>`).join("")}</dl>` : ""}${recipe.source ? `<p class="note"><a class="recipeSourceLink" href="${escapeHtml(recipe.source)}" target="_blank" rel="noopener noreferrer">Recipe link ↗</a></p>` : ""}<div class="actions"><button class="btn primary" type="button" data-action="save-recipe">Save to My Recipes</button></div><div class="parsedColumns"><section><h4>Ingredients · ${ingredients.length}</h4><ul>${ingredients.map(item => `<li>${escapeHtml(item)}</li>`).join("")}</ul></section><section><h4>Directions · ${directions.length}</h4><ol>${directions.map(item => `<li>${escapeHtml(item)}</li>`).join("")}</ol></section></div></article>`;
+  preview.innerHTML = `<article class="parsedRecipe"><p class="sectionKicker">Review before saving</p><div class="field"><label for="review-recipe-title">Recipe title</label><input id="review-recipe-title" maxlength="180" value="${escapeHtml(recipe.title)}"></div>${metadata.length ? `<dl>${metadata.map(([label, value]) => `<div><dt>${label}</dt><dd>${escapeHtml(value)}</dd></div>`).join("")}</dl>` : ""}${recipe.source ? `<p class="note"><a class="recipeSourceLink" href="${escapeHtml(recipe.source)}" target="_blank" rel="noopener noreferrer">Recipe link ↗</a></p>` : ""}<div class="actions"><button class="btn primary" type="button" data-action="save-recipe">Save to My Recipes</button></div><div class="field"><label for="review-recipe-ingredients">Ingredients (one per line)</label><textarea id="review-recipe-ingredients" rows="8" maxlength="30000">${escapeHtml(ingredients.join("\n"))}</textarea></div><div class="field"><label for="review-recipe-directions">Directions (one step per line)</label><textarea id="review-recipe-directions" rows="8" maxlength="30000">${escapeHtml(directions.join("\n"))}</textarea></div></article>`;
 }
 function render() {
   document.querySelector(".app > .top")?.classList.toggle("homeStickyHeader", activeView === "home");
@@ -278,8 +278,12 @@ document.addEventListener("click", async event => {
       if (feedback) feedback.textContent = "A complete recipe is required before saving.";
       return;
     }
+    const title = document.querySelector("#review-recipe-title")?.value.trim() || "";
+    const ingredients = (document.querySelector("#review-recipe-ingredients")?.value || "").split("\n").map(value => value.trim()).filter(Boolean);
+    const directions = (document.querySelector("#review-recipe-directions")?.value || "").split("\n").map(value => value.trim()).filter(Boolean);
+    if (!title || !ingredients.length || !directions.length) { if (feedback) feedback.textContent = "Please provide a title, at least one ingredient, and at least one direction."; return; }
     const saved = readPreviewSavedRecipes();
-    const recipe = { ...extractedRecipe, id: "preview-recipe-" + Date.now(), category: "Imported", createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() };
+    const recipe = { ...extractedRecipe, id: "preview-recipe-" + Date.now(), title, ingredients, directions, category: "Imported", createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() };
     try {
       localStorage.setItem(PREVIEW_RECIPE_STORAGE_KEY, JSON.stringify([...saved, recipe]));
       dataset.recipes = [...dataset.recipes, recipe];
