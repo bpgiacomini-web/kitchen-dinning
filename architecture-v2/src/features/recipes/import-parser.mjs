@@ -32,7 +32,7 @@ function flattenInstructions(value) {
   return text ? [text] : [];
 }
 
-function cleanSourceUrl(value) {
+export function cleanSourceUrl(value) {
   const raw = plainText(value);
   if (!raw) return "";
   try {
