@@ -429,3 +429,6 @@
   outline: 2px solid #d9ad5d;
   outline-offset: 3px;
 }
+
+#app .recipeEditPanel > label select { display:block; box-sizing:border-box; width:100%; max-width:100%; min-width:0; margin:8px 0 0; padding:12px 14px; color:#f4f1e8; background:#0b0f13; border:1px solid #394148; border-radius:12px; font:inherit; }
+#app .recipeEditPanel > label select:focus { outline:2px solid #d9ad5d; outline-offset:2px; border-color:#d9ad5d; }
