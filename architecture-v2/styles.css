@@ -447,3 +447,29 @@
 #app .recipeEditorTaxonomy{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
 #app .recipeEditorForm .recipeEditActions{display:flex;flex-wrap:wrap;gap:10px}
 @media(max-width:600px){#app .recipeEditorTaxonomy{grid-template-columns:1fr}#app .recipeEditorForm .recipeEditActions .btn{flex:1 1 100%}}
+
+
+/* Global vertical rhythm refinement: tighter cards without shrinking touch targets. */
+#app .hero{margin-bottom:18px}
+#app .heroIn{padding-top:clamp(22px,4.8vw,40px);padding-bottom:clamp(22px,4.8vw,40px)}
+#app .hero h2{margin-top:9px;margin-bottom:10px}
+#app .hero p{margin-top:0;margin-bottom:0;line-height:1.45}
+#app .content-panel{margin-top:14px;padding-top:15px;padding-bottom:15px}
+#app .sectionTitle{margin-top:22px;margin-bottom:12px}
+#app .readOnlyItem{padding:13px 15px}
+#app .readOnlyItem small{margin-top:4px}
+#app .list{gap:10px}
+#app .featureCard{padding:17px;min-height:155px}
+#app .storyCard{padding:18px}
+#app .choiceCard{padding:15px;min-height:135px}
+#app .guideCard{padding:13px;margin-top:10px}
+#app .toolbar{margin-top:14px;margin-bottom:10px}
+#app .field{margin-bottom:10px}
+@media(max-width:600px){
+  #app .heroIn{padding:22px 20px}
+  #app .hero h2{margin-top:8px;margin-bottom:8px}
+  #app .content-panel{margin-top:12px;padding:13px}
+  #app .sectionTitle{margin-top:18px;margin-bottom:10px}
+  #app .readOnlyItem{padding:12px}
+  #app .featureCard{padding:16px;min-height:140px}
+}
