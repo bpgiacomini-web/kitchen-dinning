@@ -488,3 +488,10 @@
 @media(max-width:600px){
   .app:has(> .top.homeStickyHeader) #app > .hero{margin-top:24px}
 }
+
+
+/* Home hero needs a clearly visible, generous separation from the brand banner. */
+.app:has(> .top.homeStickyHeader) #app > .hero{margin-top:38px}
+@media(max-width:600px){
+  .app:has(> .top.homeStickyHeader) #app > .hero{margin-top:38px}
+}
