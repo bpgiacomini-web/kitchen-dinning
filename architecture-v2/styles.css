@@ -336,3 +336,8 @@
 /* Keep long imported source URLs inside the recipe card on narrow screens. */
 #app .parsedRecipe .note{min-width:0;max-width:100%;overflow-wrap:anywhere;word-break:break-word}
 #app .parsedRecipe{min-width:0;max-width:100%;box-sizing:border-box}
+
+
+/* Source is a compact actionable link, never a long visible URL. */
+#app .parsedRecipe .recipeSourceLink{display:inline-flex;align-items:center;gap:6px;color:#e3c477;font-weight:750;text-decoration:underline;text-underline-offset:3px}
+#app .parsedRecipe .recipeSourceLink:focus-visible{outline:2px solid #d6a85b;outline-offset:3px;border-radius:4px}
