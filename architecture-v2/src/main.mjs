@@ -6,6 +6,7 @@ const status = document.querySelector("#previewNotice");
 let dataset = { recipes: [], restaurants: [], cats: [] };
 let activeView = "home";
 let extractedRecipe = null;
+const RECIPE_CATEGORIES = ["Appetizers & Snacks", "Breakfast & Brunch", "Soups, Salads & Sandwiches", "Main Dishes", "Mexican & Latin", "Italian", "BBQ & Grilling", "Side Dishes", "Sauces, Gravies & Condiments", "Bread & Baking", "Desserts", "Drinks", "Other"];
 const PREVIEW_RECIPE_STORAGE_KEY = "metro_eats_architecture_preview_recipes_v1";
 function readPreviewSavedRecipes() {
   try { const value = JSON.parse(localStorage.getItem(PREVIEW_RECIPE_STORAGE_KEY) || "[]"); return Array.isArray(value) ? value.filter(item => item && typeof item === "object" && item.id && item.title) : []; } catch { return []; }
@@ -22,7 +23,8 @@ function ensureBgChiliPreviewTest() {
   const recipe = {
     id: "preview-recipe-bg-chili-seeded-test",
     title: "BG’s Chili — Save Test",
-    category: "Imported",
+    category: "Main Dishes",
+    subcategory: "Beef",
     ingredients: [
       "3 ¼ lbs ground chuck",
       "1 lb chorizo",
@@ -166,10 +168,10 @@ function renderList(title, eyebrow, items, kind) {
     const reviewSummary = item.reviewCount ? `${item.reviewCount} saved review${item.reviewCount === 1 ? "" : "s"}` : "";
     const restaurantRating = item.rating == null ? null : (Number(item.rating) <= 5 ? Number(item.rating) * 2 : Number(item.rating));
     const restaurantDetails = !isRecipe ? `<details><summary>View restaurant details</summary><section class="restaurantDetailBlock"><h4>Restaurant information</h4><dl>${[["Address",item.address],["Cuisine",item.cuisine],["Rating",restaurantRating == null ? "" : `${restaurantRating.toFixed(1)}/10`],["Favorite",item.favorite ? "Yes" : ""],["Notes",item.notes],["Website",item.website],["Last updated",item.updatedAt ? formatDateTime(item.updatedAt) : ""]].filter(([,value])=>value!==""&&value!=null).map(([label,value])=>`<div><dt>${label}</dt><dd>${label === "Website" && /^https?:\/\//i.test(String(value)) ? `<a href="${escapeHtml(value)}" target="_blank" rel="noopener noreferrer">${escapeHtml(value)}</a>` : displayValue(value)}</dd></div>`).join("")}</dl></section>${reviewRecords.length ? reviewFields : `<p class="hint">No saved review details were found for this restaurant.</p>`}${restaurantPhotos.length ? `<section class="restaurantDetailBlock"><h4>Photos</h4><ul>${restaurantPhotos.map(photo=>`<li>${displayValue(photo)}</li>`).join("")}</ul></section>` : ""}</details>` : "";
-    return `<article class="readOnlyItem"><strong>${escapeHtml(isRecipe ? item.title : item.name)}</strong><small>${escapeHtml(isRecipe ? [item.category, item.subcategory, ingredients.length ? `${ingredients.length} ingredients` : "", ...timeParts].filter(Boolean).join(" · ") : [item.cuisine, item.address, restaurantRating != null ? `Rating ${restaurantRating.toFixed(1)}/10` : "", item.favorite ? "Favorite" : "", reviewSummary].filter(Boolean).join(" · ") || "No additional details saved")}</small>${isRecipe && (item.createdAt || item.updatedAt) ? `<p class="recipeSavedDate">Saved ${escapeHtml(formatDateTime(item.createdAt || item.updatedAt))}</p>` : ""}${isRecipe && String(item.id || "").startsWith("preview-recipe-") ? `<details class="recipeEditPanel"><summary>Edit recipe</summary><label>Title<input data-edit-field="title" value="${escapeHtml(item.title)}"></label><label>Ingredients, one per line<textarea data-edit-field="ingredients" rows="6">${escapeHtml(ingredients.join("\n"))}</textarea></label><label>Directions, one per line<textarea data-edit-field="directions" rows="6">${escapeHtml(directions.join("\n"))}</textarea></label><div class="recipeEditActions"><button class="btn primary" type="button" data-action="save-recipe-edit" data-recipe-id="${escapeHtml(item.id)}">Save Changes</button><button class="btn danger" type="button" data-action="delete-recipe" data-recipe-id="${escapeHtml(item.id)}">Delete Recipe</button></div><p class="edit-status" role="status" aria-live="polite"></p></details>` : ""}${isRecipe && (ingredients.length || directions.length) ? `<details><summary>View recipe</summary>${ingredients.length ? `<section class="recipeDetailBlock"><h4>Ingredients</h4><ul>${ingredients.map(ingredient => `<li>${escapeHtml(ingredient)}</li>`).join("")}</ul></section>` : `<p class="hint">No ingredients were found for this recipe.</p>`}${directions.length ? `<section class="recipeDetailBlock"><h4>Directions</h4><ol>${directions.map(step => `<li>${escapeHtml(cleanStep(step))}</li>`).join("")}</ol></section>` : ""}</details>` : restaurantDetails}</article>`;
+    return `<article class="readOnlyItem" data-category="${escapeHtml(item.category || "")}"><strong>${escapeHtml(isRecipe ? item.title : item.name)}</strong><small>${escapeHtml(isRecipe ? [item.category, item.subcategory, ingredients.length ? `${ingredients.length} ingredients` : "", ...timeParts].filter(Boolean).join(" · ") : [item.cuisine, item.address, restaurantRating != null ? `Rating ${restaurantRating.toFixed(1)}/10` : "", item.favorite ? "Favorite" : "", reviewSummary].filter(Boolean).join(" · ") || "No additional details saved")}</small>${isRecipe && (item.createdAt || item.updatedAt) ? `<p class="recipeSavedDate">Saved ${escapeHtml(formatDateTime(item.createdAt || item.updatedAt))}</p>` : ""}${isRecipe && String(item.id || "").startsWith("preview-recipe-") ? `<details class="recipeEditPanel"><summary>Edit recipe</summary><label>Title<input data-edit-field="title" value="${escapeHtml(item.title)}"></label><label>Ingredients, one per line<textarea data-edit-field="ingredients" rows="6">${escapeHtml(ingredients.join("\n"))}</textarea></label><label>Directions, one per line<textarea data-edit-field="directions" rows="6">${escapeHtml(directions.join("\n"))}</textarea></label><div class="recipeEditActions"><button class="btn primary" type="button" data-action="save-recipe-edit" data-recipe-id="${escapeHtml(item.id)}">Save Changes</button><button class="btn danger" type="button" data-action="delete-recipe" data-recipe-id="${escapeHtml(item.id)}">Delete Recipe</button></div><p class="edit-status" role="status" aria-live="polite"></p></details>` : ""}${isRecipe && (ingredients.length || directions.length) ? `<details><summary>View recipe</summary>${ingredients.length ? `<section class="recipeDetailBlock"><h4>Ingredients</h4><ul>${ingredients.map(ingredient => `<li>${escapeHtml(ingredient)}</li>`).join("")}</ul></section>` : `<p class="hint">No ingredients were found for this recipe.</p>`}${directions.length ? `<section class="recipeDetailBlock"><h4>Directions</h4><ol>${directions.map(step => `<li>${escapeHtml(cleanStep(step))}</li>`).join("")}</ol></section>` : ""}</details>` : restaurantDetails}</article>`;
   }).join("");
   if (isRecipe) {
-    const categories = [...new Set(items.map(item => item.category).filter(Boolean))].sort((a,b)=>String(a).localeCompare(String(b)));
+    const categories = RECIPE_CATEGORIES;
     root.innerHTML = `<section class="hero"><div class="heroIn"><div class="eyebrow">Your kitchen</div><h2>My Recipes</h2><p>Your saved recipes first. Search, browse categories, and open a recipe whenever you're ready to cook.</p></div></section>
       <section class="content-panel recipeCollectionPanel">
         <div class="sectionTitle"><div><div class="sectionKicker">Your collection</div><h3>Saved recipes</h3></div><button class="btn primary" type="button" data-view="add-recipe">＋ Add a Recipe</button></div>
@@ -201,10 +203,6 @@ function renderList(title, eyebrow, items, kind) {
       }
       empty.hidden = visible > 0;
     };
-    document.querySelectorAll("#recipe-collection-list .readOnlyItem").forEach((card,index) => {
-      const item = items[index];
-      if (item?.category) card.dataset.category = item.category;
-    });
     search?.addEventListener("input", applyFilter);
     category?.addEventListener("change", applyFilter);
     return;
