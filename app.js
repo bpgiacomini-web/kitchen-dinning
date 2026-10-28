@@ -2,18 +2,18 @@
 const KEY='metro_eats_v2';
 const OLD_KEY='metro_eats_v1';
 const categories={
- 'Appetizers & Snacks':['Dips & Spreads','Finger Foods','Chips & Nachos','Wings','Charcuterie','Party Snacks'],
- 'Breakfast & Brunch':['Eggs','Breakfast Meats','Pancakes & Waffles','French Toast','Biscuits & Gravy','Breakfast Casseroles','Brunch'],
- 'Soups, Salads & Sandwiches':['Soups','Stews','Chili','Salads','Sandwiches','Burgers','Wraps'],
- 'Main Dishes':['Beef','Pork','Chicken','Turkey','Seafood','Pasta','Casseroles','Meatless','Slow Cooker','One-Pot Meals'],
- 'Mexican & Latin':['Tacos','Burritos','Enchiladas','Fajitas','Quesadillas','Nachos','Mexican Sides','Latin American'],
- 'Italian':['Pasta','Pizza','Italian Beef','Chicken','Sauces','Italian Sides'],
- 'BBQ & Grilling':['Steaks','Burgers','Ribs','Brisket','Pulled Pork','Chicken','Grilled Seafood','BBQ Sauces & Rubs'],
- 'Side Dishes':['Potatoes','Rice','Vegetables','Mac & Cheese','Pasta Sides','Casseroles','Beans','Bread & Rolls'],
- 'Sauces, Gravies & Condiments':['Sauces','Gravies','Marinades','Rubs','Dressings','Dips'],
- 'Bread & Baking':['Breads','Biscuits','Rolls','Muffins','Cakes','Cookies','Pies','Pastries'],
- 'Desserts':['Cakes','Pies','Cookies','Brownies & Bars','Ice Cream','Puddings','Fruit Desserts'],
- 'Drinks':['Cocktails','Beer Drinks','Wine Drinks','Non-Alcoholic','Coffee','Tea','Smoothies & Shakes'],
+ 'Appetizers & Snacks':['Dips & Spreads','Finger Foods','Chips & Nachos','Wings','Charcuterie','Party Snacks','Other'],
+ 'Breakfast & Brunch':['Eggs','Breakfast Meats','Pancakes & Waffles','French Toast','Biscuits & Gravy','Breakfast Casseroles','Brunch','Other'],
+ 'Soups, Salads & Sandwiches':['Soups','Stews','Chili','Salads','Sandwiches','Burgers','Wraps','Other'],
+ 'Main Dishes':['Beef','Pork','Chicken','Turkey','Seafood','Pasta','Casseroles','Meatless','Slow Cooker','One-Pot Meals','Other'],
+ 'Mexican & Latin':['Tacos','Burritos','Enchiladas','Fajitas','Quesadillas','Nachos','Mexican Sides','Latin American','Other'],
+ 'Italian':['Pasta','Pizza','Italian Beef','Chicken','Sauces','Italian Sides','Other'],
+ 'BBQ & Grilling':['Steaks','Burgers','Ribs','Brisket','Pulled Pork','Chicken','Grilled Seafood','BBQ Sauces & Rubs','Other'],
+ 'Side Dishes':['Potatoes','Rice','Vegetables','Mac & Cheese','Pasta Sides','Casseroles','Beans','Bread & Rolls','Other'],
+ 'Sauces, Gravies & Condiments':['Sauces','Gravies','Marinades','Rubs','Dressings','Dips','Other'],
+ 'Bread & Baking':['Breads','Biscuits','Rolls','Muffins','Cakes','Cookies','Pies','Pastries','Other'],
+ 'Desserts':['Cakes','Pies','Cookies','Brownies & Bars','Ice Cream','Puddings','Fruit Desserts','Other'],
+ 'Drinks':['Cocktails','Beer Drinks','Wine Drinks','Non-Alcoholic','Coffee','Tea','Smoothies & Shakes','Other'],
  'Other':['Other']
 };
 const restaurantTypes=['American','Bar & Grill','BBQ','Burgers','Breakfast & Brunch','Cafés & Coffee','Chinese','Deli','Fast Food','Fine Dining','French','Indian','Italian','Japanese','Korean','Mediterranean','Mexican','Middle Eastern','Pizza','Seafood','Southern / Soul Food','Steakhouse','Thai','Vietnamese','Vegetarian / Vegan','Food Truck','Bakery','Dessert / Ice Cream','Brewery / Brewpub','Gastropub','Sports Bar','Other'];
@@ -216,10 +216,45 @@ function openRecipeChooser(){modal.classList.add('show');modalBody.innerHTML=`<d
 async function deleteRecipeById(id){let index=-1;if(id)index=db.recipes.findIndex(x=>String(x.id)===String(id));if(index<0)return alert('That recipe could not be found in Metro Eats.');let saved=db.recipes[index];if(!confirm('Delete this recipe? This will permanently remove the recipe, ingredients, directions, photo and saved recipe data from Metro Eats.'))return;let backup=JSON.parse(JSON.stringify(saved));try{db.recipes.splice(index,1);save();closeModal();renderRecipes();updateStory();alert('Recipe deleted.')}catch(e){db.recipes.splice(index,0,backup);alert('Metro Eats could not delete this recipe. Your data was not changed.\n\n'+(e?.message||'Please try again.'))}}
 async function deleteCurrentRecipe(){let r=window._editingRecipe;if(!r)return;return deleteRecipeById(r.id)}
 function openRecipe(id,imported=null){let r=id==='new'?{id:'new',title:'',category:'Main Dishes',subcategory:'Beef',servings:'',time:'',ingredients:[],steps:[],favorite:false,createdAt:null,updatedAt:null,photos:[]}:db.recipes.find(x=>x.id===id);if(!r)return;modal.classList.add('show');window._editingRecipe=id==='new'?null:r;modalBody.innerHTML=`<div class="eyebrow">Recipe editor</div><h2>${id==='new'?'Create Recipe':'Edit Recipe'}</h2>${id!=='new'&&!imported?'<div class="notice" style="margin:12px 0"><strong>Editing saved recipe</strong><div class="actions" style="margin-top:10px"><button type="button" class="btn danger" onclick="deleteCurrentRecipe()">Delete Recipe</button></div></div>':''}<div class="fields"><div class="field full"><label for="fTitle">Recipe name</label><input id="fTitle" autocomplete="off" value="${esc(imported?.title??r.title)}"></div><div class="field"><label for="fCat">Category</label><select id="fCat" onchange="fillSubcats()">${Object.keys(categories).map(c=>`<option value="${esc(c)}" ${c===(imported?.category||r.category)?'selected':''}>${esc(c)}</option>`).join('')}</select></div><div class="field"><label for="fSub">Subcategory</label><select id="fSub"></select></div><div class="field"><label for="fServ">Servings</label><input id="fServ" value="${esc(imported?.servings??r.servings)}"></div><div class="field"><label for="fTime">Prep + cook time</label><input id="fTime" value="${esc(normalizeImportedTime(imported?.time??r.time))}"></div><div class="field full"><label for="fIng">Ingredients — one per line</label><textarea id="fIng" rows="9">${esc((imported?.ingredients||r.ingredients||[]).join('\n'))}</textarea></div><div class="field full"><label for="fSteps">Directions — one step per line</label><textarea id="fSteps" rows="9">${esc((imported?.steps||r.steps||[]).map((step,i)=>(i+1)+'. '+step).join('\n\n'))}</textarea></div><div class="field full"><label for="fPhoto">Recipe photo</label><input id="fPhoto" type="file" accept="image/*" capture="environment" onchange="previewRecipePhoto(this)"><div class="fileNote">Photos stay in your Metro Eats backup/export and are stored locally on this device.</div><div id="recipePhotoPreview"></div></div></div>${r.createdAt?stamp('Added',r.createdAt):''}${r.updatedAt?stamp('Last updated',r.updatedAt):''}<div class="actions"><button class="btn primary" onclick="saveRecipe('${id}')">Save Recipe</button><button class="btn danger" onclick="closeModal()">Cancel</button></div>`;window._recipePhoto=(imported?.photos?.[0]||r.photos?.[0]||'');renderRecipePhotoPreview();fillSubcats(imported?.subcategory||r.subcategory||'');const stepField=document.getElementById('fSteps');if(stepField)stepField.scrollTop=0;const ingredientField=document.getElementById('fIng');if(ingredientField)ingredientField.scrollTop=0}
-function fillSubcats(selected=''){let c=document.getElementById('fCat')?.value,e=document.getElementById('fSub');if(!e)return;let opts=categories[c]||['Other'];e.innerHTML=opts.map(s=>`<option value="${esc(s)}" ${s===selected?'selected':''}>${esc(s)}</option>`).join('')}
+function fillSubcats(selected=null){
+  const category=document.getElementById('fCat')?.value;
+  const select=document.getElementById('fSub');
+  if(!select)return;
+  const options=categories[category]||['Other'];
+  const preferred=selected===null||selected===undefined||selected===''
+    ? options[0]
+    : (options.includes(selected)?selected:(options.includes('Other')?'Other':options[0]));
+  select.innerHTML=options.map(option=>'<option value="'+esc(option)+'"'+(option===preferred?' selected':'')+'>'+esc(option)+'</option>').join('');
+}
 async function previewRecipePhoto(input){if(input.files?.[0]){window._recipePhoto=await readFileAsDataUrl(input.files[0]);renderRecipePhotoPreview()}}
 function renderRecipePhotoPreview(){let e=document.getElementById('recipePhotoPreview');if(!e)return;e.innerHTML=window._recipePhoto?`<img class="recipePhoto" src="${esc(window._recipePhoto)}" alt="Recipe photo preview"><button class="btn" onclick="window._recipePhoto='';renderRecipePhotoPreview()">Remove Photo</button>`:''}
-function saveRecipe(id){let old=id==='new'?null:db.recipes.find(x=>x.id===id),now=new Date().toISOString(),r={id:id==='new'?uid():id,title:fieldValue('fTitle')||'Untitled Recipe',category:fieldValue('fCat'),subcategory:fieldValue('fSub'),servings:fieldValue('fServ'),time:fieldValue('fTime'),ingredients:fieldValue('fIng').split('\n').map(x=>x.trim()).filter(Boolean),steps:fieldValue('fSteps').split('\n').map(x=>x.trim()).filter(Boolean),favorite:old?.favorite||false,photos:window._recipePhoto?[window._recipePhoto]:[],createdAt:old?.createdAt||now,updatedAt:old?now:null};if(!r.ingredients.length||!r.steps.length)return alert('Please add ingredients and directions before saving.');if(id==='new')db.recipes.unshift(r);else db.recipes=db.recipes.map(x=>x.id===id?r:x);save();window._recipePhoto='';closeModal();renderRecipes();updateStory()}
+function saveRecipe(id){
+  const old=id==='new'?null:db.recipes.find(x=>x.id===id);
+  const now=new Date().toISOString();
+  const category=fieldValue('fCat');
+  const options=categories[category]||['Other'];
+  const requestedSubcategory=fieldValue('fSub');
+  const subcategory=options.includes(requestedSubcategory)
+    ? requestedSubcategory
+    : (options.includes('Other')?'Other':(options[0]||'Other'));
+  const r={
+    id:id==='new'?uid():id,
+    title:fieldValue('fTitle')||'Untitled Recipe',
+    category,
+    subcategory,
+    servings:fieldValue('fServ'),
+    time:fieldValue('fTime'),
+    ingredients:fieldValue('fIng').split('\n').map(x=>x.trim()).filter(Boolean),
+    steps:fieldValue('fSteps').split('\n').map(x=>x.trim()).filter(Boolean),
+    favorite:old?.favorite||false,
+    photos:window._recipePhoto?[window._recipePhoto]:[],
+    createdAt:old?.createdAt||now,
+    updatedAt:old?now:null
+  };
+  if(!r.ingredients.length||!r.steps.length)return alert('Please add ingredients and directions before saving.');
+  if(id==='new')db.recipes.unshift(r);else db.recipes=db.recipes.map(x=>x.id===id?r:x);
+  save();window._recipePhoto='';closeModal();renderRecipes();updateStory();
+}
 function openWebsiteImporter(){modal.classList.add('show');modalBody.innerHTML=`<div class="eyebrow">Recipe importer</div><h2>Import From Website</h2><p class="hint">Metro Eats looks first for recipe structured data, then for clearly labeled Ingredients and Directions sections. Nothing is saved until you review it.</p><div class="field"><label for="recipeUrl">Recipe URL</label><input id="recipeUrl" type="url" inputmode="url" autocomplete="url" placeholder="https://example.com/recipe…"></div><div class="actions"><button class="btn primary" onclick="fetchWebsiteForCreateRecipe()">Import Recipe</button><button class="btn" onclick="openRecipeChooser()">← Back</button></div><div class="notice">Stories, nutrition, equipment, tips, ads, comments and unrelated page text are intentionally excluded.</div>`}
 function openPasteImporter(){modal.classList.add('show');modalBody.innerHTML=`<div class="eyebrow">Recipe importer</div><h2>Paste Recipe</h2><p class="hint">Paste the recipe text. Metro Eats will look for the title, ingredients and directions and then let you review everything in the normal editor.</p><div class="field"><label for="rawRecipe">Recipe text</label><textarea id="rawRecipe" rows="15" placeholder="Paste the recipe here…"></textarea></div><div class="actions"><button class="btn primary" onclick="parsePastedRecipe()">Parse Recipe</button><button class="btn" onclick="openRecipeChooser()">← Back</button></div>`}
 function cleanImportedLine(s){
