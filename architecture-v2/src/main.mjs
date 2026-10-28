@@ -70,7 +70,8 @@ function ratingValue(value, key = "") {
 }
 function renderList(title, eyebrow, items, kind) {
   const isRecipe = kind === "recipes";
-  const rows = items.map(item => {
+  const visibleItems = isRecipe ? items.filter(item => !/^PREVIEW TEST\b/i.test(String(item.title || ""))) : items;
+  const rows = visibleItems.map(item => {
     const ingredients = Array.isArray(item.ingredients) ? item.ingredients : [];
     const directions = Array.isArray(item.directions) ? item.directions : [];
     const timeParts = isRecipe
