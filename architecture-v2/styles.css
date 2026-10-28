@@ -331,3 +331,8 @@
     border-radius: 0;
   }
 }
+
+
+/* Keep long imported source URLs inside the recipe card on narrow screens. */
+#app .parsedRecipe .note{min-width:0;max-width:100%;overflow-wrap:anywhere;word-break:break-word}
+#app .parsedRecipe{min-width:0;max-width:100%;box-sizing:border-box}
