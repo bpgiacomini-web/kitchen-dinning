@@ -473,3 +473,12 @@
   #app .readOnlyItem{padding:12px}
   #app .featureCard{padding:16px;min-height:140px}
 }
+
+
+/* Home-only breathing room below the oversized skyline logo. Other pages stay compact. */
+.app:has(> .top.homeStickyHeader) #app > .hero{margin-top:16px}
+.app:has(> .top.homeStickyHeader) #app > .hero .heroIn{padding-top:clamp(28px,5.5vw,44px)}
+@media(max-width:520px){
+  .app:has(> .top.homeStickyHeader) #app > .hero{margin-top:18px}
+  .app:has(> .top.homeStickyHeader) #app > .hero .heroIn{padding-top:28px}
+}
