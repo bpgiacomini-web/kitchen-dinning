@@ -212,7 +212,7 @@ function renderImportPreview(recipe) {
   const metadata = [["Servings", recipe.servings], ["Prep time", formatRecipeDuration(recipe.prepTime)], ["Cook time", formatRecipeDuration(recipe.cookTime)], ["Total time", formatRecipeDuration(recipe.totalTime)]].filter(([, value]) => value);
   const ingredients = (Array.isArray(recipe.ingredients) ? recipe.ingredients : []).map(cleanImportedIngredient);
   const directions = Array.isArray(recipe.directions) ? recipe.directions : [];
-  preview.innerHTML = `<article class="parsedRecipe"><p class="sectionKicker">Review before saving</p><div class="field"><label for="review-recipe-title">Recipe title</label><input id="review-recipe-title" maxlength="180" value="${escapeHtml(recipe.title)}"></div>${metadata.length ? `<dl>${metadata.map(([label, value]) => `<div><dt>${label}</dt><dd>${escapeHtml(value)}</dd></div>`).join("")}</dl>` : ""}${recipe.source ? `<p class="note"><a class="recipeSourceLink" href="${escapeHtml(recipe.source)}" target="_blank" rel="noopener noreferrer">Recipe link ↗</a></p>` : ""}<div class="field"><label for="review-recipe-ingredients">Ingredients (one per line)</label><textarea id="review-recipe-ingredients" rows="8" maxlength="30000">${escapeHtml(ingredients.join("\n"))}</textarea></div><div class="field"><label for="review-recipe-directions">Directions (one step per line)</label><textarea id="review-recipe-directions" rows="8" maxlength="30000">${escapeHtml(directions.join("\n"))}</textarea></div><div class="actions"><button class="btn primary" type="button" data-action="save-recipe">Save to My Recipes</button></div></article>`;
+  preview.innerHTML = `<article class="parsedRecipe"><p class="sectionKicker">Review before saving</p><div class="field"><label for="review-recipe-title">Recipe title</label><input id="review-recipe-title" maxlength="180" value="${escapeHtml(recipe.title)}"></div>${metadata.length ? `<dl>${metadata.map(([label, value]) => `<div><dt>${label}</dt><dd>${escapeHtml(value)}</dd></div>`).join("")}</dl>` : ""}${recipe.source ? `<p class="note"><a class="recipeSourceLink" href="${escapeHtml(recipe.source)}" target="_blank" rel="noopener noreferrer">Recipe link ↗</a></p>` : ""}<div class="field"><label for="review-recipe-ingredients">Ingredients (one per line)</label><textarea id="review-recipe-ingredients" rows="8" maxlength="30000">${escapeHtml(ingredients.join("\n"))}</textarea></div><div class="field"><label for="review-recipe-directions">Directions (one step per line)</label><textarea id="review-recipe-directions" rows="8" maxlength="30000">${escapeHtml(directions.join("\n"))}</textarea></div><div class="actions"><button class="btn primary" type="button" data-action="save-recipe">Save to My Recipes</button></div><p id="recipe-save-status" class="importFeedback" role="status" aria-live="polite"></p></article>`;
 }
 function render() {
   document.querySelector(".app > .top")?.classList.toggle("homeStickyHeader", activeView === "home");
@@ -283,14 +283,32 @@ document.addEventListener("click", async event => {
     const directions = (document.querySelector("#review-recipe-directions")?.value || "").split("\n").map(value => value.trim()).filter(Boolean);
     if (!title || !ingredients.length || !directions.length) { if (feedback) feedback.textContent = "Please provide a title, at least one ingredient, and at least one direction."; return; }
     const saved = readPreviewSavedRecipes();
+    const normalize = value => String(value || "").trim().toLocaleLowerCase();
+    const duplicate = saved.find(item =>
+      normalize(item.title) === normalize(title) &&
+      normalize(item.source) === normalize(extractedRecipe.source) &&
+      JSON.stringify(item.ingredients || []) === JSON.stringify(ingredients) &&
+      JSON.stringify(item.directions || []) === JSON.stringify(directions)
+    );
+    const inlineStatus = document.querySelector("#recipe-save-status");
+    if (duplicate) {
+      if (inlineStatus) inlineStatus.textContent = "Already saved on this device. You can find this recipe in My Recipes; no duplicate was added.";
+      actionButton.textContent = "Already Saved ✓";
+      actionButton.disabled = true;
+      if (feedback) feedback.textContent = "This recipe was already saved. No duplicate was added.";
+      return;
+    }
     const recipe = { ...extractedRecipe, id: "preview-recipe-" + Date.now(), title, ingredients, directions, category: "Imported", createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() };
     try {
       localStorage.setItem(PREVIEW_RECIPE_STORAGE_KEY, JSON.stringify([...saved, recipe]));
       dataset.recipes = [...dataset.recipes, recipe];
-      if (feedback) feedback.textContent = "Saved to My Recipes on this device. This preview save does not sync to the cloud.";
-      actionButton.textContent = "Saved on this device";
+      const message = "Saved successfully to My Recipes on this device. You can leave this screen now; the recipe is available in My Recipes. This preview does not sync to the cloud.";
+      if (inlineStatus) inlineStatus.textContent = message;
+      if (feedback) feedback.textContent = message;
+      actionButton.textContent = "Saved ✓";
       actionButton.disabled = true;
     } catch {
+      if (inlineStatus) inlineStatus.textContent = "Save failed. Browser storage was unavailable; please try again.";
       if (feedback) feedback.textContent = "Browser storage was unavailable. Nothing was saved.";
     }
     return;
