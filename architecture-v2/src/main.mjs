@@ -5,6 +5,16 @@ const root = document.querySelector("#app");
 const status = document.querySelector("#previewNotice");
 let dataset = { recipes: [], restaurants: [], cats: [] };
 let activeView = "home";
+let extractedRecipe = null;
+const PREVIEW_RECIPE_STORAGE_KEY = "metro_eats_architecture_preview_recipes_v1";
+function readPreviewSavedRecipes() {
+  try { const value = JSON.parse(localStorage.getItem(PREVIEW_RECIPE_STORAGE_KEY) || "[]"); return Array.isArray(value) ? value.filter(item => item && typeof item === "object" && item.id && item.title) : []; } catch { return []; }
+}
+function mergePreviewSavedRecipes() {
+  const saved = readPreviewSavedRecipes();
+  const ids = new Set(saved.map(item => String(item.id)));
+  dataset.recipes = [...dataset.recipes.filter(item => !ids.has(String(item.id))), ...saved];
+}
 
 function escapeHtml(value) {
   return String(value ?? "").replace(/[&<>"']/g, char => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[char]);
@@ -194,13 +204,15 @@ function cleanImportedIngredient(value) {
     .trim();
 }
 function renderImportPreview(recipe) {
+  extractedRecipe = recipe ? { ...recipe, ingredients: Array.isArray(recipe.ingredients) ? recipe.ingredients.map(cleanImportedIngredient) : [], directions: Array.isArray(recipe.directions) ? recipe.directions : [] } : null;
+  recipe = extractedRecipe;
   const preview = document.querySelector("#import-preview");
   if (!preview) return;
   if (!recipe) { preview.innerHTML = ""; return; }
   const metadata = [["Servings", recipe.servings], ["Prep time", formatRecipeDuration(recipe.prepTime)], ["Cook time", formatRecipeDuration(recipe.cookTime)], ["Total time", formatRecipeDuration(recipe.totalTime)]].filter(([, value]) => value);
   const ingredients = (Array.isArray(recipe.ingredients) ? recipe.ingredients : []).map(cleanImportedIngredient);
   const directions = Array.isArray(recipe.directions) ? recipe.directions : [];
-  preview.innerHTML = `<article class="parsedRecipe"><p class="sectionKicker">Extracted recipe</p><h3>${escapeHtml(recipe.title)}</h3>${metadata.length ? `<dl>${metadata.map(([label, value]) => `<div><dt>${label}</dt><dd>${escapeHtml(value)}</dd></div>`).join("")}</dl>` : ""}${recipe.source ? `<p class="note"><a class="recipeSourceLink" href="${escapeHtml(recipe.source)}" target="_blank" rel="noopener noreferrer">Recipe link ↗</a></p>` : ""}<div class="parsedColumns"><section><h4>Ingredients · ${ingredients.length}</h4><ul>${ingredients.map(item => `<li>${escapeHtml(item)}</li>`).join("")}</ul></section><section><h4>Directions · ${directions.length}</h4><ol>${directions.map(item => `<li>${escapeHtml(item)}</li>`).join("")}</ol></section></div></article>`;
+  preview.innerHTML = `<article class="parsedRecipe"><p class="sectionKicker">Extracted recipe</p><h3>${escapeHtml(recipe.title)}</h3>${metadata.length ? `<dl>${metadata.map(([label, value]) => `<div><dt>${label}</dt><dd>${escapeHtml(value)}</dd></div>`).join("")}</dl>` : ""}${recipe.source ? `<p class="note"><a class="recipeSourceLink" href="${escapeHtml(recipe.source)}" target="_blank" rel="noopener noreferrer">Recipe link ↗</a></p>` : ""}<div class="actions"><button class="btn primary" type="button" data-action="save-recipe">Save to My Recipes</button></div><div class="parsedColumns"><section><h4>Ingredients · ${ingredients.length}</h4><ul>${ingredients.map(item => `<li>${escapeHtml(item)}</li>`).join("")}</ul></section><section><h4>Directions · ${directions.length}</h4><ol>${directions.map(item => `<li>${escapeHtml(item)}</li>`).join("")}</ol></section></div></article>`;
 }
 function render() {
   document.querySelector(".app > .top")?.classList.toggle("homeStickyHeader", activeView === "home");
@@ -260,6 +272,25 @@ document.addEventListener("click", async event => {
   }
   const actionButton = event.target.closest("[data-action]");
   if (!actionButton) return;
+  if (actionButton.dataset.action === "save-recipe") {
+    const feedback = document.querySelector("#import-feedback");
+    if (!extractedRecipe || !extractedRecipe.title || !extractedRecipe.ingredients.length || !extractedRecipe.directions.length) {
+      if (feedback) feedback.textContent = "A complete recipe is required before saving.";
+      return;
+    }
+    const saved = readPreviewSavedRecipes();
+    const recipe = { ...extractedRecipe, id: "preview-recipe-" + Date.now(), category: "Imported", createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() };
+    try {
+      localStorage.setItem(PREVIEW_RECIPE_STORAGE_KEY, JSON.stringify([...saved, recipe]));
+      dataset.recipes = [...dataset.recipes, recipe];
+      if (feedback) feedback.textContent = "Saved to My Recipes on this device. This preview save does not sync to the cloud.";
+      actionButton.textContent = "Saved on this device";
+      actionButton.disabled = true;
+    } catch {
+      if (feedback) feedback.textContent = "Browser storage was unavailable. Nothing was saved.";
+    }
+    return;
+  }
   if (actionButton.dataset.action === "clear-recipe") {
     const source = document.querySelector("#import-source");
     const url = document.querySelector("#import-url");
@@ -312,6 +343,7 @@ document.addEventListener("click", async event => {
 try {
   const result = await loadDataset();
   dataset = result.data;
+  mergePreviewSavedRecipes();
   if (result.source.startsWith("local:")) {
     const hasRecords = result.data.recipes.length > 0 || result.data.restaurants.length > 0;
     setStatus(hasRecords ? "Loaded from this device" : "This device has no saved records", hasRecords ? "ok" : "warn");
