@@ -15,6 +15,57 @@ function mergePreviewSavedRecipes() {
   const ids = new Set(saved.map(item => String(item.id)));
   dataset.recipes = [...dataset.recipes.filter(item => !ids.has(String(item.id))), ...saved];
 }
+function ensureBgChiliPreviewTest() {
+  const saved = readPreviewSavedRecipes();
+  if (saved.some(item => String(item.title || "").toLowerCase() === "bg’s chili — save test".toLowerCase())) return;
+  const now = new Date().toISOString();
+  const recipe = {
+    id: "preview-recipe-bg-chili-seeded-test",
+    title: "BG’s Chili — Save Test",
+    category: "Imported",
+    ingredients: [
+      "3 ¼ lbs ground chuck",
+      "1 lb chorizo",
+      "4 Hands CPB Stout, for deglazing",
+      "½ large onion",
+      "1 bell pepper",
+      "1–2 jalapeños",
+      "3 garlic cloves",
+      "3 Roma tomatoes",
+      "¼ cup tomato paste",
+      "5 tbsp chili powder (2 Mexene, 3 Gebhardt)",
+      "3 tsp smoked paprika",
+      "2 tsp cumin",
+      "½ tsp oregano",
+      "1 tsp cayenne pepper",
+      "1 tbsp coarse salt",
+      "2 tbsp black pepper",
+      "1 packet Sazon",
+      "2 tbsp olive oil",
+      "½ onion, chopped",
+      "¼ cup carrots, chopped",
+      "¼ cup celery, chopped",
+      "2 tbsp Better Than Bouillon roasted beef",
+      "2 tbsp cornstarch, if needed",
+      "1 tbsp harissa"
+    ],
+    directions: [
+      "Cook ground chuck in batches over high heat.",
+      "Deglaze each batch with stout and combine the meat and liquid in a Dutch oven.",
+      "Add enough water to cover the meat, bring to a boil, then simmer.",
+      "Sauté the vegetables and add them to the meat.",
+      "Sauté the onion, carrots, and celery in olive oil for the mirepoix.",
+      "Add the seasonings and Sazon.",
+      "Stir in the roasted beef Better Than Bouillon.",
+      "Thicken with cornstarch if needed.",
+      "Finish with harissa."
+    ],
+    createdAt: now,
+    updatedAt: now,
+    source: ""
+  };
+  try { localStorage.setItem(PREVIEW_RECIPE_STORAGE_KEY, JSON.stringify([...saved, recipe])); } catch {}
+}
 
 function escapeHtml(value) {
   return String(value ?? "").replace(/[&<>"']/g, char => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[char]);
@@ -394,6 +445,7 @@ document.addEventListener("click", async event => {
 try {
   const result = await loadDataset();
   dataset = result.data;
+  ensureBgChiliPreviewTest();
   mergePreviewSavedRecipes();
   if (result.source.startsWith("local:")) {
     const hasRecords = result.data.recipes.length > 0 || result.data.restaurants.length > 0;
