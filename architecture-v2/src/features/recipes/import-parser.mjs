@@ -32,6 +32,27 @@ function flattenInstructions(value) {
   return text ? [text] : [];
 }
 
+function cleanSourceUrl(value) {
+  const raw = plainText(value);
+  if (!raw) return "";
+  try {
+    const url = new URL(raw);
+    for (const key of [...url.searchParams.keys()]) {
+      if (/^(utm_.+|gclid|dclid|gbraid|wbraid|gad_source|gad_campaignid|fbclid|msclkid|mc_cid|mc_eid)$/i.test(key)) url.searchParams.delete(key);
+    }
+    url.hash = "";
+    return url.toString();
+  } catch {
+    return raw.split(/[?#]/, 1)[0];
+  }
+}
+
+function inferCookTime(directions) {
+  const text = directions.join(" ");
+  const match = text.match(/\b(?:bake|baking|cook|cooking|roast|roasting|grill|grilling|broil|broiling|fry|frying|simmer|simmering)\b[^.!?]{0,320}?\b(?:for|about|approximately)\s+(\d+)\s*(?:minutes?|mins?)\b/i);
+  return match ? `${match[1]} minutes` : "";
+}
+
 function recipeType(node) {
   const types = Array.isArray(node?.["@type"]) ? node["@type"] : [node?.["@type"]];
   return types.some(type => String(type || "").toLowerCase().split(/[\/#]/).pop() === "recipe");
@@ -65,9 +86,9 @@ export function normalizeImportedRecipe(node) {
     description: plainText(node.description),
     servings: plainText(node.recipeYield),
     prepTime: plainText(node.prepTime),
-    cookTime: plainText(node.cookTime),
+    cookTime,
     totalTime: plainText(node.totalTime),
-    source: plainText(node.url ?? node.mainEntityOfPage)
+    source: cleanSourceUrl(node.url ?? node.mainEntityOfPage)
   };
 }
 
