@@ -124,7 +124,7 @@ function renderList(title, eyebrow, items, kind) {
         <div class="sectionTitle"><div><div class="sectionKicker">Your collection</div><h3>Saved recipes</h3></div><button class="btn primary" type="button" data-view="add-recipe">＋ Add a Recipe</button></div>
         <div class="recipeBrowseTools"><div class="field"><label for="recipe-search">Search your recipes</label><input id="recipe-search" type="search" placeholder="Search by name, ingredient, or direction"></div><div class="field"><label for="recipe-category">Category</label><select id="recipe-category"><option value="">All categories</option>${categories.map(category=>`<option value="${escapeHtml(category)}">${escapeHtml(category)}</option>`).join("")}</select></div></div>
         <div id="recipe-collection-list" class="readOnlyList">${rows ? rows : `<div class="empty">No recipes were found in the data source this preview can read.</div>`}</div>
-        <p class="hint">This preview is read-only. Adding, editing, and deleting saved recipes will be connected after the data and account workflow is finalized.</p>
+        <p class="hint">Preview storage: recipes saved in this browser stay on this device and this preview address. They do not sync to other devices or a cloud account. Existing production data is not changed.</p>
       </section>`;
     const search = document.querySelector("#recipe-search");
     const category = document.querySelector("#recipe-category");
