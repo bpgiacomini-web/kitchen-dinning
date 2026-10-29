@@ -498,24 +498,28 @@ document.addEventListener("click", async event => {
   }
 });
 
-try {
-  const result = await loadDataset();
-  dataset = result.data;
-  ensureBgChiliPreviewTest();
-  mergePreviewSavedRecipes();
-  if (result.source.startsWith("local:")) {
-    const hasRecords = result.data.recipes.length > 0 || result.data.restaurants.length > 0;
-    setStatus(hasRecords ? "Loaded from this device" : "This device has no saved records", hasRecords ? "ok" : "warn");
-  } else if (result.source === "cloud") {
-    const hasRecords = result.data.recipes.length > 0 || result.data.restaurants.length > 0;
-    setStatus(hasRecords ? "Preview data connected" : "Preview connected · no preview records yet", hasRecords ? "ok" : "warn");
-  } else {
-    setStatus(result.staleFallback ? "Data source unavailable" : "No saved data found", "warn");
+async function refreshDataset() {
+  try {
+    const result = await loadDataset();
+    dataset = result.data;
+    ensureBgChiliPreviewTest();
+    mergePreviewSavedRecipes();
+    const hasRecords = dataset.recipes.length > 0 || dataset.restaurants.length > 0;
+    if (result.source === "cloud" || result.source === "cloud+local") {
+      setStatus(hasRecords ? "Preview data connected" : "Preview connected · no preview records yet", hasRecords ? "ok" : "warn");
+    } else if (result.source.startsWith("local:")) {
+      setStatus(hasRecords ? "Loaded from this device" : "This device has no saved records", hasRecords ? "ok" : "warn");
+    } else {
+      setStatus(result.staleFallback ? "Data source unavailable" : "No saved data found", "warn");
+    }
+    render();
+    if (activeView === "home") loadLocalFoodNews();
+  } catch {
+    setStatus("Data unavailable", "warn");
+    render();
+    if (activeView === "home") loadLocalFoodNews();
   }
-  render();
-  if (activeView === "home") loadLocalFoodNews();
-} catch {
-  setStatus("Data unavailable", "warn");
-  render();
-  if (activeView === "home") loadLocalFoodNews();
 }
+
+window.addEventListener("metro-authenticated", () => { void refreshDataset(); });
+await refreshDataset();
