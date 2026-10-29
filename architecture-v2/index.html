@@ -10,6 +10,13 @@
     #metroAuthPanel input { box-sizing:border-box; width:100%; padding:13px; margin-top:5px; border-radius:8px; border:1px solid #555d69; background:#0d1015; color:white; font:inherit; }
     #metroAuthPanel button { width:100%; margin-top:18px; padding:13px; border:0; border-radius:8px; background:#e8b66a; color:#171a20; font-weight:700; font:inherit; }
     #metroAuthStatus { min-height:24px; overflow-wrap:anywhere; }
+    #metroAccountButton { flex:0 0 auto; width:auto; min-width:44px; min-height:44px; margin:0 0 0 8px; padding:8px 11px; border:1px solid var(--line,#29313a); border-radius:12px; background:#171c22; color:var(--text,#f4f1ea); font-size:14px; font-weight:700; }
+    #metroAccountPanel { position:fixed; z-index:1000; top:calc(12px + env(safe-area-inset-top)); right:14px; width:min(340px,calc(100vw - 28px)); padding:20px; color:var(--text,#f4f1ea); background:#151a20; border:1px solid #39424d; border-radius:18px; box-shadow:0 18px 60px #000b; }
+    #metroAccountPanel h2 { margin:0 0 6px; font-size:20px; }
+    #metroAccountPanel p { color:var(--muted,#9aa3ad); overflow-wrap:anywhere; }
+    #metroAccountPanel button { width:100%; min-height:44px; margin-top:10px; padding:10px 12px; border:1px solid #3a434d; border-radius:10px; background:#20262e; color:#f4f1ea; font:inherit; }
+    #metroAccountPanel #metroSignOut { border-color:#744848; color:#ffc3bc; }
+    #metroAccountPanel [data-close] { background:transparent; }
   </style>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -42,6 +49,7 @@
         <button type="button" data-view="dining">My Restaurants</button>
         <button type="button" data-view="pizzas">My Frozen Pizzas</button>
       </nav>
+      <button id="metroAccountButton" type="button" aria-label="Account and settings" aria-expanded="false" hidden>☻</button>
     </header>
     <div id="previewNotice" class="status" role="status">Architecture preview · read-only · existing app unchanged</div>
     <main id="app" tabindex="-1" aria-live="polite">
@@ -56,13 +64,71 @@
     <footer>Metro Eats · Architecture preview · Existing app remains unchanged</footer>
   </div>
   <nav class="bottomNav" aria-label="Primary navigation"><button class="active" type="button" data-view="home">⌂<br>Home</button><button  type="button" data-view="recipes">▱<br>My Recipes</button><button type="button" data-view="dining">◉<br>My Restaurants</button><button type="button" data-view="pizzas">🍕<br>My Frozen Pizzas</button></nav>
+  <section id="metroAccountPanel" role="dialog" aria-modal="false" aria-labelledby="metroAccountTitle" hidden>
+    <h2 id="metroAccountTitle">Account &amp; Settings</h2>
+    <p id="metroAccountEmail">Signed in to Metro Eats</p>
+    <p>Your account stays signed in on this device until you sign out or your session expires.</p>
+    <button id="metroSignOut" type="button">Sign Out</button>
+    <button type="button" data-close>Close</button>
+    <p id="metroAccountStatus" role="status" aria-live="polite"></p>
+  </section>
   <script type="module" src="./src/main.mjs?v=9"></script>
   <script type="module">
     const panel = document.getElementById('metroAuthPanel');
     const form = document.getElementById('metroAuthForm');
     const status = document.getElementById('metroAuthStatus');
     const submit = document.getElementById('metroAuthSubmit');
-    function showApp() { document.body.classList.add('metro-authenticated'); panel.hidden = true; }
+    const accountButton = document.getElementById('metroAccountButton');
+    const accountPanel = document.getElementById('metroAccountPanel');
+    const accountEmail = document.getElementById('metroAccountEmail');
+    const accountStatus = document.getElementById('metroAccountStatus');
+    const signOutButton = document.getElementById('metroSignOut');
+    let client;
+    function showApp(user) {
+      document.body.classList.add('metro-authenticated');
+      panel.hidden = true;
+      accountButton.hidden = false;
+      accountEmail.textContent = user?.email || 'Signed in to Metro Eats';
+    }
+    function showLogin(message) {
+      document.body.classList.remove('metro-authenticated');
+      panel.hidden = false;
+      accountButton.hidden = true;
+      accountPanel.hidden = true;
+      accountButton.setAttribute('aria-expanded', 'false');
+      if (message) status.textContent = message;
+    }
+    accountButton.addEventListener('click', () => {
+      accountPanel.hidden = !accountPanel.hidden;
+      accountButton.setAttribute('aria-expanded', String(!accountPanel.hidden));
+      accountStatus.textContent = '';
+    });
+    accountPanel.querySelector('[data-close]').addEventListener('click', () => {
+      accountPanel.hidden = true;
+      accountButton.setAttribute('aria-expanded', 'false');
+    });
+    document.addEventListener('keydown', event => {
+      if (event.key === 'Escape' && !accountPanel.hidden) {
+        accountPanel.hidden = true;
+        accountButton.setAttribute('aria-expanded', 'false');
+      }
+    });
+    signOutButton.addEventListener('click', async () => {
+      if (!client) return;
+      signOutButton.disabled = true;
+      accountStatus.textContent = 'Signing out…';
+      try {
+        if (typeof client.signOut !== 'function') throw new Error('Sign out is not available in this authentication client.');
+        const result = await client.signOut();
+        if (result?.error) throw new Error(result.error.message || 'Sign out failed.');
+        showLogin('You have signed out. Sign in again to continue.');
+        form.reset();
+      } catch (error) {
+        accountStatus.textContent = error?.message || 'Could not sign out. Please try again.';
+      } finally {
+        signOutButton.disabled = false;
+      }
+    });
     async function setupAuth() {
       try {
         const response = await fetch('/api/auth-config', { cache: 'no-store' });
@@ -70,21 +136,29 @@
         const config = await response.json();
         if (!config.authUrl) throw new Error('Sign-in configuration is missing the authentication URL.');
         const { createAuthClient } = await import('https://esm.sh/@neondatabase/auth@latest');
-        const client = createAuthClient(String(config.authUrl).replace(/\/$/, ''));
-        // Do not restore a cached browser session automatically on this preview.
-        // The sign-in panel must remain visible until the user explicitly submits credentials.
+        client = createAuthClient(String(config.authUrl).replace(/\/$/, ''));
+        // Restore the existing session on this device; users should normally sign in only once.
+        const existing = await client.getSession();
+        const existingSession = existing?.data?.session;
+        const existingUser = existing?.data?.user || existingSession?.user || existing?.user;
+        if (existingSession || existingUser) showApp(existingUser);
+        else showLogin();
         form.addEventListener('submit', async (event) => {
           event.preventDefault(); status.textContent = 'Signing in…'; submit.disabled = true;
           try {
             const result = await client.signIn.email({ email: document.getElementById('metroAuthEmail').value.trim(), password: document.getElementById('metroAuthPassword').value });
             if (result?.error) throw new Error(result.error.message || 'Sign-in failed.');
             const verified = await client.getSession();
-            if (!(verified?.data?.session || verified?.data?.user || verified?.user || result?.data?.session || result?.data?.user)) throw new Error('Sign-in did not return a verified session. Please try again.');
-            showApp();
+            const session = verified?.data?.session || result?.data?.session;
+            const user = verified?.data?.user || session?.user || verified?.user || result?.data?.user;
+            if (!(session || user)) throw new Error('Sign-in did not return a verified session. Please try again.');
+            showApp(user);
           } catch (error) { status.textContent = error?.message || 'Sign-in failed. Please try again.'; }
           finally { submit.disabled = false; }
         });
-      } catch (error) { status.textContent = error?.message || 'Unable to initialize sign-in.'; }
+      } catch (error) {
+        showLogin('Sign-in setup failed: ' + (error?.message || 'Unable to initialize sign-in.'));
+      }
     }
     setupAuth();
   </script>
