@@ -71,11 +71,11 @@ async function getUsableSession() {
   const result = await authClient.getSession();
   const session = result?.data?.session;
   const user = result?.data?.user || session?.user;
-  let token = session?.access_token || '';
-  if (!token && typeof authClient.getJWTToken === 'function') {
-    const tokenResult = await authClient.getJWTToken();
-    token = typeof tokenResult === 'string' ? tokenResult : (tokenResult?.data?.token || tokenResult?.token || '');
-  }
+  // Neon Auth's getSession() provides the session access_token when signed in.
+  // Do not call getJWTToken() as a fallback here: in this deployment it requests
+  // /auth/get-jwt-token, which returns 404 and prevents even signed-out users
+  // from reaching the sign-in form.
+  const token = session?.access_token || '';
   return { session, user, token };
 }
 
