@@ -71,8 +71,8 @@
         if (!config.authUrl) throw new Error('Sign-in configuration is missing the authentication URL.');
         const { createAuthClient } = await import('https://esm.sh/@neondatabase/auth@latest');
         const client = createAuthClient(String(config.authUrl).replace(/\/$/, ''));
-        const session = await client.getSession();
-        if (session?.data?.session || session?.data?.user || session?.user) { showApp(); return; }
+        // Do not restore a cached browser session automatically on this preview.
+        // The sign-in panel must remain visible until the user explicitly submits credentials.
         form.addEventListener('submit', async (event) => {
           event.preventDefault(); status.textContent = 'Signing in…'; submit.disabled = true;
           try {
