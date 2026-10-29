@@ -37,9 +37,9 @@ function setMode(next) {
   emailInput.closest('label').hidden = mode === 'reset';
   emailInput.required = mode !== 'reset';
   passwordInput.autocomplete = mode === 'reset' || mode === 'signup' ? 'new-password' : 'current-password';
-  authModeButton.hidden = mode === 'forgot' || mode === 'reset';
+  authModeButton.hidden = mode === 'reset';
   authForgotButton.hidden = mode !== 'signin';
-  authModeButton.textContent = mode === 'signin' ? 'Need an account? Create one' : 'Already have an account? Sign in';
+  authModeButton.textContent = mode === 'signin' ? 'Need an account? Create one' : mode === 'signup' ? 'Already have an account? Sign in' : 'Back to Sign In';
   message('');
 }
 authModeButton.addEventListener('click', () => setMode(mode === 'signin' ? 'signup' : 'signin'));
