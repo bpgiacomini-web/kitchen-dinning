@@ -126,18 +126,23 @@ async function boot() {
     const result = await authClient.getSession();
     const session = result?.data?.session;
     const user = result?.data?.user || session?.user;
-    if (session?.access_token && user) {
+    const params = new URLSearchParams(location.search);
+    if (params.has('token') || params.has('error')) {
+      loginPanel.hidden = false;
+      appRoot.hidden = true;
+      bottomNav.hidden = true;
+      if (params.has('token')) setMode('reset');
+      else {
+        setMode('signin');
+        message('That password-reset link is invalid or expired. Request a new one.', true);
+      }
+    } else if (session?.access_token && user) {
       accessToken = session.access_token;
       await startApp(user);
     } else {
       loginPanel.hidden = false;
       appRoot.hidden = true;
       bottomNav.hidden = true;
-      if (new URLSearchParams(location.search).has('token')) setMode('reset');
-      else if (new URLSearchParams(location.search).has('error')) {
-        setMode('signin');
-        message('That password-reset link is invalid or expired. Request a new one.', true);
-      }
     }
   } catch (error) {
     loginPanel.hidden = false;
