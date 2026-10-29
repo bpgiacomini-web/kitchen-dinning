@@ -160,9 +160,9 @@ authForm.addEventListener('submit', async event => {
   const name = document.getElementById('metroAuthName').value.trim();
   const confirm = document.getElementById('metroAuthConfirm').value;
   if (mode === 'signup' && password !== confirm) return message('The passwords do not match.', true);
-  if (password.length < 8) return message('Use a password with at least 8 characters.', true);
+  if (mode !== 'forgot' && password.length < 8) return message('Use a password with at least 8 characters.', true);
   authSubmit.disabled = true;
-  message(mode === 'signin' ? 'Signing in…' : 'Creating your account…');
+  message(mode === 'signin' ? 'Signing in…' : mode === 'signup' ? 'Creating your account…' : mode === 'forgot' ? 'Requesting a reset link…' : 'Updating your password…');
   try {
     if (mode === 'forgot') {
       if (typeof authClient.requestPasswordReset !== 'function') {
