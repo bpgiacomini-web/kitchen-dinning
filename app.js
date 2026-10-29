@@ -1,5 +1,5 @@
 
-const KEY='metro_eats_v2';
+const KEY=window.METRO_EATS_STORAGE_KEY||'metro_eats_v2';
 const OLD_KEY='metro_eats_v1';
 const categories={
  'Appetizers & Snacks':['Dips & Spreads','Finger Foods','Chips & Nachos','Wings','Charcuterie','Party Snacks'],
@@ -99,7 +99,7 @@ async function metroCloudPush(){
   if(metroCloudBusy){metroCloudQueued=true;return}
   metroCloudBusy=true;metroCloudQueued=false;
   try{
-    const response=await fetch('/api/data',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({recipes:db.recipes||[],restaurants:db.restaurants||[]})});
+    const response=await fetch('/api/data',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({recipes:db.recipes||[],restaurants:db.restaurants||[],cats:db.cats||[]})});
     if(!response.ok)throw new Error('Cloud save returned '+response.status);
     // Verify the exact write by reading the cloud copy back before reporting success.
     const verifyResponse=await fetch('/api/data?verify='+Date.now(),{cache:'no-store'});
