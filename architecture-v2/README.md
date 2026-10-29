@@ -33,3 +33,9 @@ Recipe create/edit/delete and saving imported recipes remain disabled. Reviews/s
 
 ## Security gate
 The current shell does not yet have a complete sign-in flow or authenticated cloud-write path. Do not enable writes until Neon Auth identity is verified server-side and every query is scoped to that user. Never expose database credentials in browser code.
+
+### Persistence implementation status — API groundwork added
+- Added `api/user-data.js`: preview-only authenticated per-user GET/PUT using Neon Auth JWT verification and the Neon Preview database. The owner ID comes only from the verified JWT subject.
+- Writes use a revision check and return HTTP 409 on a stale save; unauthenticated calls are rejected. The endpoint never reports a save as successful unless the database returns a new revision.
+- Added `src/data/user-dataset-client.mjs` and tests for bearer-token handling, required sign-in, revision saves, and conflict handling.
+- This is not yet end-to-end persistence: the sign-in UI/session-token provider is not wired into the app, the client adapter is not yet used by recipe save/edit/delete, and the SQL migration has not been confirmed applied to the Preview database. Do not use this as a data backup or claim cross-device sync is live.
