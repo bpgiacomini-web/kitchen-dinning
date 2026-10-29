@@ -85,18 +85,12 @@ async function startApp(user) {
   const userId = String(user.id || user.sub || '');
   if (!userId) throw new Error('The sign-in response did not include a user ID.');
   window.METRO_EATS_STORAGE_KEY = 'metro_eats_user_' + userId;
-  loginPanel.hidden = true;
-  appRoot.hidden = false;
-  bottomNav.hidden = false;
-  const existing = document.querySelector('script[data-metro-app]');
-  if (!existing) {
-    const script = document.createElement('script');
-    script.src = './app.js?v=20261029-auth-1';
-    script.defer = true;
-    script.dataset.metroApp = 'true';
-    document.body.appendChild(script);
-  }
-  message('Signed in. Loading your private Metro Eats data…');
+  // Keep the sign-in panel visible and the app hidden until the API confirms
+  // that this session is valid. A stale client-side session must not bypass the gate.
+  loginPanel.hidden = false;
+  appRoot.hidden = true;
+  bottomNav.hidden = true;
+  message('Verifying your sign-in and loading your private Metro Eats data…');
   try {
 const response = await nativeFetch('/api/data?initial=' + Date.now(), {
       headers: { Authorization: 'Bearer ' + accessToken },
@@ -104,6 +98,18 @@ const response = await nativeFetch('/api/data?initial=' + Date.now(), {
     });
     if (response.ok) {
       const cloud = await response.json();
+      // Only reveal the app after the authenticated data endpoint accepts the token.
+      loginPanel.hidden = true;
+      appRoot.hidden = false;
+      bottomNav.hidden = false;
+      const existing = document.querySelector('script[data-metro-app]');
+      if (!existing) {
+        const script = document.createElement('script');
+        script.src = './app.js?v=20261029-auth-2';
+        script.defer = true;
+        script.dataset.metroApp = 'true';
+        document.body.appendChild(script);
+      }
       const key = window.METRO_EATS_STORAGE_KEY;
       const local = JSON.parse(localStorage.getItem(key) || '{"recipes":[],"restaurants":[],"cats":[]}');
       const mapById = (a, b) => {
@@ -129,12 +135,27 @@ const response = await nativeFetch('/api/data?initial=' + Date.now(), {
       const status = document.getElementById('metroCloudStatus');
       if (status) status.textContent = 'Cloud storage needs preview database configuration';
     } else if (response.status === 401) {
-      message('Your session needs refreshing. Please sign in again.', true);
+      accessToken = '';
+      appStarted = false;
+      loginPanel.hidden = false;
+      appRoot.hidden = true;
+      bottomNav.hidden = true;
+      message('Your saved session was not accepted. Please sign in with your existing account.', true);
     } else {
-      message('Your account is signed in, but the preview data could not be loaded.', true);
+      accessToken = '';
+      appStarted = false;
+      loginPanel.hidden = false;
+      appRoot.hidden = true;
+      bottomNav.hidden = true;
+      message('The preview could not verify your sign-in (HTTP ' + response.status + '). Please try signing in again.', true);
     }
   } catch (e) {
-    message('Signed in, but data loading failed. Your local account data has not been deleted.', true);
+    accessToken = '';
+    appStarted = false;
+    loginPanel.hidden = false;
+    appRoot.hidden = true;
+    bottomNav.hidden = true;
+    message('The preview could not verify your sign-in: ' + (e?.message || 'network error') + '. Please try signing in again.', true);
   }
 }
 
