@@ -71,7 +71,8 @@ export default async function handler(req, res) {
 
     const rows = await sql`
       INSERT INTO metro_eats_user_datasets (user_id, payload, revision, updated_at)
-      VALUES (${identity.userId}, ${JSON.stringify(dataset)}::jsonb, 1, now())
+      SELECT ${identity.userId}, ${JSON.stringify(dataset)}::jsonb, 1, now()
+      WHERE ${expectedRevision} = 0
       ON CONFLICT (user_id) DO UPDATE
       SET payload = EXCLUDED.payload,
           revision = metro_eats_user_datasets.revision + 1,
