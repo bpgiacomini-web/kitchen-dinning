@@ -14,16 +14,36 @@ function message(text, error = false) {
   authStatus.textContent = text;
   authStatus.style.color = error ? '#ffb4a9' : '#cdebd5';
 }
+const authForgotButton = document.createElement('button');
+authForgotButton.type = 'button';
+authForgotButton.textContent = 'Forgot your password?';
+authForgotButton.style.cssText = 'display:block;margin:4px auto 0;padding:8px;border:0;background:transparent;color:#e7c17a;font:inherit';
+authModeButton.insertAdjacentElement('afterend', authForgotButton);
+
 function setMode(next) {
   mode = next;
-  document.getElementById('metroAuthHeading').textContent = mode === 'signin' ? 'Welcome back' : 'Create your account';
-  authSubmit.textContent = mode === 'signin' ? 'Sign In' : 'Create Account';
-  document.getElementById('metroAuthNameWrap').hidden = mode === 'signin';
-  document.getElementById('metroAuthConfirmWrap').hidden = mode === 'signin';
+  const heading = document.getElementById('metroAuthHeading');
+  const nameWrap = document.getElementById('metroAuthNameWrap');
+  const confirmWrap = document.getElementById('metroAuthConfirmWrap');
+  const emailInput = document.getElementById('metroAuthEmail');
+  const passwordInput = document.getElementById('metroAuthPassword');
+  const passwordLabel = passwordInput.closest('label');
+  heading.textContent = ({signin:'Welcome back', signup:'Create your account', forgot:'Reset your password', reset:'Choose a new password'})[mode] || 'Welcome back';
+  authSubmit.textContent = ({signin:'Sign In', signup:'Create Account', forgot:'Email Me a Reset Link', reset:'Save New Password'})[mode] || 'Sign In';
+  nameWrap.hidden = mode !== 'signup';
+  confirmWrap.hidden = !['signup','reset'].includes(mode);
+  passwordLabel.hidden = mode === 'forgot';
+  passwordInput.required = mode !== 'forgot';
+  emailInput.closest('label').hidden = mode === 'reset';
+  emailInput.required = mode !== 'reset';
+  passwordInput.autocomplete = mode === 'reset' || mode === 'signup' ? 'new-password' : 'current-password';
+  authModeButton.hidden = mode === 'forgot' || mode === 'reset';
+  authForgotButton.hidden = mode !== 'signin';
   authModeButton.textContent = mode === 'signin' ? 'Need an account? Create one' : 'Already have an account? Sign in';
   message('');
 }
 authModeButton.addEventListener('click', () => setMode(mode === 'signin' ? 'signup' : 'signin'));
+authForgotButton.addEventListener('click', () => setMode('forgot'));
 
 const nativeFetch = window.fetch.bind(window);
 window.fetch = async (input, init = {}) => {
@@ -113,6 +133,11 @@ async function boot() {
       loginPanel.hidden = false;
       appRoot.hidden = true;
       bottomNav.hidden = true;
+      if (new URLSearchParams(location.search).has('token')) setMode('reset');
+      else if (new URLSearchParams(location.search).has('error')) {
+        setMode('signin');
+        message('That password-reset link is invalid or expired. Request a new one.', true);
+      }
     }
   } catch (error) {
     loginPanel.hidden = false;
@@ -134,10 +159,46 @@ authForm.addEventListener('submit', async event => {
   authSubmit.disabled = true;
   message(mode === 'signin' ? 'Signing in…' : 'Creating your account…');
   try {
+    if (mode === 'forgot') {
+      if (typeof authClient.requestPasswordReset !== 'function') {
+        throw new Error('Password recovery is not available on this authentication service yet. The account was not changed.');
+      }
+      const resetResult = await authClient.requestPasswordReset({
+        email,
+        redirectTo: location.origin + location.pathname
+      });
+      if (resetResult?.error) throw new Error(resetResult.error.message || 'The reset email could not be requested.');
+      message('If an account exists for that email and password recovery is enabled, a reset link will be sent. Check your inbox and spam folder.');
+      authForm.reset();
+      return;
+    }
+    if (mode === 'reset') {
+      const token = new URLSearchParams(location.search).get('token');
+      if (!token) throw new Error('This reset link is missing its token. Request a new password reset link.');
+      if (password !== confirm) throw new Error('The passwords do not match.');
+      if (typeof authClient.resetPassword !== 'function') throw new Error('Password reset is not supported by this authentication service.');
+      const resetResult = await authClient.resetPassword({ newPassword: password, token });
+      if (resetResult?.error) throw new Error(resetResult.error.message || 'The reset link may have expired. Request a new one.');
+      history.replaceState({}, document.title, location.pathname);
+      authForm.reset();
+      setMode('signin');
+      message('Your password was changed. Sign in using your new password.');
+      return;
+    }
     const result = mode === 'signin'
       ? await authClient.signIn.email({ email, password })
       : await authClient.signUp.email({ email, password, name: name || email.split('@')[0] });
-    if (result?.error) throw new Error(result.error.message || 'Authentication failed.');
+    if (result?.error) {
+      const detail = result.error.message || result.error.statusText || 'Authentication failed.';
+      const lower = detail.toLowerCase();
+      if (mode === 'signup' && /already|exist|registered|duplicate/.test(lower)) {
+        throw new Error('This email already has an account. Switch to Sign In, or choose “Forgot your password?” to recover access. No new account was created.');
+      }
+      if (mode === 'signin' && /invalid|credential|password|unauthorized/.test(lower)) {
+        throw new Error('The email/password combination was not accepted. Check the email, or use “Forgot your password?” to reset the password. Details: ' + detail);
+      }
+      throw new Error(detail);
+    }
     const sessionResult = await authClient.getSession();
     const session = sessionResult?.data?.session || result?.data?.session;
     const user = sessionResult?.data?.user || result?.data?.user || session?.user;
