@@ -24,5 +24,12 @@ From this directory, run `npm test` with Node.js 20 or newer.
 ## Not yet migrated
 Recipe create/edit/delete and saving imported recipes remain disabled. Reviews/survey workflows, photos, sorting/favorites, location search, news, cloud writes, account management, and full offline behavior are not wired into this shell yet. Migrate and test them individually before this can replace the current app.
 
+## Persistence migration — in progress
+- Added `migrations/001_user_datasets.sql` as the target schema for a per-user durable dataset in the isolated Neon Preview database.
+- The client must never send an authoritative owner ID. Server-side code must derive the owner from a verified Neon Auth session/JWT.
+- Updates must include an expected revision and reject stale writes rather than silently overwrite another tab/device's changes.
+- Keep browser-local data as a temporary recovery source only; do not automatically overwrite cloud data from stale local storage.
+- No production cutover, legacy-data deletion, or automatic migration is allowed until recovery/export, authentication, conflict handling, and restore tests pass.
+
 ## Security gate
-The existing shared-data endpoint needs authenticated identity, per-user authorization, and conflict-safe writes before multi-user use. Do not expose secrets in browser code.
+The current shell does not yet have a complete sign-in flow or authenticated cloud-write path. Do not enable writes until Neon Auth identity is verified server-side and every query is scoped to that user. Never expose database credentials in browser code.
