@@ -18,16 +18,42 @@ export function readLegacyDataset(storage = globalThis.localStorage) {
   return null;
 }
 
-/** Read-only remote fallback. This module intentionally has no write method. */
-export async function loadDataset({ storage = globalThis.localStorage, fetchImpl = globalThis.fetch, endpoint = "/api/data" } = {}) {
+/** Read-only data loader. Cloud records and legacy browser records are combined without deleting either source. */
+export async function loadDataset({ storage = globalThis.localStorage, fetchImpl = globalThis.fetch, endpoint = "/api/data", getToken = () => globalThis.metroGetAccessToken?.() } = {}) {
   const local = readLegacyDataset(storage);
-  if (local) return { ...local, staleFallback: false };
-  if (typeof fetchImpl !== "function") return { source: "empty", data: normalizeDataset({}), staleFallback: false };
+  if (typeof fetchImpl !== "function") return { source: local?.source || "empty", data: local?.data || normalizeDataset({}), staleFallback: false };
   try {
-    const response = await fetchImpl(endpoint, { method: "GET", cache: "no-store", headers: { Accept: "application/json" } });
+    // Wait for the auth UI to finish restoring the session before asking for a JWT.
+    if (globalThis.metroAuthReady) await globalThis.metroAuthReady;
+    const token = await getToken?.();
+    if (!token) {
+      if (local) return { ...local, staleFallback: false, cloudUnavailable: true };
+      return { source: "empty", data: normalizeDataset({}), staleFallback: false, cloudUnavailable: true };
+    }
+    const response = await fetchImpl(endpoint, {
+      method: "GET",
+      cache: "no-store",
+      headers: { Accept: "application/json", Authorization: `Bearer ${token}` }
+    });
     if (!response.ok) throw new Error(`Data request failed (${response.status})`);
-    return { source: "cloud", data: normalizeDataset(await response.json()), staleFallback: false };
+    const cloudData = normalizeDataset(await response.json());
+    if (!local) return { source: "cloud", data: cloudData, staleFallback: false };
+    // Preserve local-only legacy records while preferring cloud records with the same identity.
+    const merge = (remote = [], legacy = [], key = "id") => {
+      const ids = new Set(remote.map(item => String(item?.[key] ?? item?.id ?? item?.name ?? item?.title ?? "")));
+      return [...remote, ...legacy.filter(item => !ids.has(String(item?.[key] ?? item?.id ?? item?.name ?? item?.title ?? "")))];
+    };
+    return {
+      source: "cloud+local",
+      data: {
+        recipes: merge(cloudData.recipes, local.data.recipes),
+        restaurants: merge(cloudData.restaurants, local.data.restaurants, "id"),
+        cats: cloudData.cats?.length ? cloudData.cats : local.data.cats
+      },
+      staleFallback: false
+    };
   } catch (error) {
+    if (local) return { ...local, staleFallback: true, error: error instanceof Error ? error.message : "Data unavailable" };
     return { source: "empty", data: normalizeDataset({}), staleFallback: true, error: error instanceof Error ? error.message : "Data unavailable" };
   }
 }
