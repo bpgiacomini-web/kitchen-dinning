@@ -97,7 +97,7 @@ async function startApp(user) {
   }
   message('Signed in. Loading your private Metro Eats data…');
   try {
-    const response = await nativeFetch('/api/data?initial=' + Date.now(), {
+const response = await nativeFetch('/api/data?initial=' + Date.now(), {
       headers: { Authorization: 'Bearer ' + accessToken },
       cache: 'no-store'
     });
@@ -143,7 +143,8 @@ async function boot() {
     const config = await configResponse.json();
     if (!config.authUrl) throw new Error('The preview auth URL is not configured in Vercel.');
     const { createAuthClient } = await import('https://esm.sh/@neondatabase/auth@latest');
-    authClient = createAuthClient(String(config.authUrl).replace(/\/$/, ''));
+    const authBaseUrl = String(config.authUrl).replace(/\/$/, '').replace(/\/auth$/i, '');
+    authClient = createAuthClient(authBaseUrl);
     const { session, user, token } = await getUsableSession();
     const params = new URLSearchParams(location.search);
     if (params.has('token') || params.has('error')) {
