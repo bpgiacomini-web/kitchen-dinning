@@ -228,8 +228,15 @@ authForm.addEventListener('submit', async event => {
       }
       throw new Error(detail);
     }
-    const { session, user: sessionUser, token } = await getUsableSession();
-    const resolvedUser = sessionUser || result?.data?.user || session?.user;
+    // Prefer the session returned by the successful sign-in/sign-up response.
+    // Some SDK versions do not immediately expose that new session through a
+    // second getSession() call, even though the sign-in response contains it.
+    const returnedSession = result?.data?.session;
+    const returnedUser = result?.data?.user || returnedSession?.user;
+    let { session, user: sessionUser, token } = await getUsableSession();
+    session = session || returnedSession;
+    const resolvedUser = sessionUser || returnedUser || session?.user;
+    token = token || session?.access_token || result?.data?.token || '';
     if (!token || !resolvedUser) {
       if (mode === 'signup') {
         setMode('signin');
