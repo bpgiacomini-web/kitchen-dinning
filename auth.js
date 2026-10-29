@@ -9,6 +9,7 @@ let mode = 'signin';
 let authClient;
 let accessToken = '';
 let appStarted = false;
+let lastAuthFailure = '';
 
 function message(text, error = false) {
   authStatus.textContent = text;
@@ -54,7 +55,15 @@ window.fetch = async (input, init = {}) => {
     headers.set('Authorization', 'Bearer ' + accessToken);
     init = { ...init, headers, cache: 'no-store' };
   }
-  return nativeFetch(input, init);
+  const response = await nativeFetch(input, init);
+  try {
+    const requestUrl = new URL(url, location.href);
+    if (requestUrl.hostname.includes('neonauth.') && !response.ok) {
+      const detail = await response.clone().text();
+      lastAuthFailure = requestUrl.pathname + ' → HTTP ' + response.status + (detail ? ' — ' + detail.slice(0, 240) : '');
+    }
+  } catch (_) {}
+  return response;
 };
 
 async function getUsableSession() {
@@ -158,7 +167,7 @@ async function boot() {
     loginPanel.hidden = false;
     appRoot.hidden = true;
     bottomNav.hidden = true;
-    message('Sign-in setup could not start: ' + (error?.message || 'check preview configuration'), true);
+    message('Sign-in setup could not start: ' + (error?.message || 'check preview configuration') + (lastAuthFailure ? ' | Request: ' + lastAuthFailure : ''), true);
   }
 }
 
