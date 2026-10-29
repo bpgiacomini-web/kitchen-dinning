@@ -142,7 +142,7 @@ async function boot() {
     const configResponse = await nativeFetch('/api/auth-config', { cache: 'no-store' });
     const config = await configResponse.json();
     if (!config.authUrl) throw new Error('The preview auth URL is not configured in Vercel.');
-    const { createAuthClient } = await import('https://esm.sh/@neondatabase/neon-js/auth');
+    const { createAuthClient } = await import('https://esm.sh/@neondatabase/auth@latest');
     authClient = createAuthClient(String(config.authUrl).replace(/\/$/, ''));
     const { session, user, token } = await getUsableSession();
     const params = new URLSearchParams(location.search);
