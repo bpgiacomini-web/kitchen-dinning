@@ -1,16 +1,17 @@
 import { neon } from '@neondatabase/serverless';
-import { createRemoteJWKSet, jwtVerify } from 'jose';
-
-const jwksUrl = process.env.NEON_AUTH_JWKS_URL;
 const authBase = process.env.NEON_AUTH_BASE_URL;
 const databaseUrl = process.env.DATABASE_URL || process.env.POSTGRES_URL;
-const jwks = jwksUrl ? createRemoteJWKSet(new URL(jwksUrl)) : null;
+let jwksPromise;
 
 async function getUser(req) {
   const header = req.headers.authorization || '';
   const match = header.match(/^Bearer\s+(.+)$/i);
-  if (!match || !jwks || !authBase) return null;
+  if (!match || !process.env.NEON_AUTH_JWKS_URL || !authBase) return null;
   try {
+    // jose is ESM-only; dynamic import keeps this Vercel API route compatible with the project's CommonJS mode.
+    const { createRemoteJWKSet, jwtVerify } = await import('jose');
+    if (!jwksPromise) jwksPromise = Promise.resolve(createRemoteJWKSet(new URL(process.env.NEON_AUTH_JWKS_URL)));
+    const jwks = await jwksPromise;
     const { payload } = await jwtVerify(match[1], jwks, { issuer: new URL(authBase).origin });
     return typeof payload.sub === 'string' && payload.sub ? payload.sub : null;
   } catch {
