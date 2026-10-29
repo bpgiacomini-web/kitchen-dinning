@@ -10,6 +10,7 @@ let authClient;
 let accessToken = '';
 let appStarted = false;
 let lastAuthFailure = '';
+let bootStage = 'starting';
 
 function message(text, error = false) {
   authStatus.textContent = text;
@@ -58,9 +59,9 @@ window.fetch = async (input, init = {}) => {
   const response = await nativeFetch(input, init);
   try {
     const requestUrl = new URL(url, location.href);
-    if (requestUrl.hostname.includes('neonauth.') && !response.ok) {
+    if (!response.ok) {
       const detail = await response.clone().text();
-      lastAuthFailure = requestUrl.pathname + ' → HTTP ' + response.status + (detail ? ' — ' + detail.slice(0, 240) : '');
+      lastAuthFailure = requestUrl.host + requestUrl.pathname + ' → HTTP ' + response.status + (detail ? ' — ' + detail.slice(0, 180) : '');
     }
   } catch (_) {}
   return response;
@@ -139,11 +140,15 @@ const response = await nativeFetch('/api/data?initial=' + Date.now(), {
 
 async function boot() {
   try {
+    bootStage = 'loading preview auth configuration';
     const configResponse = await nativeFetch('/api/auth-config', { cache: 'no-store' });
     const config = await configResponse.json();
     if (!config.authUrl) throw new Error('The preview auth URL is not configured in Vercel.');
+    bootStage = 'loading Neon Auth SDK';
     const { createAuthClient } = await import('https://esm.sh/@neondatabase/auth@latest');
+    bootStage = 'initializing Neon Auth client';
     authClient = createAuthClient(String(config.authUrl).replace(/\/$/, ''));
+    bootStage = 'checking existing sign-in session';
     const { session, user, token } = await getUsableSession();
     const params = new URLSearchParams(location.search);
     if (params.has('token') || params.has('error')) {
@@ -167,7 +172,7 @@ async function boot() {
     loginPanel.hidden = false;
     appRoot.hidden = true;
     bottomNav.hidden = true;
-    message('Sign-in setup could not start: ' + (error?.message || 'check preview configuration') + (lastAuthFailure ? ' | Request: ' + lastAuthFailure : ''), true);
+    message('Sign-in setup failed while ' + bootStage + ': ' + (error?.message || 'check preview configuration') + (lastAuthFailure ? ' | Request: ' + lastAuthFailure : ''), true);
   }
 }
 
