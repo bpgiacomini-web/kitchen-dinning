@@ -29,7 +29,7 @@
   function inlineSpotlight(){
     var box=document.getElementById('restaurantSpotlight'); if(!box)return;
     try{
-      var raw=localStorage.getItem('metro_eats_v2')||localStorage.getItem('metro_eats_v1'); if(!raw)return;
+      var key=window.METRO_EATS_STORAGE_KEY; if(!key)return; var raw=localStorage.getItem(key); if(!raw)return;
       var db=JSON.parse(raw)||{}, rows=Array.isArray(db.restaurants)?db.restaurants:[];
       function review(r){return r.survey||(Array.isArray(r.reviewHistory)?r.reviewHistory.slice().sort(function(a,b){return new Date(b.createdAt||0)-new Date(a.createdAt||0)})[0]||{}:{});}
       function score(r){var s=review(r);return Number(s.overall||r.rating||0);}
@@ -115,7 +115,7 @@ window.tab=async function(t){
       }
     }catch(e){console.warn('Metro Eats cloud refresh failed',e)}
   }
-  try{if(t==='recipes'||t==='restaurants'){fetch('/api/data?refresh='+Date.now(),{cache:'no-store'}).then(function(r){return r.ok?r.json():null}).then(function(d){if(!d||!Array.isArray(d.recipes))return;var key='metro_eats_v2';var local=JSON.parse(localStorage.getItem(key)||'{"recipes":[],"restaurants":[]}');var map=new Map((local.recipes||[]).map(function(x){return [x.id,x]}));(d.recipes||[]).forEach(function(x){map.set(x.id,x)});local.recipes=Array.from(map.values());var rm=new Map((local.restaurants||[]).map(function(x){return [x.id,x]}));(d.restaurants||[]).forEach(function(x){rm.set(x.id,x)});local.restaurants=Array.from(rm.values());localStorage.setItem(key,JSON.stringify(local));if(t==='recipes'&&typeof window.renderRecipes==='function')window.renderRecipes();if(t==='restaurants'&&typeof window.renderRestaurants==='function')window.renderRestaurants()}).catch(function(){})}else{if(t==='home'&&typeof window.renderHome==='function')window.renderHome()}}catch(e){}
+  try{if(t==='recipes'||t==='restaurants'){fetch('/api/data?refresh='+Date.now(),{cache:'no-store'}).then(function(r){return r.ok?r.json():null}).then(function(d){if(!d||!Array.isArray(d.recipes))return;var key=window.METRO_EATS_STORAGE_KEY||'metro_eats_v2';var local=JSON.parse(localStorage.getItem(key)||'{"recipes":[],"restaurants":[]}');var map=new Map((local.recipes||[]).map(function(x){return [x.id,x]}));(d.recipes||[]).forEach(function(x){map.set(x.id,x)});local.recipes=Array.from(map.values());var rm=new Map((local.restaurants||[]).map(function(x){return [x.id,x]}));(d.restaurants||[]).forEach(function(x){rm.set(x.id,x)});local.restaurants=Array.from(rm.values());localStorage.setItem(key,JSON.stringify(local));if(t==='recipes'&&typeof window.renderRecipes==='function')window.renderRecipes();if(t==='restaurants'&&typeof window.renderRestaurants==='function')window.renderRestaurants()}).catch(function(){})}else{if(t==='home'&&typeof window.renderHome==='function')window.renderHome()}}catch(e){}
 };
 document.addEventListener('DOMContentLoaded',function(){
   document.querySelectorAll('[data-tab]').forEach(function(b){
