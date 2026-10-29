@@ -70,7 +70,7 @@
         const config = await response.json();
         if (!config.authUrl) throw new Error('Sign-in configuration is missing the authentication URL.');
         const { createAuthClient } = await import('https://esm.sh/@neondatabase/auth@latest');
-        const client = createAuthClient(String(config.authUrl).replace(/\\/$/, ''));
+        const client = createAuthClient(String(config.authUrl).replace(/\/$/, ''));
         const session = await client.getSession();
         if (session?.data?.session || session?.data?.user || session?.user) { showApp(); return; }
         form.addEventListener('submit', async (event) => {
