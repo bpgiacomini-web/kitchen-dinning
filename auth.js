@@ -57,6 +57,18 @@ window.fetch = async (input, init = {}) => {
   return nativeFetch(input, init);
 };
 
+async function getUsableSession() {
+  const result = await authClient.getSession();
+  const session = result?.data?.session;
+  const user = result?.data?.user || session?.user;
+  let token = session?.access_token || '';
+  if (!token && typeof authClient.getJWTToken === 'function') {
+    const tokenResult = await authClient.getJWTToken();
+    token = typeof tokenResult === 'string' ? tokenResult : (tokenResult?.data?.token || tokenResult?.token || '');
+  }
+  return { session, user, token };
+}
+
 async function startApp(user) {
   if (appStarted) return;
   appStarted = true;
@@ -123,9 +135,7 @@ async function boot() {
     if (!config.authUrl) throw new Error('The preview auth URL is not configured in Vercel.');
     const { createAuthClient } = await import('https://esm.sh/@neondatabase/auth@latest');
     authClient = createAuthClient(config.authUrl);
-    const result = await authClient.getSession();
-    const session = result?.data?.session;
-    const user = result?.data?.user || session?.user;
+    const { session, user, token } = await getUsableSession();
     const params = new URLSearchParams(location.search);
     if (params.has('token') || params.has('error')) {
       loginPanel.hidden = false;
@@ -136,8 +146,8 @@ async function boot() {
         setMode('signin');
         message('That password-reset link is invalid or expired. Request a new one.', true);
       }
-    } else if (session?.access_token && user) {
-      accessToken = session.access_token;
+    } else if (token && user) {
+      accessToken = token;
       await startApp(user);
     } else {
       loginPanel.hidden = false;
@@ -204,16 +214,19 @@ authForm.addEventListener('submit', async event => {
       }
       throw new Error(detail);
     }
-    const sessionResult = await authClient.getSession();
-    const session = sessionResult?.data?.session || result?.data?.session;
-    const user = sessionResult?.data?.user || result?.data?.user || session?.user;
-    if (!session?.access_token || !user) {
-      message('Account request submitted. If email verification is enabled, check your inbox, then sign in.', false);
-      if (mode === 'signup') setMode('signin');
+    const { session, user: sessionUser, token } = await getUsableSession();
+    const resolvedUser = sessionUser || result?.data?.user || session?.user;
+    if (!token || !resolvedUser) {
+      if (mode === 'signup') {
+        setMode('signin');
+        message('The signup request was accepted, but Metro Eats did not receive an active session. Try signing in with the same email and password. Do not create another account.', true);
+      } else {
+        message('Sign-in did not return an active session. Please try again. If this continues, we need to inspect the Neon session response.', true);
+      }
       return;
     }
-    accessToken = session.access_token;
-    await startApp(user);
+    accessToken = token;
+    await startApp(resolvedUser);
   } catch (error) {
     message(error?.message || 'Could not sign in. Check your details and try again.', true);
   } finally {
