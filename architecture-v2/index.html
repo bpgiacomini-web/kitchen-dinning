@@ -10,7 +10,11 @@
     #metroAuthPanel input { box-sizing:border-box; width:100%; padding:13px; margin-top:5px; border-radius:8px; border:1px solid #555d69; background:#0d1015; color:white; font:inherit; }
     #metroAuthPanel button { width:100%; margin-top:18px; padding:13px; border:0; border-radius:8px; background:#e8b66a; color:#171a20; font-weight:700; font:inherit; }
     #metroAuthStatus { min-height:24px; overflow-wrap:anywhere; }
-    #metroAccountButton { flex:0 0 auto; width:auto; min-width:44px; min-height:44px; margin:0 0 0 8px; padding:8px 11px; border:1px solid var(--line,#29313a); border-radius:12px; background:#171c22; color:var(--text,#f4f1ea); font-size:14px; font-weight:700; }
+    #metroAccountButton { position:absolute; top:calc(10px + env(safe-area-inset-top)); right:14px; z-index:120; display:grid; place-items:center; width:44px; height:44px; min-width:44px; min-height:44px; margin:0; padding:0; border:1px solid #39424d; border-radius:50%; background:#171c22; color:#f4f1ea; box-shadow:0 4px 16px #0005; }
+    #metroAccountButton svg { width:21px; height:21px; display:block; }
+    #metroAccountButton[hidden] { display:none !important; }
+    #metroAccountPanel[hidden] { display:none !important; }
+    #metroAuthPanel[hidden] { display:none !important; }
     #metroAccountPanel { position:fixed; z-index:1000; top:calc(12px + env(safe-area-inset-top)); right:14px; width:min(340px,calc(100vw - 28px)); padding:20px; color:var(--text,#f4f1ea); background:#151a20; border:1px solid #39424d; border-radius:18px; box-shadow:0 18px 60px #000b; }
     #metroAccountPanel h2 { margin:0 0 6px; font-size:20px; }
     #metroAccountPanel p { color:var(--muted,#9aa3ad); overflow-wrap:anywhere; }
@@ -32,7 +36,7 @@
   <link rel="stylesheet" href="./pizza-theme.css?v=4">
 </head>
 <body>
-  <section id="metroAuthPanel" aria-labelledby="metroAuthTitle">
+  <section id="metroAuthPanel" aria-labelledby="metroAuthTitle" hidden>
     <h1 id="metroAuthTitle">Metro Eats</h1><p>Sign in to open the Architecture Preview.</p>
     <form id="metroAuthForm">
       <label for="metroAuthEmail">Email</label><input id="metroAuthEmail" name="email" type="email" autocomplete="username" required>
@@ -49,7 +53,7 @@
         <button type="button" data-view="dining">My Restaurants</button>
         <button type="button" data-view="pizzas">My Frozen Pizzas</button>
       </nav>
-      <button id="metroAccountButton" type="button" aria-label="Account and settings" aria-expanded="false" hidden>☻</button>
+      <button id="metroAccountButton" type="button" aria-label="Account and settings" title="Account &amp; Settings" aria-expanded="false" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="3.5"></circle><path d="M5 20c.7-3.4 3.1-5.2 7-5.2s6.3 1.8 7 5.2"></path></svg></button>
     </header>
     <div id="previewNotice" class="status" role="status">Architecture preview · read-only · existing app unchanged</div>
     <main id="app" tabindex="-1" aria-live="polite">
