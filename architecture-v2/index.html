@@ -88,6 +88,16 @@
     const accountStatus = document.getElementById('metroAccountStatus');
     const signOutButton = document.getElementById('metroSignOut');
     let client;
+    let authConfigUrl = '';
+    let resolveMetroAuthReady;
+    window.metroAuthReady = new Promise(resolve => { resolveMetroAuthReady = resolve; });
+    window.metroGetAccessToken = async () => {
+      if (!authConfigUrl) return null;
+      const response = await fetch(authConfigUrl.replace(/\\/$/, '') + '/token', { credentials: 'include', cache: 'no-store' });
+      if (!response.ok) return null;
+      const payload = await response.json();
+      return payload?.token || payload?.data?.token || null;
+    };
     function showApp(user) {
       document.body.classList.add('metro-authenticated');
       panel.hidden = true;
@@ -145,8 +155,13 @@
         const existing = await client.getSession();
         const existingSession = existing?.data?.session;
         const existingUser = existing?.data?.user || existingSession?.user || existing?.user;
-        if (existingSession || existingUser) showApp(existingUser);
-        else showLogin();
+        if (existingSession || existingUser) {
+          resolveMetroAuthReady(true);
+          showApp(existingUser);
+        } else {
+          resolveMetroAuthReady(false);
+          showLogin();
+        }
         form.addEventListener('submit', async (event) => {
           event.preventDefault(); status.textContent = 'Signing in…'; submit.disabled = true;
           try {
@@ -157,10 +172,12 @@
             const user = verified?.data?.user || session?.user || verified?.user || result?.data?.user;
             if (!(session || user)) throw new Error('Sign-in did not return a verified session. Please try again.');
             showApp(user);
+            window.dispatchEvent(new CustomEvent('metro-authenticated'));
           } catch (error) { status.textContent = error?.message || 'Sign-in failed. Please try again.'; }
           finally { submit.disabled = false; }
         });
       } catch (error) {
+        resolveMetroAuthReady(false);
         showLogin('Sign-in setup failed: ' + (error?.message || 'Unable to initialize sign-in.'));
       }
     }
