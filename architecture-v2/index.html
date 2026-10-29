@@ -158,6 +158,7 @@
         if (existingSession || existingUser) {
           resolveMetroAuthReady(true);
           showApp(existingUser);
+          window.dispatchEvent(new CustomEvent('metro-authenticated'));
         } else {
           resolveMetroAuthReady(false);
           showLogin();
