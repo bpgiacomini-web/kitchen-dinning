@@ -169,25 +169,20 @@ async function boot() {
     const { createAuthClient } = await import('https://esm.sh/@neondatabase/auth@latest');
     bootStage = 'initializing Neon Auth client';
     authClient = createAuthClient(String(config.authUrl).replace(/\/$/, ''));
-    bootStage = 'checking existing sign-in session';
-    const { session, user, token } = await getUsableSession();
+    // Always keep the sign-in screen visible on initial page load.
+    // Do not silently reuse a browser-cached Neon session: the user must
+    // explicitly submit the existing account credentials on this preview.
+    bootStage = 'waiting for explicit sign-in';
     const params = new URLSearchParams(location.search);
+    loginPanel.hidden = false;
+    appRoot.hidden = true;
+    bottomNav.hidden = true;
     if (params.has('token') || params.has('error')) {
-      loginPanel.hidden = false;
-      appRoot.hidden = true;
-      bottomNav.hidden = true;
       if (params.has('token')) setMode('reset');
       else {
         setMode('signin');
         message('That password-reset link is invalid or expired. Request a new one.', true);
       }
-    } else if (token && user) {
-      accessToken = token;
-      await startApp(user);
-    } else {
-      loginPanel.hidden = false;
-      appRoot.hidden = true;
-      bottomNav.hidden = true;
     }
   } catch (error) {
     loginPanel.hidden = false;
