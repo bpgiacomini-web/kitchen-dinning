@@ -49,7 +49,7 @@ authForgotButton.addEventListener('click', () => setMode('forgot'));
 
 const nativeFetch = window.fetch.bind(window);
 window.fetch = async (input, init = {}) => {
-  const url = typeof input === 'string' ? input : input.url;
+  const url = typeof input === 'string' ? input : (input instanceof URL ? input.href : (input?.url || input?.href));
   if (accessToken && new URL(url, location.href).origin === location.origin &&
       new URL(url, location.href).pathname === '/api/data') {
     const headers = new Headers(init.headers || (input instanceof Request ? input.headers : undefined));
