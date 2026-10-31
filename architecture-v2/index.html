@@ -89,6 +89,10 @@
     const signOutButton = document.getElementById('metroSignOut');
     let client;
     let authConfigUrl = '';
+    // Keep a visible fallback while auth config / session restoration loads.
+    // Without this, both the app shell and auth panel start hidden, producing a blank screen if startup stalls.
+    panel.hidden = false;
+    status.textContent = 'Checking your Metro Eats sign-in…';
     let resolveMetroAuthReady;
     window.metroAuthReady = new Promise(resolve => { resolveMetroAuthReady = resolve; });
     window.metroGetAccessToken = async () => {
