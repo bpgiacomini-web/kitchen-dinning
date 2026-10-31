@@ -1,0 +1,192 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <style>
+    body:not(.metro-authenticated) .app, body:not(.metro-authenticated) .bottomNav { display:none !important; }
+    #metroAuthPanel { box-sizing:border-box; max-width:440px; margin:10vh auto; padding:28px; color:#f6f1e9; background:#171a20; border:1px solid #3b414b; border-radius:18px; font:16px/1.5 system-ui,sans-serif; }
+    #metroAuthPanel h1 { margin:0 0 8px; font-size:28px; }
+    #metroAuthPanel p { color:#c1c6cf; }
+    #metroAuthPanel label { display:block; margin-top:14px; }
+    #metroAuthPanel input { box-sizing:border-box; width:100%; padding:13px; margin-top:5px; border-radius:8px; border:1px solid #555d69; background:#0d1015; color:white; font:inherit; }
+    #metroAuthPanel button { width:100%; margin-top:18px; padding:13px; border:0; border-radius:8px; background:#e8b66a; color:#171a20; font-weight:700; font:inherit; }
+    #metroAuthStatus { min-height:24px; overflow-wrap:anywhere; }
+    #metroAccountButton { position:absolute; top:calc(10px + env(safe-area-inset-top)); right:14px; z-index:120; display:grid; place-items:center; width:44px; height:44px; min-width:44px; min-height:44px; margin:0; padding:0; border:1px solid #39424d; border-radius:50%; background:#171c22; color:#f4f1ea; box-shadow:0 4px 16px #0005; }
+    #metroAccountButton svg { width:21px; height:21px; display:block; }
+    #metroAccountButton[hidden] { display:none !important; }
+    #metroAccountPanel[hidden] { display:none !important; }
+    #metroAuthPanel[hidden] { display:none !important; }
+    #metroAccountPanel { position:fixed; z-index:1000; top:calc(12px + env(safe-area-inset-top)); right:14px; width:min(340px,calc(100vw - 28px)); padding:20px; color:var(--text,#f4f1ea); background:#151a20; border:1px solid #39424d; border-radius:18px; box-shadow:0 18px 60px #000b; }
+    #metroAccountPanel h2 { margin:0 0 6px; font-size:20px; }
+    #metroAccountPanel p { color:var(--muted,#9aa3ad); overflow-wrap:anywhere; }
+    #metroAccountPanel button { width:100%; min-height:44px; margin-top:10px; padding:10px 12px; border:1px solid #3a434d; border-radius:10px; background:#20262e; color:#f4f1ea; font:inherit; }
+    #metroAccountPanel #metroSignOut { border-color:#744848; color:#ffc3bc; }
+    #metroAccountPanel [data-close] { background:transparent; }
+  </style>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0b0d10">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <meta name="apple-mobile-web-app-title" content="Metro Eats">
+  <link rel="manifest" href="../manifest.json">
+  <link rel="apple-touch-icon" href="../icon-180.png">
+  <title>Metro Eats — Architecture Preview</title>
+  <link rel="stylesheet" href="./base.css?v=1">
+  <link rel="stylesheet" href="./styles.css?v=14">
+  <link rel="stylesheet" href="./pizza-theme.css?v=4">
+</head>
+<body>
+  <section id="metroAuthPanel" aria-labelledby="metroAuthTitle">
+    <h1 id="metroAuthTitle">Metro Eats</h1><p>Sign in to open the Architecture Preview.</p>
+    <form id="metroAuthForm">
+      <label for="metroAuthEmail">Email</label><input id="metroAuthEmail" name="email" type="email" autocomplete="username" required>
+      <label for="metroAuthPassword">Password</label><input id="metroAuthPassword" name="password" type="password" autocomplete="current-password" required>
+      <button id="metroAuthSubmit" type="submit">Sign in</button><p id="metroAuthStatus" role="status">Sign-in is loading. If this message remains, reload the page once.</p>
+    </form>
+  </section>
+  <div class="app">
+    <header class="top">
+      <a class="brand" href="#home" data-view="home" aria-label="Metro Eats home"><img class="brandLogo" src="../metro-eats-sunset-emblem.PNG" alt="Metro Eats — Recipes, Restaurants, Good Food, Local Flavor"></a>
+      <nav class="nav" aria-label="Main navigation">
+        <button class="active" type="button" data-view="home" aria-current="page">Home</button>
+        <button type="button" data-view="recipes">My Recipes</button>
+        <button type="button" data-view="dining">My Restaurants</button>
+        <button type="button" data-view="pizzas">My Frozen Pizzas</button>
+      </nav>
+      <button id="metroAccountButton" type="button" aria-label="Account and settings" title="Account &amp; Settings" aria-expanded="false" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="3.5"></circle><path d="M5 20c.7-3.4 3.1-5.2 7-5.2s6.3 1.8 7 5.2"></path></svg></button>
+    </header>
+    <div id="previewNotice" class="status" role="status">Architecture preview · read-only · existing app unchanged</div>
+    <main id="app" tabindex="-1" aria-live="polite">
+<section class="section active" id="home">
+  <div class="hero"><div class="heroIn"><div class="eyebrow">St. Louis • Metro East</div><h2>Metro Eats<br><span class="fl">⚜</span> Recipes & Dining</h2><p>Your personal recipe book and restaurant journal — built around the food you actually love.</p><div class="homeFeatureButtons"><button class="homeFeatureButton recipeButton" data-view="recipes"><span class="homeFeatureIcon">✦</span><span><strong>My Recipes</strong><small>Your Kitchen</small></span><span class="homeFeatureArrow">→</span></button><button class="homeFeatureButton diningButton" data-view="dining"><span class="homeFeatureIcon">⚜</span><span><strong>My Restaurants</strong><small>Your Restaurants & Reviews</small></span><span class="homeFeatureArrow">→</span></button></div></div></div>
+  <div class="homeColumns"><article class="featureCard"><div><div class="sectionKicker">Your Collection</div><h3>Saved with care</h3><p>Your recipes and restaurant notes, kept together in one place.</p></div><div class="actions"><button class="btn primary" data-view="recipes">Open My Recipes →</button><button class="btn" data-view="dining">Open My Restaurants →</button></div></article><article class="featureCard accent"><div><div class="sectionKicker">Safety First</div><h3>Existing data stays safe.</h3><p>This preview reads available records only. No recipe, restaurant, or review can be changed or overwritten here.</p></div><span class="status">Read only</span></article></div>
+</section>
+<section id="recipes" class="section recipeSection"></section>
+<section id="dining" class="section diningSection"></section>
+<section id="pizzas" class="section pizzaSection"></section>
+</main>
+    <footer>Metro Eats · Architecture preview · Existing app remains unchanged</footer>
+  </div>
+  <nav class="bottomNav" aria-label="Primary navigation"><button class="active" type="button" data-view="home">⌂<br>Home</button><button  type="button" data-view="recipes">▱<br>My Recipes</button><button type="button" data-view="dining">◉<br>My Restaurants</button><button type="button" data-view="pizzas">🍕<br>My Frozen Pizzas</button></nav>
+  <section id="metroAccountPanel" role="dialog" aria-modal="false" aria-labelledby="metroAccountTitle" hidden>
+    <h2 id="metroAccountTitle">Account &amp; Settings</h2>
+    <p id="metroAccountEmail">Signed in to Metro Eats</p>
+    <p>Your account stays signed in on this device until you sign out or your session expires.</p>
+    <button id="metroSignOut" type="button">Sign Out</button>
+    <button type="button" data-close>Close</button>
+    <p id="metroAccountStatus" role="status" aria-live="polite"></p>
+  </section>
+  <script type="module" src="./src/main.mjs?v=9"></script>
+  <script type="module">
+    const panel = document.getElementById('metroAuthPanel');
+    const form = document.getElementById('metroAuthForm');
+    const status = document.getElementById('metroAuthStatus');
+    const submit = document.getElementById('metroAuthSubmit');
+    const accountButton = document.getElementById('metroAccountButton');
+    const accountPanel = document.getElementById('metroAccountPanel');
+    const accountEmail = document.getElementById('metroAccountEmail');
+    const accountStatus = document.getElementById('metroAccountStatus');
+    const signOutButton = document.getElementById('metroSignOut');
+    let client;
+    let authConfigUrl = '';
+    // Keep a visible fallback while auth config / session restoration loads.
+    // Without this, both the app shell and auth panel start hidden, producing a blank screen if startup stalls.
+    panel.hidden = false;
+    status.textContent = 'Checking your Metro Eats sign-in…';
+    let resolveMetroAuthReady;
+    window.metroAuthReady = new Promise(resolve => { resolveMetroAuthReady = resolve; });
+    window.metroGetAccessToken = async () => {
+      if (!authConfigUrl) return null;
+      const response = await fetch(authConfigUrl.replace(/\\/$/, '') + '/token', { credentials: 'include', cache: 'no-store' });
+      if (!response.ok) return null;
+      const payload = await response.json();
+      return payload?.token || payload?.data?.token || null;
+    };
+    function showApp(user) {
+      document.body.classList.add('metro-authenticated');
+      panel.hidden = true;
+      accountButton.hidden = false;
+      accountEmail.textContent = user?.email || 'Signed in to Metro Eats';
+    }
+    function showLogin(message) {
+      document.body.classList.remove('metro-authenticated');
+      panel.hidden = false;
+      accountButton.hidden = true;
+      accountPanel.hidden = true;
+      accountButton.setAttribute('aria-expanded', 'false');
+      if (message) status.textContent = message;
+    }
+    accountButton.addEventListener('click', () => {
+      accountPanel.hidden = !accountPanel.hidden;
+      accountButton.setAttribute('aria-expanded', String(!accountPanel.hidden));
+      accountStatus.textContent = '';
+    });
+    accountPanel.querySelector('[data-close]').addEventListener('click', () => {
+      accountPanel.hidden = true;
+      accountButton.setAttribute('aria-expanded', 'false');
+    });
+    document.addEventListener('keydown', event => {
+      if (event.key === 'Escape' && !accountPanel.hidden) {
+        accountPanel.hidden = true;
+        accountButton.setAttribute('aria-expanded', 'false');
+      }
+    });
+    signOutButton.addEventListener('click', async () => {
+      if (!client) return;
+      signOutButton.disabled = true;
+      accountStatus.textContent = 'Signing out…';
+      try {
+        if (typeof client.signOut !== 'function') throw new Error('Sign out is not available in this authentication client.');
+        const result = await client.signOut();
+        if (result?.error) throw new Error(result.error.message || 'Sign out failed.');
+        showLogin('You have signed out. Sign in again to continue.');
+        form.reset();
+      } catch (error) {
+        accountStatus.textContent = error?.message || 'Could not sign out. Please try again.';
+      } finally {
+        signOutButton.disabled = false;
+      }
+    });
+    async function setupAuth() {
+      try {
+        const response = await fetch('/api/auth-config', { cache: 'no-store' });
+        if (!response.ok) throw new Error('Could not load sign-in configuration (' + response.status + ').');
+        const config = await response.json();
+        if (!config.authUrl) throw new Error('Sign-in configuration is missing the authentication URL.');
+        const { createAuthClient } = await import('https://esm.sh/@neondatabase/auth@latest');
+        client = createAuthClient(String(config.authUrl).replace(/\/$/, ''));
+        // Restore the existing session on this device; users should normally sign in only once.
+        const existing = await client.getSession();
+        const existingSession = existing?.data?.session;
+        const existingUser = existing?.data?.user || existingSession?.user || existing?.user;
+        if (existingSession || existingUser) {
+          resolveMetroAuthReady(true);
+          showApp(existingUser);
+          window.dispatchEvent(new CustomEvent('metro-authenticated'));
+        } else {
+          resolveMetroAuthReady(false);
+          showLogin();
+        }
+        form.addEventListener('submit', async (event) => {
+          event.preventDefault(); status.textContent = 'Signing in…'; submit.disabled = true;
+          try {
+            const result = await client.signIn.email({ email: document.getElementById('metroAuthEmail').value.trim(), password: document.getElementById('metroAuthPassword').value });
+            if (result?.error) throw new Error(result.error.message || 'Sign-in failed.');
+            const verified = await client.getSession();
+            const session = verified?.data?.session || result?.data?.session;
+            const user = verified?.data?.user || session?.user || verified?.user || result?.data?.user;
+            if (!(session || user)) throw new Error('Sign-in did not return a verified session. Please try again.');
+            showApp(user);
+            window.dispatchEvent(new CustomEvent('metro-authenticated'));
+          } catch (error) { status.textContent = error?.message || 'Sign-in failed. Please try again.'; }
+          finally { submit.disabled = false; }
+        });
+      } catch (error) {
+        resolveMetroAuthReady(false);
+        showLogin('Sign-in setup failed: ' + (error?.message || 'Unable to initialize sign-in.'));
+      }
+    }
+    setupAuth();
+  </script>
+</body>
+</html>

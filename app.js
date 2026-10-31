@@ -1,5 +1,5 @@
 
-const KEY='metro_eats_v2';
+const KEY=window.METRO_EATS_STORAGE_KEY||'metro_eats_v2';
 const OLD_KEY='metro_eats_v1';
 const categories={
  'Appetizers & Snacks':['Dips & Spreads','Finger Foods','Chips & Nachos','Wings','Charcuterie','Party Snacks'],
@@ -99,7 +99,7 @@ async function metroCloudPush(){
   if(metroCloudBusy){metroCloudQueued=true;return}
   metroCloudBusy=true;metroCloudQueued=false;
   try{
-    const response=await fetch('/api/data',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({recipes:db.recipes||[],restaurants:db.restaurants||[]})});
+    const response=await fetch('/api/data',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({recipes:db.recipes||[],restaurants:db.restaurants||[],cats:db.cats||[]})});
     if(!response.ok)throw new Error('Cloud save returned '+response.status);
     // Verify the exact write by reading the cloud copy back before reporting success.
     const verifyResponse=await fetch('/api/data?verify='+Date.now(),{cache:'no-store'});
@@ -158,7 +158,7 @@ function fmtDateTime(v){if(!v)return '';let d=new Date(v);return Number.isNaN(d.
 function stamp(label,v){return v?`<span class="timestamp"><strong>${esc(label)}:</strong> ${esc(fmtDateTime(v))}</span>`:''}
 function fieldValue(id){return document.getElementById(id)?.value?.trim()||''}
 function readFileAsDataUrl(file){return new Promise((resolve,reject)=>{let r=new FileReader();r.onload=()=>resolve(r.result);r.onerror=reject;r.readAsDataURL(file)})}
-function parseData(){let raw=localStorage.getItem(KEY)||localStorage.getItem(OLD_KEY);if(!raw)return {recipes:[],restaurants:[]};try{return JSON.parse(raw)}catch{return {recipes:[],restaurants:[]}}}
+function parseData(){let raw=localStorage.getItem(KEY);if(!raw&&KEY==='metro_eats_v2')raw=localStorage.getItem(OLD_KEY);if(!raw)return {recipes:[],restaurants:[]};try{return JSON.parse(raw)}catch{return {recipes:[],restaurants:[]}}}
 let db=parseData();
 function migrate(){const legacy={'Beef':['Main Dishes','Beef'],'Chicken':['Main Dishes','Chicken'],'Pork':['Main Dishes','Pork'],'Seafood':['Main Dishes','Seafood'],'Vegetables & Sides':['Side Dishes','Vegetables'],'Desserts':['Desserts','Cakes'],'Breakfast':['Breakfast & Brunch','Eggs']};db.recipes=(db.recipes||[]).map(r=>{let cat=categories[r.category]?r.category:(legacy[r.category]?.[0]||'Other'),sub=(categories[cat]||['Other']).includes(r.subcategory)?r.subcategory:(legacy[r.category]?.[1]||'Other');return {...r,id:(!r.id||String(r.id)==='new')?uid():String(r.id),category:cat,subcategory:sub,ingredients:r.ingredients||[],steps:r.steps||[],favorite:!!r.favorite,photos:r.photos||[],createdAt:r.createdAt||new Date().toISOString(),updatedAt:r.updatedAt||null}});db.restaurants=(db.restaurants||[]).map(r=>({...r,id:(!r.id||String(r.id)==='new')?uid():String(r.id),reviewHistory:r.reviewHistory||[],photos:r.photos||[],createdAt:r.createdAt||new Date().toISOString(),updatedAt:r.updatedAt||null}));db.cats=categories;save()}
 migrate();
@@ -1003,7 +1003,7 @@ function meSpotlightMarkup(r){
   let repeat=s.orderAgain?(' You said you would '+(s.orderAgain==='Yes'?'order it again.':'not order it again.')):'';
   return '<article class="restaurantSpotlightCard">'+
     '<div class="sectionKicker">Your #1 Restaurant</div>'+
-    '<div class="restaurantSpotlightTitleRow"><div><h3>'+esc(r.name)+'</h3><div class="meta">'+esc(r.location||'')+(r.type?' • '+esc(r.type):'')+'</div></div><div class="restaurantSpotlightScore">'+score.toFixed(1)+'<small>/10</small></div></div>'+
+    '<div class="restaurantSpotlightTitleRow"><div><h3 class="restaurantNameLink" role="button" tabindex="0" data-id="'+String(r.id).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;')+'" onclick="meDiningReview(this.dataset.id)" onkeydown="if(event.key===\'Enter\'||event.key===\' \'){event.preventDefault();meDiningReview(this.dataset.id)}">'+esc(r.name)+'</h3><div class="meta">'+esc(r.location||'')+(r.type?' • '+r.type:'')+'</div></div><div class="restaurantSpotlightScore">'+score.toFixed(1)+'<small>/10</small></div></div>'+
     '<p class="restaurantSpotlightInsight"><strong>Critic insight:</strong> '+insight+esc(repeat)+'</p>'+
     (s.foodItems?.length?'<div class="restaurantSpotlightDishes"><b>Top dishes</b>'+meCriticTopFoods(s).map(x=>'<span>'+esc(x.name)+' <strong>'+Number(x.rating).toFixed(1)+'/10</strong></span>').join('')+'</div>':'')+
     '<div class="actions"><button class="btn primary" onclick="showReviewResults(\''+String(r.id).replace(/'/g,"&#39;")+'\')">View Review Results</button>'+(r.website?'<a class="btn" href="'+esc(r.website)+'" target="_blank" rel="noopener noreferrer">Official Website</a>':'')+'</div>'+
@@ -1374,17 +1374,10 @@ function showRankings(){
   function route(action,id){
     try{
       id=id==null?'':String(id);
-      if(action==='create'){
-        meDiningOpen('new',null,false);
-      }else if(action==='edit'){
-        meDiningOpen(id,null,false);
-      }else if(action==='review'){
-        showReviewResults(id);
-      }else if(action==='history'){
-        showVisitHistory(id);
-      }else if(action==='rankings'){
-        showRankings();
+      if(typeof window.meDiningAction!=='function'){
+        throw new Error('Dining action handler is not available');
       }
+      window.meDiningAction(action,id);
     }catch(e){
       console.error('Metro Eats Dining action error',e);
       alert('Metro Eats could not open that Dining action. '+(e&&e.message?e.message:'Please try again.'));
@@ -1402,7 +1395,7 @@ function restaurantCard(r){
   let s=r.survey,history=Array.isArray(r.reviewHistory)?r.reviewHistory:[],summary=s?topRatedSummary(s):'';
   let id=String(r.id||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
   return '<article class="restaurant">'+
-    '<div class="recipeHead"><div><h3>'+esc(r.name)+'</h3><div class="meta">'+esc(r.location||'')+' '+(r.type?'• '+esc(r.type):'')+'</div>'+stamp('Added',r.createdAt)+(r.updatedAt?stamp('Last updated',r.updatedAt):'')+'</div>'+
+    '<div class="recipeHead"><div><button type="button" class="restaurantTitle" onclick="window.meDiningReview('+id+')">'+esc(r.name)+' <span aria-hidden="true">›</span></button><div class="meta">'+esc(r.location||'')+' '+(r.type?'• '+esc(r.type):'')+'</div>'+stamp('Added',r.createdAt)+(r.updatedAt?stamp('Last updated',r.updatedAt):'')+'</div>'+
     '<button type="button" class="btn" data-me-dining-action="edit" data-me-dining-id="'+id+'">Edit</button></div>'+
     (s?'<div class="restaurantScoreCard"><div><div class="restaurantScore">'+Number(s.overall||0).toFixed(1)+'<span style="font-size:.45em;letter-spacing:0"> / 10</span></div><div class="restaurantScoreLabel">Overall Experience</div></div><div><div class="topRated"><strong>Top Rated:</strong> '+(summary||'Complete another visit for more detail.')+'</div>'+stamp('Reviewed',s.createdAt)+
     '<div class="restaurantLinks"><button type="button" class="btn primary" data-me-dining-action="review" data-me-dining-id="'+id+'">Review Again</button><button type="button" class="btn" data-me-dining-action="history" data-me-dining-id="'+id+'">Visit History ('+history.length+')</button></div></div></div>':
@@ -1481,7 +1474,7 @@ function meDiningAction(action,id){
 function restaurantCard(r){
   let s=r.survey,history=Array.isArray(r.reviewHistory)?r.reviewHistory:[],summary=s?topRatedSummary(s):'',id=restaurantIdArg(r.id);
   return '<article class="restaurant">'+
-    '<div class="recipeHead"><div><h3>'+esc(r.name)+'</h3><div class="meta">'+esc(r.location||'')+' '+(r.type?'• '+esc(r.type):'')+'</div>'+stamp('Added',r.createdAt)+(r.updatedAt?stamp('Last updated',r.updatedAt):'')+'</div>'+
+    '<div class="recipeHead"><div><button type="button" class="restaurantTitle" onclick="window.meDiningReview('+id+')">'+esc(r.name)+' <span aria-hidden="true">›</span></button><div class="meta">'+esc(r.location||'')+' '+(r.type?'• '+esc(r.type):'')+'</div>'+stamp('Added',r.createdAt)+(r.updatedAt?stamp('Last updated',r.updatedAt):'')+'</div>'+
     '<button type="button" class="btn" onclick="meDiningAction(\'edit\','+id+')">Edit</button></div>'+
     (s?'<div class="restaurantScoreCard"><div><div class="restaurantScore">'+Number(s.overall||0).toFixed(1)+'<span style="font-size:.45em;letter-spacing:0"> / 10</span></div><div class="restaurantScoreLabel">Overall Experience</div></div><div><div class="topRated"><strong>Top Rated:</strong> '+(summary||'Complete another visit for more detail.')+'</div>'+stamp('Reviewed',s.createdAt)+'<div class="restaurantLinks"><button type="button" class="btn primary" onclick="meDiningAction(\'review\','+id+')">Review Again</button><button type="button" class="btn" onclick="meDiningAction(\'history\','+id+')">Visit History ('+history.length+')</button></div></div></div>':
     '<div class="actions"><button type="button" class="btn primary" onclick="meDiningAction(\'review\','+id+')">★ Rate This Restaurant</button></div>')+
@@ -1659,6 +1652,16 @@ function showVisitHistory(id){
     if(id==='new')r=prefill||{id:'new',name:'',type:'Other',location:'',website:'',menuUrl:'',notes:'',photos:[],survey:null,reviewHistory:[],createdAt:null,updatedAt:null};
     else r=(db.restaurants||[]).find(function(x){return String(x.id)===String(id)});
     if(!r){alert('That restaurant could not be found in Metro Eats.');return}
+    /* Review mode must use the critic review renderer, not the restaurant editor renderer. */
+    if(mode==='review'){
+      pendingRestaurant=null;
+      pendingReviewRestaurant=Object.assign({},r,{photos:Array.isArray(r.photos)?r.photos.slice():[]});
+      restaurantEditMode=false;
+      window._editingPhotos=Array.isArray(r.photos)?r.photos.slice():[];
+      meDiningLoadReviewState(r);
+      renderSurvey();
+      return;
+    }
     load(r,mode||'edit');render();
   };
   window.meDiningReview=function(id){meV3Open(String(id),'review')};
@@ -1831,8 +1834,9 @@ function showVisitHistory(id){
   };
   window.restaurantCard=function(r){
     var s=r&&r.survey,history=Array.isArray(r&&r.reviewHistory)?r.reviewHistory:[],summary='';
+    var rid=String(r&&r.id||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
     if(s&&s.foodItems&&s.foodItems.length)summary=s.foodItems.filter(function(x){return x.name&&Number(x.rating)>0}).sort(function(a,b){return Number(b.rating)-Number(a.rating)}).slice(0,3).map(function(x){return esc(x.name)+' '+Number(x.rating).toFixed(1)+'/10'}).join(' • ');
-    return '<article class="restaurant"><div class="recipeHead"><div><h3>'+esc(r.name)+'</h3><div class="meta">'+esc(r.location||'')+(r.type?' • '+esc(r.type):'')+'</div>'+stamp('Added',r.createdAt)+(r.updatedAt?stamp('Last updated',r.updatedAt):'')+'</div><button type="button" class="btn" onclick="openRestaurant(\''+String(r.id).replace(/'/g,"&#39;")+'\')">Edit</button></div>'+
+    return '<article class="restaurant"><div class="recipeHead"><div><button type="button" class="restaurantTitle" data-me-dining-id="'+rid+'" onclick="window.meV3Open(this.dataset.meDiningId,\'review\')">'+esc(r.name)+' <span aria-hidden="true">›</span></button><div class="meta">'+esc(r.location||'')+(r.type?' • '+esc(r.type):'')+'</div>'+stamp('Added',r.createdAt)+(r.updatedAt?stamp('Last updated',r.updatedAt):'')+'</div><button type="button" class="btn" data-me-dining-id="'+rid+'" onclick="window.meV3Open(this.dataset.meDiningId,\'edit\')">Edit</button></div>'+
       (s?'<div class="restaurantScoreCard"><div><div class="restaurantScore">'+Number(s.overall||0).toFixed(1)+'<span style="font-size:.45em"> / 10</span></div><div class="restaurantScoreLabel">Overall Experience</div></div><div><div class="topRated"><strong>Top Rated:</strong> '+(summary||'Complete another visit for more detail.')+'</div>'+stamp('Reviewed',s.createdAt)+'<div class="restaurantLinks"><button type="button" class="btn primary" onclick="showReviewResults(\''+String(r.id).replace(/'/g,"&#39;")+'\')">Review Again</button><button type="button" class="btn" onclick="showVisitHistory(\''+String(r.id).replace(/'/g,"&#39;")+'\')">Visit History ('+history.length+')</button></div></div></div>':'<div class="actions"><button type="button" class="btn primary" onclick="meDiningReview(\''+String(r.id).replace(/'/g,"&#39;")+'\')">★ Rate This Restaurant</button></div>')+
       (r.notes?'<p>'+esc(r.notes)+'</p>':'')+
       '<div class="restaurantLinks">'+(r.website?'<a class="btn" href="'+esc(r.website)+'" target="_blank" rel="noopener noreferrer">Official Website</a>':'')+(r.menuUrl?'<a class="btn" href="'+esc(r.menuUrl)+'" target="_blank" rel="noopener noreferrer">Official Menu</a>':'<a class="btn" href="'+officialMenuSearch(r.name,r.location||'')+'" target="_blank" rel="noopener noreferrer">Find Official Menu</a>')+'</div>'+

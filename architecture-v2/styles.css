@@ -1,0 +1,497 @@
+/* Metro Eats architecture preview additions only. Base colors, typography, layout and responsive rules are loaded from the approved app stylesheet. */
+#previewNotice{margin:0 0 14px;text-align:center;font-weight:750}
+#app .section.active{display:block}
+#app .importPanel{margin:18px 0 22px;padding:18px;border:1px solid var(--section-line,var(--line));border-radius:20px;background:linear-gradient(145deg,var(--section-accent-soft,#151b20),#101419)}
+#app .importIntro{color:var(--muted);font-size:14px;line-height:1.55;max-width:760px}
+#app .field label{font-weight:750}
+#app .importMode{max-width:420px}
+#app .importSource{min-height:180px;resize:vertical;line-height:1.5}
+#app .importUrl{width:100%;min-height:44px;background:#0d1115;border:1px solid var(--line);color:var(--text);border-radius:12px;padding:12px}
+#app .importUrl:focus,#app .importSource:focus-visible,#app .importMode:focus-visible{outline:2px solid var(--section-accent,var(--accent));outline-offset:2px}
+#app .importFeedback{min-height:22px;margin:12px 0 0;color:var(--section-accent,var(--accent2));font-size:13px;line-height:1.5}
+#app .parsedRecipe{margin-top:14px;padding:18px;border:1px solid #315047;border-radius:18px;background:linear-gradient(145deg,#13231f,#0e1517)}
+#app .parsedRecipe h3{font-size:25px;margin:7px 0 14px;overflow-wrap:anywhere}
+#app .parsedRecipe dl{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 16px}
+#app .parsedRecipe dl div{padding:8px 11px;background:#14201c;border:1px solid #263d35;border-radius:10px}
+#app .parsedRecipe dt{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em}
+#app .parsedRecipe dd{margin:3px 0 0;font-weight:750;font-size:13px}
+#app .parsedColumns{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:22px}
+#app .parsedColumns h4{margin:0 0 10px;color:#8fb7a6;text-transform:uppercase;letter-spacing:.1em;font-size:12px}
+#app .parsedColumns ul,#app .parsedColumns ol{padding-left:22px;margin:0;line-height:1.55}
+#app .parsedColumns li+li{margin-top:6px}
+#app .readOnlyList{display:grid;gap:10px}
+#app .readOnlyItem{padding:16px;border:1px solid var(--line);border-radius:16px;background:linear-gradient(145deg,#12171c,#0f1317)}
+#app .readOnlyItem strong{display:block;font-size:17px}
+#app .readOnlyItem small{display:block;color:var(--muted);margin-top:6px;line-height:1.45}
+#app details{margin-top:9px;color:var(--muted)}
+#app details summary{cursor:pointer;font-weight:750}
+#app details ol{padding-left:22px;line-height:1.55}
+#app button:focus-visible{outline:2px solid var(--section-accent,var(--accent));outline-offset:3px}
+#app button:disabled{opacity:.65;cursor:wait}
+@media(max-width:560px){#app .parsedColumns{grid-template-columns:1fr}#app .importPanel{padding:14px}#app .parsedRecipe{padding:14px}}
+
+.is-hidden{display:none!important}
+#app .content-panel{margin-top:18px;padding:18px;border:1px solid var(--line);border-radius:20px;background:linear-gradient(145deg,#151b20,#101419);box-shadow:var(--shadow)}
+#app .panel-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+#app .panel-heading h2{margin:4px 0;font-size:24px}
+#app .panel-heading .eyebrow{margin:0}
+#app .note{font-size:12px;color:var(--muted);line-height:1.5}
+
+
+/* Approved branding fit: use the wide logo as a real full-width banner on phones. */
+@media(max-width:760px){
+  .top{display:flex;flex-direction:column;align-items:stretch;gap:8px;min-height:0}
+  .brand{flex:0 0 auto;width:100%;justify-content:center}
+  .brandLogo{width:100%;max-width:560px;height:auto;object-fit:contain}
+}
+@media(min-width:761px){
+  .brandLogo{width:clamp(260px,42vw,460px);max-width:100%;height:auto;object-fit:contain}
+}
+
+
+/* Focused mobile polish for the clean rebuild preview only. */
+@media(max-width:520px){
+  .app{padding-bottom:calc(112px + env(safe-area-inset-bottom))}
+  .top{
+    gap:0;
+    padding:calc(6px + env(safe-area-inset-top)) 12px 8px;
+    margin:calc(-10px - env(safe-area-inset-top)) -12px 14px;
+  }
+  .brand{justify-content:center}
+  .brandLogo{display:block;width:100%;max-width:560px;height:auto}
+  #previewNotice{margin:0 0 12px;font-size:12px}
+  #app .hero{margin-bottom:16px}
+  #app .heroIn{padding:26px 22px}
+  #app .hero h2{font-size:clamp(38px,8.5vw,58px);line-height:.98}
+  #app .hero p{font-size:17px;line-height:1.5}
+  .bottomNav{padding-top:7px;padding-bottom:calc(8px + env(safe-area-inset-bottom))}
+  .bottomNav button{min-height:48px}
+}
+
+
+/* Final iPhone viewport fit: preserve the approved artwork, reduce its vertical footprint. */
+@media(max-width:520px){
+  .top{align-items:center}
+  .brand{width:100%;min-width:0}
+  .brandLogo{
+    width:auto;
+    height:auto;
+    max-width:100%;
+    max-height:190px;
+    object-fit:contain;
+  }
+  .app{padding-bottom:calc(150px + env(safe-area-inset-bottom))}
+  #app .heroIn{padding:22px 20px}
+  #app .hero h2{font-size:clamp(35px,8vw,52px)}
+  #app .homeFeatureButton{min-height:92px}
+}
+
+
+/* Horizontal logo asset: keep the full wordmark legible without a tall poster-like header. */
+.brand{display:flex;align-items:center;justify-content:center;min-width:0}
+.brand{cursor:pointer;touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+.brandLogo{pointer-events:none}
+.brandLogo{display:block;width:min(100%,720px);height:auto;max-height:none;object-fit:contain}
+@media(max-width:520px){.brandLogo{width:100%;max-width:560px;max-height:none}.top{padding-top:calc(6px + env(safe-area-inset-top))}}
+
+
+/* Local food-news section for the architecture preview. */
+#app .localNewsPanel{margin:22px 0 26px;padding:20px;border:1px solid #4a3b24;border-radius:22px;background:linear-gradient(145deg,#211a10,#111519);box-shadow:var(--shadow)}
+#app .localNewsPanel .panel-heading h2{margin:4px 0;font-size:clamp(24px,5vw,32px)}
+#app .newsIntro{color:var(--muted);line-height:1.5}
+#app .localNewsList{display:grid;gap:0;margin-top:12px}
+#app .localNewsItem{padding:15px 0;border-top:1px solid #3b3327}
+#app .localNewsItem a{color:var(--text);font-size:17px;font-weight:750;line-height:1.4;text-decoration:none}
+#app .localNewsItem a:hover{text-decoration:underline;color:#e0b563}
+#app .localNewsItem .newsMeta{margin-bottom:6px;color:#d6a85b;font-size:12px;font-weight:750;letter-spacing:.035em}
+@media(max-width:520px){#app .localNewsPanel{padding:16px}#app .localNewsItem a{font-size:16px}}
+
+
+/* Recipe card details: readable ingredients and clean, singly numbered directions. */
+#app .recipeDetailBlock{margin-top:14px}
+#app .recipeDetailBlock h4{margin:0 0 8px;color:#d6b46c;font-size:14px;letter-spacing:.04em;text-transform:uppercase}
+#app .recipeDetailBlock ul,#app .recipeDetailBlock ol{padding-left:24px;margin:0;line-height:1.55}
+#app .recipeDetailBlock li+li{margin-top:5px}
+#app .recipeDetailBlock ul{list-style:disc}
+
+
+/* Expandable restaurant information and saved review details. */
+#app .restaurantDetailBlock{margin-top:14px}
+#app .restaurantDetailBlock h4{margin:0 0 8px;color:#d6b46c;font-size:14px;letter-spacing:.04em;text-transform:uppercase}
+#app .restaurantDetailBlock dl{display:grid;grid-template-columns:minmax(100px,.7fr) minmax(0,1.3fr);gap:8px 12px;margin:0}
+#app .restaurantDetailBlock dl div{display:contents}
+#app .restaurantDetailBlock dt{color:#9ca3af;font-weight:600}
+#app .restaurantDetailBlock dd{margin:0;overflow-wrap:anywhere}
+#app .restaurantDetailBlock a{color:#e3c477;text-decoration:underline}
+#app .readOnlyItem details summary{cursor:pointer;touch-action:manipulation}
+
+
+/* Recipe import UX: clear touch-friendly choices instead of the native select popup. */
+#app .fieldLabel{display:block;color:#c6ccd2;font-size:13px;font-weight:750;margin:0 0 8px}
+#app .importModeChoices{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+#app .importModeChoice{min-height:48px;padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:#0d1115;color:var(--text);font-size:14px;font-weight:750;line-height:1.25;text-align:center;touch-action:manipulation}
+#app .importModeChoice.active{border-color:#d6a85b;background:linear-gradient(145deg,#2a2114,#191610);color:#f0d28d;box-shadow:inset 0 0 0 1px #d6a85b66}
+#app .importModeChoice:focus-visible{outline:2px solid #d6a85b;outline-offset:2px}
+#app .parsedRecipe .parsedColumns{grid-template-columns:1fr;gap:24px}
+#app .parsedRecipe .parsedColumns section{min-width:0}
+#app .parsedRecipe .parsedColumns h4{font-size:13px;margin-bottom:12px}
+#app .parsedRecipe .parsedColumns ul,
+#app .parsedRecipe .parsedColumns ol{padding-left:25px;line-height:1.65}
+#app .parsedRecipe .parsedColumns li{padding-left:3px;overflow-wrap:anywhere}
+#app .parsedRecipe .parsedColumns li+li{margin-top:10px}
+#app .parsedRecipe .parsedColumns ol li+li{margin-top:16px}
+@media(max-width:520px){
+  #app .importModeChoices{grid-template-columns:1fr;gap:7px}
+  #app .importModeChoice{text-align:left;min-height:46px}
+  /* Compact sticky banner so recipe content gets more of the phone viewport. */
+  .top{padding-top:calc(4px + env(safe-area-inset-top));padding-bottom:5px;margin-bottom:10px}
+  .brandLogo{width:100%;height:104px;max-height:104px;object-fit:contain}
+  #app .parsedRecipe{padding:13px}
+  #app .parsedRecipe h3{font-size:24px;line-height:1.15}
+  #app .parsedRecipe dl{gap:7px}
+  #app .parsedRecipe dl div{padding:8px 9px}
+}
+
+
+/* Recipe collection first: import is a separate workflow. */
+#app .recipeCollectionPanel .sectionTitle{align-items:center;gap:12px}
+#app .recipeBrowseTools{display:grid;grid-template-columns:minmax(0,2fr) minmax(0,1fr);gap:12px;margin:12px 0 20px}
+#app .recipeBrowseTools .field{margin:0;min-width:0}
+#app .recipeBrowseTools input,#app .recipeBrowseTools select{width:100%;min-width:0}
+#app .readOnlyItem[hidden],#app #recipe-filter-empty[hidden]{display:none!important}
+#app .addRecipeIntro{margin-bottom:20px}
+#app .addRecipeChoices{display:grid;gap:10px;margin:16px 0 22px}
+#app .addRecipeChoice{display:grid;grid-template-columns:36px minmax(0,1fr) 18px;align-items:center;gap:12px;text-align:left;padding:15px;border:1px solid var(--line);border-radius:15px;background:#101419;color:var(--text);min-height:76px}
+#app .addRecipeChoice:hover,#app .addRecipeChoice:focus-visible{border-color:#d6a85b;outline-offset:2px}
+#app .addRecipeChoice .choiceIcon{display:grid;place-items:center;width:36px;height:36px;border-radius:11px;background:#2b2418;color:#e0b45f;font-size:22px}
+#app .addRecipeChoice strong,#app .addRecipeChoice small{display:block}
+#app .addRecipeChoice strong{font-size:16px}
+#app .addRecipeChoice small{color:var(--muted);font-size:13px;line-height:1.45;margin-top:3px}
+#app .advancedImport{border-top:1px solid var(--line);padding-top:14px;margin:10px 0 20px}
+#app .advancedImport summary{cursor:pointer;font-weight:750}
+#app .advancedImport p{color:var(--muted);font-size:14px;line-height:1.5}
+#app .importPanel{margin-top:20px}
+@media(max-width:520px){
+  #app .recipeBrowseTools{grid-template-columns:1fr;gap:8px}
+  #app .recipeCollectionPanel .sectionTitle{align-items:flex-start;flex-wrap:wrap}
+  #app .recipeCollectionPanel .sectionTitle .btn{width:100%}
+  /* Restore a full-bleed logo banner while retaining a slightly shorter mobile header. */
+  .top{width:calc(100% + 36px);margin-left:-18px;margin-right:-18px;padding-left:18px;padding-right:18px}
+  .brand{width:100%;flex:1}
+  .brandLogo{display:block;width:100%;height:auto;max-height:132px;object-fit:contain}
+}
+
+/* Final full-bleed header override: extend past the padded app shell to the viewport edges. */
+#app { }
+@media (max-width: 520px) {
+  .top {
+    box-sizing: border-box;
+    width: 100vw;
+    max-width: 100vw;
+    margin-left: calc(50% - 50vw);
+    margin-right: calc(50% - 50vw);
+    padding-left: max(12px, env(safe-area-inset-left));
+    padding-right: max(12px, env(safe-area-inset-right));
+  }
+  .top .brand { width: 100%; min-width: 0; }
+  .top .brandLogo { display: block; width: 100%; max-width: none; height: auto; max-height: 132px; object-fit: contain; }
+}
+
+/* Definitive mobile banner fix: make both the link and image viewport-wide,
+   independent of the centered/padded app shell. Preserve the logo's aspect ratio. */
+@media (max-width: 520px) {
+  .app > .top {
+    box-sizing: border-box;
+    width: 100vw;
+    max-width: none;
+    margin-left: calc(50% - 50vw);
+    margin-right: calc(50% - 50vw);
+    padding-left: 0;
+    padding-right: 0;
+    gap: 0;
+  }
+  .app > .top > .brand {
+    box-sizing: border-box;
+    display: flex;
+    flex: 0 0 100vw;
+    width: 100vw;
+    max-width: none;
+    min-width: 0;
+    margin-left: 0;
+    margin-right: 0;
+    padding: 0;
+  }
+  .app > .top > .brand > .brandLogo {
+    display: block;
+    flex: 0 0 100vw;
+    width: 100vw;
+    max-width: none;
+    height: auto;
+    max-height: none;
+    object-fit: contain;
+  }
+  /* The preview-only connection badge is useful while debugging, but shouldn't
+     interrupt the polished mobile home screen; keep it available on desktop. */
+  #previewNotice { display: none; }
+}
+
+/* Tighten the full-bleed mobile banner vertically: preserve edge-to-edge width,
+   but remove the oversized black gaps above and below the artwork. */
+@media (max-width: 520px) {
+  .app > .top {
+    padding-top: 0;
+    padding-bottom: 0;
+    margin-top: calc(-12px - env(safe-area-inset-top));
+    margin-bottom: 8px;
+  }
+  .app > .top > .brand,
+  .app > .top > .brand > .brandLogo {
+    margin-top: 0;
+    margin-bottom: 0;
+  }
+}
+
+/* Correct the mobile header's actual container height/position, not just padding.
+   Earlier overrides left the banner centered inside a tall empty header region. */
+@media (max-width: 520px) {
+  .app > .top {
+    display: flex;
+    position: relative;
+    inset: auto;
+    height: auto;
+    min-height: 0;
+    max-height: none;
+    flex: 0 0 auto;
+    align-items: stretch;
+    justify-content: flex-start;
+    gap: 0;
+    padding: 0;
+    margin-top: 0;
+    margin-bottom: 8px;
+    transform: none;
+  }
+  .app > .top > .brand {
+    align-self: stretch;
+    align-items: stretch;
+    justify-content: flex-start;
+    height: auto;
+    min-height: 0;
+    flex: 0 0 auto;
+  }
+  .app > .top > .brand > .brandLogo {
+    display: block;
+    width: 100vw;
+    height: auto;
+    max-height: none;
+    align-self: flex-start;
+    object-fit: contain;
+  }
+}
+
+/* Mobile header behavior: one explicit rule set, driven by active-view state.
+   Home uses fixed positioning for reliable iOS Safari behavior; its reserved
+   space prevents content jumping. Other views keep the normal scrolling header. */
+@media (max-width: 520px) {
+  .app > .top {
+    position: relative;
+    top: auto;
+    z-index: 1;
+  }
+  .app > .top.homeStickyHeader {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    width: 100%;
+    max-width: none;
+    margin: 0;
+    padding-top: env(safe-area-inset-top);
+    z-index: 100;
+    background: rgba(9,11,14,.98);
+  }
+  .app:has(> .top.homeStickyHeader) #app {
+    padding-top: 132px;
+  }
+  .app > .top.homeStickyHeader > .brand {
+    display: flex;
+    width: 100%;
+    min-width: 0;
+    flex: 0 0 auto;
+    align-self: stretch;
+    justify-content: center;
+    margin: 0;
+  }
+  .app > .top.homeStickyHeader > .brand > .brandLogo {
+    display: block;
+    width: 100vw;
+    max-width: none;
+    height: auto;
+    max-height: none;
+    object-fit: contain;
+    border-radius: 0;
+  }
+}
+
+
+/* Keep long imported source URLs inside the recipe card on narrow screens. */
+#app .parsedRecipe .note{min-width:0;max-width:100%;overflow-wrap:anywhere;word-break:break-word}
+#app .parsedRecipe{min-width:0;max-width:100%;box-sizing:border-box}
+
+
+/* Source is a compact actionable link, never a long visible URL. */
+#app .parsedRecipe .recipeSourceLink{display:inline-flex;align-items:center;gap:6px;color:#e3c477;font-weight:750;text-decoration:underline;text-underline-offset:3px}
+#app .parsedRecipe .recipeSourceLink:focus-visible{outline:2px solid #d6a85b;outline-offset:3px;border-radius:4px}
+
+
+/* Recipe editor: stack fields vertically and keep controls inside the card on mobile. */
+#app .recipeEditPanel {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  margin: 14px 0;
+  padding: 0;
+}
+#app .recipeEditPanel > summary {
+  display: list-item;
+  margin-bottom: 14px;
+}
+#app .recipeEditPanel > label {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  margin: 0 0 16px;
+  line-height: 1.4;
+}
+#app .recipeEditPanel > label input,
+#app .recipeEditPanel > label textarea {
+  display: block;
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  margin: 8px 0 0;
+  font: inherit;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+#app .recipeEditPanel > label textarea {
+  resize: vertical;
+  min-height: 150px;
+}
+#app .recipeEditPanel > .btn {
+  display: inline-flex;
+  max-width: 100%;
+  margin: 4px 0 12px;
+}
+#app .recipeEditPanel .edit-status {
+  margin: 8px 0 0;
+  overflow-wrap: anywhere;
+}
+
+
+/* Dark-mode recipe editor controls consistent with the Metro Eats palette. */
+#app .recipeEditPanel > label input,
+#app .recipeEditPanel > label textarea {
+  color: #f4f1e8;
+  background: #0b0f13;
+  border: 1px solid #394148;
+  border-radius: 12px;
+  padding: 12px 14px;
+  box-shadow: none;
+  caret-color: #d9ad5d;
+}
+#app .recipeEditPanel > label input::placeholder,
+#app .recipeEditPanel > label textarea::placeholder {
+  color: #9ba4ad;
+}
+#app .recipeEditPanel > label input:focus,
+#app .recipeEditPanel > label textarea:focus {
+  outline: 2px solid #d9ad5d;
+  outline-offset: 2px;
+  border-color: #d9ad5d;
+}
+#app .recipeEditActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  margin: 8px 0 12px;
+}
+#app .recipeEditActions .btn { margin: 0; }
+#app .recipeEditActions .btn.danger {
+  color: #ffe9e6;
+  background: #542a2a;
+  border: 1px solid #9b5550;
+}
+#app .recipeEditActions .btn.danger:focus-visible {
+  outline: 2px solid #d9ad5d;
+  outline-offset: 3px;
+}
+
+#app .recipeEditPanel > label select { display:block; box-sizing:border-box; width:100%; max-width:100%; min-width:0; margin:8px 0 0; padding:12px 14px; color:#f4f1e8; background:#0b0f13; border:1px solid #394148; border-radius:12px; font:inherit; }
+#app .recipeEditPanel > label select:focus { outline:2px solid #d9ad5d; outline-offset:2px; border-color:#d9ad5d; }
+
+
+/* Recipe cards: viewing is primary; editing is a quieter, separate destination. */
+#app .recipeCardHeader{display:flex;align-items:flex-start;justify-content:space-between;gap:14px}
+#app .recipeCardHeader>strong{min-width:0;overflow-wrap:anywhere}
+#app .recipeEditButton{flex:0 0 auto;min-height:34px;padding:6px 13px;font-size:13px;font-weight:700;line-height:1.2;border:1px solid var(--line);background:transparent;color:var(--muted);border-radius:10px}
+#app .recipeEditButton:hover,#app .recipeEditButton:focus-visible{color:var(--text);border-color:var(--section-accent,var(--accent));outline-offset:2px}
+#app .recipeEditorPage{max-width:900px;margin-inline:auto}
+#app .recipeEditorForm{display:grid;gap:16px}
+#app .recipeEditorForm label{display:grid;gap:7px;color:var(--text);font-weight:750}
+#app .recipeEditorForm input,#app .recipeEditorForm select,#app .recipeEditorForm textarea{width:100%;box-sizing:border-box;background:#0d1115;border:1px solid var(--line);color:var(--text);border-radius:12px;padding:12px;font:inherit;line-height:1.5}
+#app .recipeEditorForm input:focus-visible,#app .recipeEditorForm select:focus-visible,#app .recipeEditorForm textarea:focus-visible{outline:2px solid var(--section-accent,var(--accent));outline-offset:2px}
+#app .recipeEditorTaxonomy{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+#app .recipeEditorForm .recipeEditActions{display:flex;flex-wrap:wrap;gap:10px}
+@media(max-width:600px){#app .recipeEditorTaxonomy{grid-template-columns:1fr}#app .recipeEditorForm .recipeEditActions .btn{flex:1 1 100%}}
+
+
+/* Global vertical rhythm refinement: tighter cards without shrinking touch targets. */
+#app .hero{margin-bottom:18px}
+#app .heroIn{padding-top:clamp(22px,4.8vw,40px);padding-bottom:clamp(22px,4.8vw,40px)}
+#app .hero h2{margin-top:9px;margin-bottom:10px}
+#app .hero p{margin-top:0;margin-bottom:0;line-height:1.45}
+#app .content-panel{margin-top:14px;padding-top:15px;padding-bottom:15px}
+#app .sectionTitle{margin-top:22px;margin-bottom:12px}
+#app .readOnlyItem{padding:13px 15px}
+#app .readOnlyItem small{margin-top:4px}
+#app .list{gap:10px}
+#app .featureCard{padding:17px;min-height:155px}
+#app .storyCard{padding:18px}
+#app .choiceCard{padding:15px;min-height:135px}
+#app .guideCard{padding:13px;margin-top:10px}
+#app .toolbar{margin-top:14px;margin-bottom:10px}
+#app .field{margin-bottom:10px}
+@media(max-width:600px){
+  #app .heroIn{padding:22px 20px}
+  #app .hero h2{margin-top:8px;margin-bottom:8px}
+  #app .content-panel{margin-top:12px;padding:13px}
+  #app .sectionTitle{margin-top:18px;margin-bottom:10px}
+  #app .readOnlyItem{padding:12px}
+  #app .featureCard{padding:16px;min-height:140px}
+}
+
+
+/* Home-only breathing room below the oversized skyline logo. Other pages stay compact. */
+.app:has(> .top.homeStickyHeader) #app > .hero{margin-top:16px}
+.app:has(> .top.homeStickyHeader) #app > .hero .heroIn{padding-top:clamp(28px,5.5vw,44px)}
+@media(max-width:520px){
+  .app:has(> .top.homeStickyHeader) #app > .hero{margin-top:18px}
+  .app:has(> .top.homeStickyHeader) #app > .hero .heroIn{padding-top:28px}
+}
+
+
+/* Match the home logo-to-card gap to the spacing between adjacent home cards. */
+@media(max-width:600px){
+  .app:has(> .top.homeStickyHeader) #app > .hero{margin-top:24px}
+}
+
+
+/* Home hero needs a clearly visible, generous separation from the brand banner. */
+.app:has(> .top.homeStickyHeader) #app > .hero{margin-top:38px}
+@media(max-width:600px){
+  .app:has(> .top.homeStickyHeader) #app > .hero{margin-top:38px}
+}
