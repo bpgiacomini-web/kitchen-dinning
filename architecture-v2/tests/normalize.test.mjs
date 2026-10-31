@@ -68,3 +68,29 @@ test("asText handles structured values safely", () => {
   assert.equal(asText({ text: "  Step one " }), "Step one");
   assert.equal(asText(["a", "b"]), "a, b");
 });
+
+test("normalization preserves unknown legacy fields and original instruction/review payloads", () => {
+  const source = {
+    recipes: [{
+      id: "raw-r1", title: "Recipe", ingredients: ["salt"], steps: [{ text: "Keep source step object" }],
+      importedNutrition: { calories: 123 }, articleExcerpt: "Do not discard", customFlag: true
+    }],
+    restaurants: [{
+      id: "raw-d1", name: "Cafe", type: "American", location: "Alton, IL",
+      menuUrl: "https://example.com/menu", lat: 38.9, lon: -90.1,
+      survey: { createdAt: "2026-10-01", customScore: { service: 9 } },
+      reviewHistory: [{ createdAt: "2026-10-01", customDish: "Soup", nested: { preserved: true } }]
+    }],
+    cats: ["Main Dishes"],
+    exportMetadata: { source: "metro_eats_v2", version: 2 }
+  };
+  const result = normalizeDataset(source);
+  assert.deepEqual(result.exportMetadata, source.exportMetadata);
+  assert.deepEqual(result.recipes[0].steps, source.recipes[0].steps);
+  assert.deepEqual(result.recipes[0].importedNutrition, source.recipes[0].importedNutrition);
+  assert.equal(result.recipes[0].customFlag, true);
+  assert.deepEqual(result.restaurants[0].survey, source.restaurants[0].survey);
+  assert.deepEqual(result.restaurants[0].reviewHistory, source.restaurants[0].reviewHistory);
+  assert.equal(result.restaurants[0].menuUrl, source.restaurants[0].menuUrl);
+  assert.equal(result.restaurants[0].lat, 38.9);
+});
