@@ -24,12 +24,17 @@ function instructionList(value) {
   return asList(value);
 }
 
+/**
+ * Add display aliases without discarding the original record.
+ * The spread is intentional: imports and round-trip saves must retain unknown
+ * legacy fields, source metadata, photos, and the original steps/review shapes.
+ */
 export function normalizeRecipe(record, index = 0) {
   const item = record && typeof record === "object" && !Array.isArray(record) ? record : {};
   const ingredients = item.ingredients ?? item.recipeIngredient ?? item.ingredientList ?? [];
-  // Metro Eats stores saved recipe instructions under "steps"; imported Schema.org data uses recipeInstructions.
   const directions = item.steps ?? item.directions ?? item.recipeInstructions ?? item.instructions ?? [];
   return {
+    ...item,
     id: asText(item.id ?? item._id) || `legacy-recipe-${index}`,
     title: asText(item.title ?? item.name ?? item.recipeName) || "Untitled recipe",
     category: asText(item.category),
@@ -55,6 +60,7 @@ export function normalizeRestaurant(record, index = 0) {
   const history = Array.isArray(item.reviewHistory) ? item.reviewHistory : [];
   const reviewCount = history.length || (item.survey ? 1 : 0);
   return {
+    ...item,
     id: asText(item.id ?? item._id) || `legacy-restaurant-${index}`,
     name: asText(item.name ?? item.title) || "Unnamed restaurant",
     cuisine: asText(item.type ?? item.cuisine ?? item.category),
@@ -78,6 +84,7 @@ export function normalizeRestaurant(record, index = 0) {
 export function normalizeDataset(value) {
   const data = value && typeof value === "object" && !Array.isArray(value) ? value : {};
   return {
+    ...data,
     recipes: (Array.isArray(data.recipes) ? data.recipes : []).map(normalizeRecipe),
     restaurants: (Array.isArray(data.restaurants) ? data.restaurants : []).map(normalizeRestaurant),
     cats: data.cats && typeof data.cats === "object" ? data.cats : []
