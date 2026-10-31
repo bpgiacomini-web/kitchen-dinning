@@ -1,22 +1,24 @@
 import { neon } from '@neondatabase/serverless';
-import { createRemoteJWKSet, jwtVerify } from 'jose';
 
 const MAX_BODY_BYTES = 1_500_000;
 const EMPTY_DATASET = { recipes: [], restaurants: [], cats: [] };
 const jwksUrl = process.env.NEON_AUTH_JWKS_URL;
 const authBaseUrl = process.env.NEON_AUTH_BASE_URL;
-const jwks = jwksUrl ? createRemoteJWKSet(new URL(jwksUrl)) : null;
 
 function send(res, status, body) {
   return res.status(status).json(body);
 }
 
 async function authenticatedUser(req) {
-  if (!jwks || !authBaseUrl) return { error: 'Preview authentication is not configured.' };
+  if (!jwksUrl || !authBaseUrl) return { error: 'Preview authentication is not configured.' };
   const header = String(req.headers.authorization || '');
   const match = header.match(/^Bearer\s+(.+)$/i);
   if (!match) return { error: 'Sign in is required.', status: 401 };
   try {
+    // jose v6 is ESM-only. Load it dynamically because Vercel currently compiles
+    // this project's API entrypoints from ESM to CommonJS during deployment.
+    const { createRemoteJWKSet, jwtVerify } = await import('jose');
+    const jwks = createRemoteJWKSet(new URL(jwksUrl));
     const { payload } = await jwtVerify(match[1], jwks, { issuer: new URL(authBaseUrl).origin });
     if (typeof payload.sub !== 'string' || !payload.sub.trim()) return { error: 'Invalid session.', status: 401 };
     return { userId: payload.sub };
