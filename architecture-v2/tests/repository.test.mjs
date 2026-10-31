@@ -34,13 +34,13 @@ test("loadDataset uses local data without a network request", async () => {
 });
 
 test("loadDataset falls back to remote data when local records are absent", async () => {
-  const result = await loadDataset({ storage: fakeStorage(), fetchImpl: async (url, options) => { assert.equal(url, "/api/data"); assert.equal(options.method, "GET"); return { ok: true, json: async () => ({ recipes: [{ name: "Cloud" }], restaurants: [] }) }; } });
+  const result = await loadDataset({ storage: fakeStorage(), getToken: async () => "test-session-token", fetchImpl: async (url, options) => { assert.equal(url, "/api/data"); assert.equal(options.method, "GET"); assert.equal(options.headers.Authorization, "Bearer test-session-token"); return { ok: true, json: async () => ({ recipes: [{ name: "Cloud" }], restaurants: [] }) }; } });
   assert.equal(result.source, "cloud");
   assert.equal(result.data.recipes[0].title, "Cloud");
 });
 
 test("loadDataset fails safely when sources are unavailable", async () => {
-  const result = await loadDataset({ storage: fakeStorage(), fetchImpl: async () => { throw new Error("offline"); } });
+  const result = await loadDataset({ storage: fakeStorage(), getToken: async () => "test-session-token", fetchImpl: async () => { throw new Error("offline"); } });
   assert.equal(result.source, "empty");
   assert.equal(result.staleFallback, true);
   assert.deepEqual(result.data, { recipes: [], restaurants: [], cats: [] });
