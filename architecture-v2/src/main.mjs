@@ -1,9 +1,16 @@
 import { loadDataset } from "./data/repository.mjs";
+import { createUserDatasetClient } from "./data/user-dataset-client.mjs";
 import { parsePastedRecipeText, parseRecipeJsonLd } from "./features/recipes/import-parser.mjs";
 
 const root = document.querySelector("#app");
 const status = document.querySelector("#previewNotice");
 let dataset = { recipes: [], restaurants: [], cats: [] };
+let baseDataset = { recipes: [], restaurants: [], cats: [] };
+let cloudDataset = { recipes: [], restaurants: [], cats: [] };
+let cloudRevision = 0;
+let cloudClient = null;
+let cloudReady = false;
+let cloudRecipeIds = new Set();
 let activeView = "home";
 let activeRecipeId = null;
 let extractedRecipe = null;
@@ -76,6 +83,31 @@ function ensureBgChiliPreviewTest() {
     source: ""
   };
   try { localStorage.setItem(PREVIEW_RECIPE_STORAGE_KEY, JSON.stringify([...saved, recipe])); } catch {}
+}
+
+function mergeVisibleDataset() {
+  const merge = (base = [], cloud = []) => {
+    const cloudIds = new Set(cloud.map(item => String(item?.id ?? "")));
+    return [...base.filter(item => !cloudIds.has(String(item?.id ?? ""))), ...cloud];
+  };
+  cloudRecipeIds = new Set(cloudDataset.recipes.map(item => String(item.id)));
+  dataset = {
+    ...baseDataset,
+    ...cloudDataset,
+    recipes: merge(baseDataset.recipes, cloudDataset.recipes),
+    restaurants: merge(baseDataset.restaurants, cloudDataset.restaurants),
+    cats: cloudDataset.cats?.length ? cloudDataset.cats : baseDataset.cats
+  };
+  mergePreviewSavedRecipes();
+}
+
+async function saveCloudDataset(nextDataset) {
+  if (!cloudClient || !cloudReady) throw new Error("Secure cloud storage is not ready. Nothing was saved.");
+  const result = await cloudClient.save(nextDataset, cloudRevision);
+  cloudRevision = result.revision;
+  cloudDataset = nextDataset;
+  mergeVisibleDataset();
+  return result;
 }
 
 function escapeHtml(value) {
@@ -177,7 +209,7 @@ function renderList(title, eyebrow, items, kind) {
     const reviewSummary = item.reviewCount ? `${item.reviewCount} saved review${item.reviewCount === 1 ? "" : "s"}` : "";
     const restaurantRating = item.rating == null ? null : (Number(item.rating) <= 5 ? Number(item.rating) * 2 : Number(item.rating));
     const restaurantDetails = !isRecipe ? `<details><summary>View restaurant details</summary><section class="restaurantDetailBlock"><h4>Restaurant information</h4><dl>${[["Address",item.address],["Cuisine",item.cuisine],["Rating",restaurantRating == null ? "" : `${restaurantRating.toFixed(1)}/10`],["Favorite",item.favorite ? "Yes" : ""],["Notes",item.notes],["Website",item.website],["Last updated",item.updatedAt ? formatDateTime(item.updatedAt) : ""]].filter(([,value])=>value!==""&&value!=null).map(([label,value])=>`<div><dt>${label}</dt><dd>${label === "Website" && /^https?:\/\//i.test(String(value)) ? `<a href="${escapeHtml(value)}" target="_blank" rel="noopener noreferrer">${escapeHtml(value)}</a>` : displayValue(value)}</dd></div>`).join("")}</dl></section>${reviewRecords.length ? reviewFields : `<p class="hint">No saved review details were found for this restaurant.</p>`}${restaurantPhotos.length ? `<section class="restaurantDetailBlock"><h4>Photos</h4><ul>${restaurantPhotos.map(photo=>`<li>${displayValue(photo)}</li>`).join("")}</ul></section>` : ""}</details>` : "";
-    return `<article class="readOnlyItem" data-category="${escapeHtml(item.category || "")}">${isRecipe ? `<div class="recipeCardHeader"><strong>${escapeHtml(item.title)}</strong>${String(item.id || "").startsWith("preview-recipe-") ? `<button class="btn recipeEditButton" type="button" data-action="open-recipe-edit" data-recipe-id="${escapeHtml(item.id)}">Edit</button>` : ""}</div>` : `<strong>${escapeHtml(item.name)}</strong>`}<small>${escapeHtml(isRecipe ? [item.category, item.subcategory, ingredients.length ? `${ingredients.length} ingredients` : "", ...timeParts].filter(Boolean).join(" · ") : [item.cuisine, item.address, restaurantRating != null ? `Rating ${restaurantRating.toFixed(1)}/10` : "", item.favorite ? "Favorite" : "", reviewSummary].filter(Boolean).join(" · ") || "No additional details saved")}</small>${isRecipe && (item.createdAt || item.updatedAt) ? `<p class="recipeSavedDate">Saved ${escapeHtml(formatDateTime(item.updatedAt || item.createdAt))}</p>` : ""}${isRecipe && (ingredients.length || directions.length) ? `<details><summary>View recipe</summary>${ingredients.length ? `<section class="recipeDetailBlock"><h4>Ingredients</h4><ul>${ingredients.map(ingredient => `<li>${escapeHtml(ingredient)}</li>`).join("")}</ul></section>` : `<p class="hint">No ingredients were found for this recipe.</p>`}${directions.length ? `<section class="recipeDetailBlock"><h4>Directions</h4><ol>${directions.map(step => `<li>${escapeHtml(cleanStep(step))}</li>`).join("")}</ol></section>` : ""}</details>` : restaurantDetails}</article>`;
+    return `<article class="readOnlyItem" data-category="${escapeHtml(item.category || "")}">${isRecipe ? `<div class="recipeCardHeader"><strong>${escapeHtml(item.title)}</strong>${cloudRecipeIds.has(String(item.id)) ? `<button class="btn recipeEditButton" type="button" data-action="open-recipe-edit" data-recipe-id="${escapeHtml(item.id)}">Edit</button>` : ""}</div>` : `<strong>${escapeHtml(item.name)}</strong>`}<small>${escapeHtml(isRecipe ? [item.category, item.subcategory, ingredients.length ? `${ingredients.length} ingredients` : "", ...timeParts].filter(Boolean).join(" · ") : [item.cuisine, item.address, restaurantRating != null ? `Rating ${restaurantRating.toFixed(1)}/10` : "", item.favorite ? "Favorite" : "", reviewSummary].filter(Boolean).join(" · ") || "No additional details saved")}</small>${isRecipe && (item.createdAt || item.updatedAt) ? `<p class="recipeSavedDate">Saved ${escapeHtml(formatDateTime(item.updatedAt || item.createdAt))}</p>` : ""}${isRecipe && (ingredients.length || directions.length) ? `<details><summary>View recipe</summary>${ingredients.length ? `<section class="recipeDetailBlock"><h4>Ingredients</h4><ul>${ingredients.map(ingredient => `<li>${escapeHtml(ingredient)}</li>`).join("")}</ul></section>` : `<p class="hint">No ingredients were found for this recipe.</p>`}${directions.length ? `<section class="recipeDetailBlock"><h4>Directions</h4><ol>${directions.map(step => `<li>${escapeHtml(cleanStep(step))}</li>`).join("")}</ol></section>` : ""}</details>` : restaurantDetails}</article>`;
   }).join("");
   if (isRecipe) {
     const categories = RECIPE_CATEGORIES;
@@ -361,17 +393,17 @@ document.addEventListener("click", async event => {
   }
   if (actionButton.dataset.action === "delete-recipe") {
     const id = actionButton.dataset.recipeId;
-    const saved = readPreviewSavedRecipes();
-    const recipe = saved.find(item => String(item.id) === String(id));
+    const recipe = cloudDataset.recipes.find(item => String(item.id) === String(id));
     if (!recipe) return;
-    if (!window.confirm(`Delete “${recipe.title}” from this preview on this device? This cannot be undone here.`)) return;
+    if (!window.confirm(`Delete “${recipe.title}” from your Metro Eats Preview account? This cannot be undone here.`)) return;
+    actionButton.disabled = true;
     try {
-      localStorage.setItem(PREVIEW_RECIPE_STORAGE_KEY, JSON.stringify(saved.filter(item => String(item.id) !== String(id))));
-      mergePreviewSavedRecipes();
+      await saveCloudDataset({ ...cloudDataset, recipes: cloudDataset.recipes.filter(item => String(item.id) !== String(id)) });
       render();
-    } catch {
+    } catch (error) {
       const status = actionButton.closest(".recipeEditPanel")?.querySelector(".edit-status");
-      if (status) status.textContent = "Could not delete this recipe from browser storage. Nothing was removed.";
+      if (status) status.textContent = error?.message || "Cloud delete failed. Nothing was removed.";
+      actionButton.disabled = false;
     }
     return;
   }
@@ -389,22 +421,23 @@ document.addEventListener("click", async event => {
       return;
     }
     try {
-      const saved = readPreviewSavedRecipes();
-      const index = saved.findIndex(item => String(item.id) === String(id));
+      const index = cloudDataset.recipes.findIndex(item => String(item.id) === String(id));
       if (index < 0) {
-        if (status) status.textContent = "Could not find this preview-saved recipe. Nothing was changed.";
+        if (status) status.textContent = "This recipe is not in your cloud account. Nothing was changed.";
         return;
       }
-      saved[index] = { ...saved[index], title, category, subcategory, ingredients, directions, updatedAt: new Date().toISOString() };
-      localStorage.setItem(PREVIEW_RECIPE_STORAGE_KEY, JSON.stringify(saved));
-      mergePreviewSavedRecipes();
+      const recipes = cloudDataset.recipes.slice();
+      recipes[index] = { ...recipes[index], title, category, subcategory, ingredients, directions, updatedAt: new Date().toISOString() };
+      actionButton.disabled = true;
+      await saveCloudDataset({ ...cloudDataset, recipes });
       activeView = "recipes";
       activeRecipeId = null;
       render();
       window.scrollTo({ top: 0, left: 0, behavior: "instant" });
       return;
-    } catch {
-      if (status) status.textContent = "Could not save your changes in this browser. Please try again.";
+    } catch (error) {
+      if (status) status.textContent = error?.message || "Cloud save failed. Your previous recipe remains unchanged.";
+      actionButton.disabled = false;
     }
     return;
   }
@@ -418,34 +451,31 @@ document.addEventListener("click", async event => {
     const ingredients = (document.querySelector("#review-recipe-ingredients")?.value || "").split("\n").map(value => value.trim()).filter(Boolean);
     const directions = (document.querySelector("#review-recipe-directions")?.value || "").split("\n").map(value => value.trim()).filter(Boolean);
     if (!title || !ingredients.length || !directions.length) { if (feedback) feedback.textContent = "Please provide a title, at least one ingredient, and at least one direction."; return; }
-    const saved = readPreviewSavedRecipes();
-    const normalize = value => String(value || "").trim().toLocaleLowerCase();
-    const duplicate = saved.find(item =>
-      normalize(item.title) === normalize(title) &&
-      normalize(item.source) === normalize(extractedRecipe.source) &&
+    const duplicate = cloudDataset.recipes.find(item =>
+      String(item.title || "").trim().toLocaleLowerCase() === title.trim().toLocaleLowerCase() &&
+      String(item.source || "").trim().toLocaleLowerCase() === String(extractedRecipe.source || "").trim().toLocaleLowerCase() &&
       JSON.stringify(item.ingredients || []) === JSON.stringify(ingredients) &&
-      JSON.stringify(item.directions || []) === JSON.stringify(directions)
+      JSON.stringify(item.directions || item.steps || []) === JSON.stringify(directions)
     );
     const inlineStatus = document.querySelector("#recipe-save-status");
     if (duplicate) {
-      if (inlineStatus) inlineStatus.textContent = "Already saved on this device. You can find this recipe in My Recipes; no duplicate was added.";
-      actionButton.textContent = "Already Saved ✓";
-      actionButton.disabled = true;
-      if (feedback) feedback.textContent = "This recipe was already saved. No duplicate was added.";
+      if (inlineStatus) inlineStatus.textContent = "Already saved in your cloud account. No duplicate was added.";
+      if (feedback) feedback.textContent = "This recipe is already saved in your cloud account.";
       return;
     }
-    const recipe = { ...extractedRecipe, id: "preview-recipe-" + Date.now(), title, ingredients, directions, category: "Imported", createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() };
+    const recipe = { ...extractedRecipe, id: "metro-recipe-" + crypto.randomUUID(), title, ingredients, directions, category: "Imported", createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() };
+    actionButton.disabled = true;
     try {
-      localStorage.setItem(PREVIEW_RECIPE_STORAGE_KEY, JSON.stringify([...saved, recipe]));
-      dataset.recipes = [...dataset.recipes, recipe];
-      const message = "Saved successfully to My Recipes on this device. You can leave this screen now; the recipe is available in My Recipes. This preview does not sync to the cloud.";
+      await saveCloudDataset({ ...cloudDataset, recipes: [...cloudDataset.recipes, recipe] });
+      const message = "Saved to your Metro Eats Preview account. Your recipe is now stored in cloud storage.";
       if (inlineStatus) inlineStatus.textContent = message;
       if (feedback) feedback.textContent = message;
       actionButton.textContent = "Saved ✓";
       actionButton.disabled = true;
-    } catch {
-      if (inlineStatus) inlineStatus.textContent = "Save failed. Browser storage was unavailable; please try again.";
-      if (feedback) feedback.textContent = "Browser storage was unavailable. Nothing was saved.";
+    } catch (error) {
+      if (inlineStatus) inlineStatus.textContent = error?.message || "Cloud save failed. Nothing was reported as saved.";
+      if (feedback) feedback.textContent = error?.message || "Cloud save failed. Nothing was reported as saved.";
+      actionButton.disabled = false;
     }
     return;
   }
@@ -501,21 +531,34 @@ document.addEventListener("click", async event => {
 async function refreshDataset() {
   try {
     const result = await loadDataset();
-    dataset = result.data;
-    ensureBgChiliPreviewTest();
-    mergePreviewSavedRecipes();
+    baseDataset = result.data;
+    cloudReady = false;
+    cloudDataset = { recipes: [], restaurants: [], cats: [] };
+    cloudRevision = 0;
+    try {
+      cloudClient = createUserDatasetClient({ getAccessToken: () => globalThis.metroGetAccessToken?.() });
+      const cloud = await cloudClient.load();
+      cloudDataset = cloud.data;
+      cloudRevision = cloud.revision;
+      cloudReady = true;
+    } catch (error) {
+      cloudClient = null;
+      console.warn("Metro Eats cloud storage is not ready:", error?.message || "Unavailable");
+    }
+    mergeVisibleDataset();
     const hasRecords = dataset.recipes.length > 0 || dataset.restaurants.length > 0;
-    if (result.source === "cloud" || result.source === "cloud+local") {
-      setStatus(hasRecords ? "Preview data connected" : "Preview connected · no preview records yet", hasRecords ? "ok" : "warn");
+    if (cloudReady) {
+      setStatus("Signed in · secure cloud storage ready", "ok");
     } else if (result.source.startsWith("local:")) {
-      setStatus(hasRecords ? "Loaded from this device" : "This device has no saved records", hasRecords ? "ok" : "warn");
+      setStatus(hasRecords ? "Existing records loaded · cloud storage unavailable" : "Cloud storage unavailable", "warn");
     } else {
-      setStatus(result.staleFallback ? "Data source unavailable" : "No saved data found", "warn");
+      setStatus(hasRecords ? "Preview records loaded · cloud storage unavailable" : "Cloud storage is not ready", "warn");
     }
     render();
     if (activeView === "home") loadLocalFoodNews();
-  } catch {
-    setStatus("Data unavailable", "warn");
+  } catch (error) {
+    cloudReady = false;
+    setStatus(error?.message || "Data unavailable", "warn");
     render();
     if (activeView === "home") loadLocalFoodNews();
   }
