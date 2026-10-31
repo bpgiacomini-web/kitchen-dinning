@@ -564,5 +564,8 @@ async function refreshDataset() {
   }
 }
 
+// Authentication is initialized by the following module in index.html. Do not
+// block this module with a top-level await: loadDataset waits for metroAuthReady,
+// which the auth module resolves. Blocking here can prevent that auth module from
+// running, leaving the user trapped on the sign-in screen.
 window.addEventListener("metro-authenticated", () => { void refreshDataset(); });
-await refreshDataset();
