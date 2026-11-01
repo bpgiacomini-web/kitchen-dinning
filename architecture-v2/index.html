@@ -88,6 +88,7 @@
     const accountStatus = document.getElementById('metroAccountStatus');
     const signOutButton = document.getElementById('metroSignOut');
     let client;
+    let signInInProgress = false;
     let authConfigUrl = '';
     // Keep a visible fallback while auth config / session restoration loads.
     // Without this, both the app shell and auth panel start hidden, producing a blank screen if startup stalls.
@@ -158,20 +159,16 @@
         authConfigUrl = String(config.authUrl).replace(/\/$/, '');
         const { createAuthClient } = await import('https://esm.sh/@neondatabase/auth@latest');
         client = createAuthClient(String(config.authUrl).replace(/\/$/, ''));
-        // Restore the existing session on this device; users should normally sign in only once.
-        const existing = await client.getSession();
-        const existingSession = existing?.data?.session;
-        const existingUser = existing?.data?.user || existingSession?.user || existing?.user;
-        if (existingSession || existingUser) {
-          resolveMetroAuthReady(true);
-          showApp(existingUser);
-          window.dispatchEvent(new CustomEvent('metro-authenticated'));
-        } else {
-          resolveMetroAuthReady(false);
-          showLogin();
-        }
+        // Attach the sign-in handler BEFORE restoring a prior session. On mobile
+        // Safari, getSession() can stall while cookies are being checked; that
+        // must never leave a visible form with a dead Sign in button.
+        status.textContent = 'Sign-in is ready. Enter your email and password.';
         form.addEventListener('submit', async (event) => {
-          event.preventDefault(); status.textContent = 'Signing in…'; submit.disabled = true;
+          event.preventDefault();
+          if (signInInProgress) return;
+          signInInProgress = true;
+          status.textContent = 'Signing in…';
+          submit.disabled = true;
           try {
             const result = await client.signIn.email({ email: document.getElementById('metroAuthEmail').value.trim(), password: document.getElementById('metroAuthPassword').value });
             if (result?.error) throw new Error(result.error.message || 'Sign-in failed.');
@@ -179,11 +176,37 @@
             const session = verified?.data?.session || result?.data?.session;
             const user = verified?.data?.user || session?.user || verified?.user || result?.data?.user;
             if (!(session || user)) throw new Error('Sign-in did not return a verified session. Please try again.');
+            resolveMetroAuthReady(true);
             showApp(user);
             window.dispatchEvent(new CustomEvent('metro-authenticated'));
-          } catch (error) { status.textContent = error?.message || 'Sign-in failed. Please try again.'; }
-          finally { submit.disabled = false; }
+          } catch (error) {
+            resolveMetroAuthReady(false);
+            status.textContent = error?.message || 'Sign-in failed. Please try again.';
+          } finally {
+            signInInProgress = false;
+            submit.disabled = false;
+          }
         });
+        // Restore an existing session in the background; never block form setup.
+        try {
+          const existing = await client.getSession();
+          if (signInInProgress) return;
+          const existingSession = existing?.data?.session;
+          const existingUser = existing?.data?.user || existingSession?.user || existing?.user;
+          if (existingSession || existingUser) {
+            resolveMetroAuthReady(true);
+            showApp(existingUser);
+            window.dispatchEvent(new CustomEvent('metro-authenticated'));
+          } else {
+            resolveMetroAuthReady(false);
+            showLogin();
+          }
+        } catch (restoreError) {
+          if (!signInInProgress) {
+            resolveMetroAuthReady(false);
+            showLogin('Could not restore your previous session. You can still sign in below.');
+          }
+        }
       } catch (error) {
         resolveMetroAuthReady(false);
         showLogin('Sign-in setup failed: ' + (error?.message || 'Unable to initialize sign-in.'));
