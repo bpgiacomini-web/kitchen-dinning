@@ -61,6 +61,15 @@ export default async function handler(req, res) {
       const cookie = upstream.headers.get("set-cookie");
       if (cookie) res.setHeader("Set-Cookie", cookie);
     }
+    // Safe diagnostics: record only the route and upstream status. Never log
+    // request bodies, credentials, cookies, tokens, or the Neon host.
+    console.info("Metro Eats Preview auth proxy response", {
+      method: req.method || "GET",
+      path: authPath,
+      status: upstream.status,
+      requestId: upstream.headers.get("x-neon-ret-request-id") || null
+    });
+    res.setHeader("X-Metro-Auth-Upstream-Status", String(upstream.status));
     res.statusCode = upstream.status;
     const payload = Buffer.from(await upstream.arrayBuffer());
     return res.end(payload);
