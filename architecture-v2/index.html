@@ -98,7 +98,7 @@
     window.metroAuthReady = new Promise(resolve => { resolveMetroAuthReady = resolve; });
     window.metroGetAccessToken = async () => {
       if (!authConfigUrl) return null;
-      const response = await fetch(authConfigUrl.replace(/\\/$/, '') + '/token', { credentials: 'include', cache: 'no-store' });
+      const response = await fetch(authConfigUrl.replace(/\/$/, '') + '/token', { credentials: 'include', cache: 'no-store' });
       if (!response.ok) return null;
       const payload = await response.json();
       return payload?.token || payload?.data?.token || null;
