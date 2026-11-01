@@ -6,7 +6,7 @@ export default async function handler(req, res) {
   const base = process.env.NEON_AUTH_BASE_URL || process.env.VITE_NEON_AUTH_URL;
   if (!base) return res.status(503).json({ error: "Preview authentication URL is not configured." });
   try {
-    const target = new URL(base.replace(/\\/+$/, "") + "/sign-in/email");
+    const target = new URL(base.replace(/\/+$/, "") + "/sign-in/email");
     const upstream = await fetch(target, {
       method: "POST",
       headers: { "content-type": "application/json", "accept": "application/json" },
