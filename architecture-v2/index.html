@@ -153,6 +153,9 @@
         if (!response.ok) throw new Error('Could not load sign-in configuration (' + response.status + ').');
         const config = await response.json();
         if (!config.authUrl) throw new Error('Sign-in configuration is missing the authentication URL.');
+        // Share the same-origin auth base with the data client so it can retrieve
+        // the signed-in user's access token instead of silently returning null.
+        authConfigUrl = String(config.authUrl).replace(/\/$/, '');
         const { createAuthClient } = await import('https://esm.sh/@neondatabase/auth@latest');
         client = createAuthClient(String(config.authUrl).replace(/\/$/, ''));
         // Restore the existing session on this device; users should normally sign in only once.
