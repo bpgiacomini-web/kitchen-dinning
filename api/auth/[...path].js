@@ -23,7 +23,16 @@ export default async function handler(req, res) {
   const target = new URL(upstreamBase.replace(/\/+$/, "") + "/" + authPath + requestUrl.search);
   const headers = new Headers();
   for (const [name, value] of Object.entries(req.headers)) {
-    if (value == null || ["host", "connection", "content-length", "transfer-encoding"].includes(name.toLowerCase())) continue;
+    const lower = name.toLowerCase();
+    // Do not forward Vercel's proxy-routing headers to Neon Auth. In
+    // particular, x-forwarded-host can contain an internal/combined host
+    // value that Neon Auth rejects as an invalid hostname. fetch() supplies
+    // the correct upstream Host header for the Neon Auth origin.
+    if (value == null || [
+      "host", "connection", "content-length", "transfer-encoding",
+      "x-forwarded-host", "x-forwarded-proto", "x-forwarded-port",
+      "x-forwarded-for", "forwarded"
+    ].includes(lower)) continue;
     headers.set(name, Array.isArray(value) ? value.join(", ") : String(value));
   }
 
