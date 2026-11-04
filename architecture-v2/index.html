@@ -89,7 +89,7 @@
     const signOutButton = document.getElementById('metroSignOut');
     let client;
     let signInInProgress = false;
-    let authConfigUrl = '';
+    let accessToken = '';
     // Keep a visible fallback while auth config / session restoration loads.
     // Without this, both the app shell and auth panel start hidden, producing a blank screen if startup stalls.
     panel.hidden = false;
@@ -97,11 +97,15 @@
     let resolveMetroAuthReady;
     window.metroAuthReady = new Promise(resolve => { resolveMetroAuthReady = resolve; });
     window.metroGetAccessToken = async () => {
-      if (!authConfigUrl) return null;
-      const response = await fetch('/api/auth/token', { credentials: 'include', cache: 'no-store' });
-      if (!response.ok) return null;
-      const payload = await response.json();
-      return payload?.token || payload?.data?.token || null;
+      if (!client) return null;
+      try {
+        const result = await client.getSession();
+        const token = result?.data?.session?.access_token;
+        accessToken = typeof token === 'string' && token.trim() ? token : '';
+      } catch {
+        // A cached session token may remain usable during a temporary Auth outage.
+      }
+      return accessToken || null;
     };
     function showApp(user) {
       document.body.classList.add('metro-authenticated');
@@ -140,6 +144,7 @@
         if (typeof client.signOut !== 'function') throw new Error('Sign out is not available in this authentication client.');
         const result = await client.signOut();
         if (result?.error) throw new Error(result.error.message || 'Sign out failed.');
+        accessToken = '';
         showLogin('You have signed out. Sign in again to continue.');
         form.reset();
       } catch (error) {
@@ -156,9 +161,9 @@
         if (!config.authUrl) throw new Error('Sign-in configuration is missing the authentication URL.');
         // Share the same-origin auth base with the data client so it can retrieve
         // the signed-in user's access token instead of silently returning null.
-        authConfigUrl = String(config.authUrl).replace(/\/$/, '');
-        const { createAuthClient } = await import('https://esm.sh/@neondatabase/auth@latest');
-        client = createAuthClient(String(config.authUrl).replace(/\/$/, ''));
+        const authBaseUrl = String(config.authUrl).replace(/\/$/, '');
+        const { createAuthClient } = await import('https://esm.sh/@neondatabase/auth@0.7.0-beta');
+        client = createAuthClient(authBaseUrl);
         // Attach the sign-in handler BEFORE restoring a prior session. On mobile
         // Safari, getSession() can stall while cookies are being checked; that
         // must never leave a visible form with a dead Sign in button.
@@ -172,10 +177,16 @@
           try {
             const result = await client.signIn.email({ email: document.getElementById('metroAuthEmail').value.trim(), password: document.getElementById('metroAuthPassword').value });
             if (result?.error) throw new Error(result.error.message || 'Sign-in failed.');
-            const verified = await client.getSession();
+            let verified;
+            try {
+              verified = await client.getSession();
+            } catch (error) {
+              if (!result?.data?.session) throw error;
+            }
             const session = verified?.data?.session || result?.data?.session;
             const user = verified?.data?.user || session?.user || verified?.user || result?.data?.user;
             if (!(session || user)) throw new Error('Sign-in did not return a verified session. Please try again.');
+            accessToken = typeof session?.access_token === 'string' ? session.access_token : '';
             resolveMetroAuthReady(true);
             showApp(user);
             window.dispatchEvent(new CustomEvent('metro-authenticated'));
@@ -194,6 +205,7 @@
           const existingSession = existing?.data?.session;
           const existingUser = existing?.data?.user || existingSession?.user || existing?.user;
           if (existingSession || existingUser) {
+            accessToken = typeof existingSession?.access_token === 'string' ? existingSession.access_token : '';
             resolveMetroAuthReady(true);
             showApp(existingUser);
             window.dispatchEvent(new CustomEvent('metro-authenticated'));
@@ -204,7 +216,9 @@
         } catch (restoreError) {
           if (!signInInProgress) {
             resolveMetroAuthReady(false);
-            showLogin('Could not restore your previous session. You can still sign in below.');
+            const statusCode = Number(restoreError?.status || restoreError?.response?.status);
+            const statusDetail = Number.isInteger(statusCode) ? ' (HTTP ' + statusCode + ')' : '';
+            showLogin('Could not restore your previous session' + statusDetail + '. You can still sign in below.');
           }
         }
       } catch (error) {
