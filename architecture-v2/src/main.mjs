@@ -1,11 +1,10 @@
-import { loadDataset } from "./data/repository.mjs";
 import { createUserDatasetClient } from "./data/user-dataset-client.mjs";
+import { normalizeDataset } from "./domain/normalize.mjs";
 import { parsePastedRecipeText, parseRecipeJsonLd } from "./features/recipes/import-parser.mjs";
 
 const root = document.querySelector("#app");
 const status = document.querySelector("#previewNotice");
 let dataset = { recipes: [], restaurants: [], cats: [] };
-let baseDataset = { recipes: [], restaurants: [], cats: [] };
 let cloudDataset = { recipes: [], restaurants: [], cats: [] };
 let cloudRevision = 0;
 let cloudClient = null;
@@ -15,96 +14,16 @@ let activeView = "home";
 let activeRecipeId = null;
 let extractedRecipe = null;
 const RECIPE_CATEGORIES = ["Appetizers & Snacks", "Breakfast & Brunch", "Soups, Salads & Sandwiches", "Main Dishes", "Mexican & Latin", "Italian", "BBQ & Grilling", "Side Dishes", "Sauces, Gravies & Condiments", "Bread & Baking", "Desserts", "Drinks", "Other"];
-const PREVIEW_RECIPE_STORAGE_KEY = "metro_eats_architecture_preview_recipes_v1";
-function readPreviewSavedRecipes() {
-  try { const value = JSON.parse(localStorage.getItem(PREVIEW_RECIPE_STORAGE_KEY) || "[]"); return Array.isArray(value) ? value.filter(item => item && typeof item === "object" && item.id && item.title) : []; } catch { return []; }
-}
-function mergePreviewSavedRecipes() {
-  const saved = readPreviewSavedRecipes();
-  const ids = new Set(saved.map(item => String(item.id)));
-  dataset.recipes = [...dataset.recipes.filter(item => !ids.has(String(item.id))), ...saved];
-}
-function ensureBgChiliPreviewTest() {
-  const saved = readPreviewSavedRecipes();
-  const existing = saved.find(item => String(item.title || "").toLowerCase() === "bg’s chili — save test".toLowerCase());
-  if (existing) {
-    if (existing.category !== "Main Dishes" || existing.subcategory !== "Beef") {
-      existing.category = "Main Dishes";
-      existing.subcategory = "Beef";
-      try { localStorage.setItem(PREVIEW_RECIPE_STORAGE_KEY, JSON.stringify(saved)); } catch {}
-    }
-    return;
-  }
-  const now = new Date().toISOString();
-  const recipe = {
-    id: "preview-recipe-bg-chili-seeded-test",
-    title: "BG’s Chili — Save Test",
-    category: "Main Dishes",
-    subcategory: "Beef",
-    ingredients: [
-      "3 ¼ lbs ground chuck",
-      "1 lb chorizo",
-      "4 Hands CPB Stout, for deglazing",
-      "½ large onion",
-      "1 bell pepper",
-      "1–2 jalapeños",
-      "3 garlic cloves",
-      "3 Roma tomatoes",
-      "¼ cup tomato paste",
-      "5 tbsp chili powder (2 Mexene, 3 Gebhardt)",
-      "3 tsp smoked paprika",
-      "2 tsp cumin",
-      "½ tsp oregano",
-      "1 tsp cayenne pepper",
-      "1 tbsp coarse salt",
-      "2 tbsp black pepper",
-      "1 packet Sazon",
-      "2 tbsp olive oil",
-      "½ onion, chopped",
-      "¼ cup carrots, chopped",
-      "¼ cup celery, chopped",
-      "2 tbsp Better Than Bouillon roasted beef",
-      "2 tbsp cornstarch, if needed",
-      "1 tbsp harissa"
-    ],
-    directions: [
-      "Cook ground chuck in batches over high heat.",
-      "Deglaze each batch with stout and combine the meat and liquid in a Dutch oven.",
-      "Add enough water to cover the meat, bring to a boil, then simmer.",
-      "Sauté the vegetables and add them to the meat.",
-      "Sauté the onion, carrots, and celery in olive oil for the mirepoix.",
-      "Add the seasonings and Sazon.",
-      "Stir in the roasted beef Better Than Bouillon.",
-      "Thicken with cornstarch if needed.",
-      "Finish with harissa."
-    ],
-    createdAt: now,
-    updatedAt: now,
-    source: ""
-  };
-  try { localStorage.setItem(PREVIEW_RECIPE_STORAGE_KEY, JSON.stringify([...saved, recipe])); } catch {}
-}
-
 function mergeVisibleDataset() {
-  const merge = (base = [], cloud = []) => {
-    const cloudIds = new Set(cloud.map(item => String(item?.id ?? "")));
-    return [...base.filter(item => !cloudIds.has(String(item?.id ?? ""))), ...cloud];
-  };
   cloudRecipeIds = new Set(cloudDataset.recipes.map(item => String(item.id)));
-  dataset = {
-    ...baseDataset,
-    ...cloudDataset,
-    recipes: merge(baseDataset.recipes, cloudDataset.recipes),
-    restaurants: merge(baseDataset.restaurants, cloudDataset.restaurants),
-    cats: cloudDataset.cats?.length ? cloudDataset.cats : baseDataset.cats
-  };
-  mergePreviewSavedRecipes();
+  dataset = { ...cloudDataset };
 }
 
 async function saveCloudDataset(nextDataset) {
   if (!cloudClient || !cloudReady) throw new Error("Secure cloud storage is not ready. Nothing was saved.");
   const result = await cloudClient.save(nextDataset, cloudRevision);
   cloudRevision = result.revision;
+  window.metroDatasetRevision = cloudRevision;
   cloudDataset = nextDataset;
   mergeVisibleDataset();
   return result;
@@ -209,7 +128,7 @@ function renderList(title, eyebrow, items, kind) {
     const reviewSummary = item.reviewCount ? `${item.reviewCount} saved review${item.reviewCount === 1 ? "" : "s"}` : "";
     const restaurantRating = item.rating == null ? null : (Number(item.rating) <= 5 ? Number(item.rating) * 2 : Number(item.rating));
     const restaurantDetails = !isRecipe ? `<details><summary>View restaurant details</summary><section class="restaurantDetailBlock"><h4>Restaurant information</h4><dl>${[["Address",item.address],["Cuisine",item.cuisine],["Rating",restaurantRating == null ? "" : `${restaurantRating.toFixed(1)}/10`],["Favorite",item.favorite ? "Yes" : ""],["Notes",item.notes],["Website",item.website],["Last updated",item.updatedAt ? formatDateTime(item.updatedAt) : ""]].filter(([,value])=>value!==""&&value!=null).map(([label,value])=>`<div><dt>${label}</dt><dd>${label === "Website" && /^https?:\/\//i.test(String(value)) ? `<a href="${escapeHtml(value)}" target="_blank" rel="noopener noreferrer">${escapeHtml(value)}</a>` : displayValue(value)}</dd></div>`).join("")}</dl></section>${reviewRecords.length ? reviewFields : `<p class="hint">No saved review details were found for this restaurant.</p>`}${restaurantPhotos.length ? `<section class="restaurantDetailBlock"><h4>Photos</h4><ul>${restaurantPhotos.map(photo=>`<li>${displayValue(photo)}</li>`).join("")}</ul></section>` : ""}</details>` : "";
-    return `<article class="readOnlyItem" data-category="${escapeHtml(item.category || "")}">${isRecipe ? `<div class="recipeCardHeader"><strong>${escapeHtml(item.title)}</strong>${cloudRecipeIds.has(String(item.id)) ? `<button class="btn recipeEditButton" type="button" data-action="open-recipe-edit" data-recipe-id="${escapeHtml(item.id)}">Edit</button>` : ""}</div>` : `<strong>${escapeHtml(item.name)}</strong>`}<small>${escapeHtml(isRecipe ? [item.category, item.subcategory, ingredients.length ? `${ingredients.length} ingredients` : "", ...timeParts].filter(Boolean).join(" · ") : [item.cuisine, item.address, restaurantRating != null ? `Rating ${restaurantRating.toFixed(1)}/10` : "", item.favorite ? "Favorite" : "", reviewSummary].filter(Boolean).join(" · ") || "No additional details saved")}</small>${isRecipe && (item.createdAt || item.updatedAt) ? `<p class="recipeSavedDate">Saved ${escapeHtml(formatDateTime(item.updatedAt || item.createdAt))}</p>` : ""}${isRecipe && (ingredients.length || directions.length) ? `<details><summary>View recipe</summary>${ingredients.length ? `<section class="recipeDetailBlock"><h4>Ingredients</h4><ul>${ingredients.map(ingredient => `<li>${escapeHtml(ingredient)}</li>`).join("")}</ul></section>` : `<p class="hint">No ingredients were found for this recipe.</p>`}${directions.length ? `<section class="recipeDetailBlock"><h4>Directions</h4><ol>${directions.map(step => `<li>${escapeHtml(cleanStep(step))}</li>`).join("")}</ol></section>` : ""}</details>` : restaurantDetails}</article>`;
+    return `<article class="readOnlyItem" data-category="${escapeHtml(item.category || "")}">${isRecipe ? `<div class="recipeCardHeader"><strong>${escapeHtml(item.title)}</strong>${cloudRecipeIds.has(String(item.id)) ? `<div class="recipeCardActions"><button class="btn recipeEditButton" type="button" data-action="open-recipe-edit" data-recipe-id="${escapeHtml(item.id)}">Edit</button><button class="btn" type="button" data-action="print-recipe" data-recipe-id="${escapeHtml(item.id)}">Print / PDF</button><button class="btn" type="button" data-action="share-recipe" data-recipe-id="${escapeHtml(item.id)}">Create share link</button><button class="btn" type="button" data-action="revoke-share" data-recipe-id="${escapeHtml(item.id)}">Revoke link</button></div>` : ""}</div>` : `<strong>${escapeHtml(item.name)}</strong>`}<small>${escapeHtml(isRecipe ? [item.category, item.subcategory, ingredients.length ? `${ingredients.length} ingredients` : "", ...timeParts].filter(Boolean).join(" · ") : [item.cuisine, item.address, restaurantRating != null ? `Rating ${restaurantRating.toFixed(1)}/10` : "", item.favorite ? "Favorite" : "", reviewSummary].filter(Boolean).join(" · ") || "No additional details saved")}</small>${isRecipe && (item.createdAt || item.updatedAt) ? `<p class="recipeSavedDate">Saved ${escapeHtml(formatDateTime(item.updatedAt || item.createdAt))}</p>` : ""}${isRecipe && (ingredients.length || directions.length) ? `<details><summary>View recipe</summary>${ingredients.length ? `<section class="recipeDetailBlock"><h4>Ingredients</h4><ul>${ingredients.map(ingredient => `<li>${escapeHtml(ingredient)}</li>`).join("")}</ul></section>` : `<p class="hint">No ingredients were found for this recipe.</p>`}${directions.length ? `<section class="recipeDetailBlock"><h4>Directions</h4><ol>${directions.map(step => `<li>${escapeHtml(cleanStep(step))}</li>`).join("")}</ol></section>` : ""}</details>` : restaurantDetails}</article>`;
   }).join("");
   if (isRecipe) {
     const categories = RECIPE_CATEGORIES;
@@ -252,7 +171,7 @@ function renderList(title, eyebrow, items, kind) {
 }
 function renderRecipeEditor(recipeId) {
   const recipe = dataset.recipes.find(item => String(item.id) === String(recipeId));
-  if (!recipe || !String(recipe.id || "").startsWith("preview-recipe-")) {
+  if (!recipe || !cloudRecipeIds.has(String(recipe.id))) {
     activeView = "recipes";
     render();
     return;
@@ -383,6 +302,48 @@ document.addEventListener("click", async event => {
   }
   const actionButton = event.target.closest("[data-action]");
   if (!actionButton) return;
+  if (actionButton.dataset.action === "print-recipe") {
+    const card = actionButton.closest(".readOnlyItem");
+    card?.querySelectorAll("details").forEach(item => { item.open = true; });
+    window.print();
+    return;
+  }
+  if (["share-recipe", "revoke-share"].includes(actionButton.dataset.action)) {
+    const status = document.createElement("p");
+    status.className = "recipeShareStatus";
+    status.setAttribute("role", "status");
+    actionButton.closest(".readOnlyItem")?.append(status);
+    actionButton.disabled = true;
+    try {
+      const token = await globalThis.metroGetAccessToken?.();
+      if (!token) throw new Error("Sign in again to manage sharing.");
+      const create = actionButton.dataset.action === "share-recipe";
+      const response = await fetch("/api/recipe-share", {
+        method: create ? "POST" : "DELETE",
+        cache: "no-store",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        ...(create ? { body: JSON.stringify({ recipeId: actionButton.dataset.recipeId }) } : { body: JSON.stringify({ recipeId: actionButton.dataset.recipeId }) })
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(result.error || "Could not update the share link.");
+      if (create) {
+        const shareUrl = new URL("/share-recipe/", location.origin);
+        shareUrl.searchParams.set("token", result.token);
+        status.textContent = "Private recipe link created: ";
+        const link = document.createElement("a");
+        link.href = shareUrl.href;
+        link.textContent = "Open shared recipe";
+        link.target = "_blank";
+        link.rel = "noopener noreferrer";
+        status.append(link);
+        if (navigator.clipboard?.writeText) {
+          try { await navigator.clipboard.writeText(shareUrl.href); status.textContent += " (copied)"; } catch { /* Keep the visible link usable if clipboard access is unavailable. */ }
+        }
+      } else status.textContent = "Any existing link for this recipe has been revoked.";
+    } catch (error) { status.textContent = error?.message || "Could not update the share link."; }
+    finally { actionButton.disabled = false; }
+    return;
+  }
   if (actionButton.dataset.action === "open-recipe-edit") {
     activeRecipeId = actionButton.dataset.recipeId;
     activeView = "edit-recipe";
@@ -502,9 +463,11 @@ document.addEventListener("click", async event => {
     try {
       if (mode === "url") {
         if (!url) throw new Error("Enter a recipe webpage URL first.");
+        const token = await globalThis.metroGetAccessToken?.();
+        if (!token) throw new Error("Sign in again to import a recipe.");
         const response = await fetch("/api/import-recipe-v2", {
           method: "POST",
-          headers: { "Content-Type": "application/json", "Accept": "application/json" },
+          headers: { "Content-Type": "application/json", "Accept": "application/json", Authorization: `Bearer ${token}` },
           body: JSON.stringify({ url })
         });
         const payload = await response.json().catch(() => ({}));
@@ -530,16 +493,15 @@ document.addEventListener("click", async event => {
 
 async function refreshDataset() {
   try {
-    const result = await loadDataset();
-    baseDataset = result.data;
     cloudReady = false;
     cloudDataset = { recipes: [], restaurants: [], cats: [] };
     cloudRevision = 0;
     try {
       cloudClient = createUserDatasetClient({ getAccessToken: () => globalThis.metroGetAccessToken?.() });
       const cloud = await cloudClient.load();
-      cloudDataset = cloud.data;
+      cloudDataset = normalizeDataset(cloud.data);
       cloudRevision = cloud.revision;
+      window.metroDatasetRevision = cloudRevision;
       cloudReady = true;
     } catch (error) {
       cloudClient = null;
@@ -549,8 +511,6 @@ async function refreshDataset() {
     const hasRecords = dataset.recipes.length > 0 || dataset.restaurants.length > 0;
     if (cloudReady) {
       setStatus("Signed in · secure cloud storage ready", "ok");
-    } else if (result.source.startsWith("local:")) {
-      setStatus(hasRecords ? "Existing records loaded · cloud storage unavailable" : "Cloud storage unavailable", "warn");
     } else {
       setStatus(hasRecords ? "Preview records loaded · cloud storage unavailable" : "Cloud storage is not ready", "warn");
     }

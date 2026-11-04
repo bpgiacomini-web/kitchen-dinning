@@ -1,30 +1,18 @@
-# Security review — initial source-level findings
+# Architecture Preview security notes
 
-This is a source-level review, not a penetration test.
+## Implemented in the preview branch
 
-## High priority: shared data endpoint
-The existing `api/data.js` accepts GET and PUT and uses a server-side Vercel Blob token, but no request-level authentication or per-user ownership enforcement was found in the reviewed source. If the endpoint is publicly reachable, callers may be able to read or replace the shared dataset.
+- API data access requires a verified Neon Auth JWT; ownership derives from `sub`, never from request input.
+- Responses are non-cacheable and vary by Authorization.
+- Dataset payloads are size-limited and recipe rows require stable IDs, titles, non-empty ordered ingredient/direction arrays, unique IDs, and collection caps.
+- Recipe URL import requires a verified session, is server-side, manually follows a bounded number of redirects, revalidates public DNS/IP destinations, and caps response size.
+- Share links use high-entropy random tokens. Only SHA-256 token hashes are persisted. Link access is read-only, revocable, and marked `noindex`.
+- Restore points are scoped to the authenticated owner and limited to the newest ten.
 
-## Required before multi-user release
-- Add server-verified authentication; never trust a client-supplied user ID.
-- Authorize every read/write against the authenticated user's dataset.
-- Validate field types, size limits, nested objects, and allowed fields server-side.
-- Add optimistic concurrency/version checks so stale clients cannot silently overwrite newer data.
-- Rate-limit expensive operations and recipe import; keep URL-fetch protections and request timeouts.
-- Ensure logs do not include private recipe/review content or credentials.
-- Add tests for unauthenticated, cross-user, malformed, oversized, and stale-write requests.
+## Before preview deployment
 
-Do not embed a shared secret in browser JavaScript. Do not consider the current endpoint safe for multi-user private data until the controls above are implemented and tested.
-
-## Recipe URL importer — current review
-
-The isolated `/api/import-recipe-v2` endpoint is POST-only and returns extracted fields without writing data. Its fetcher rejects non-HTTP(S), credentials, nonstandard ports, IP literals, local hostnames, and resolved non-public IPv4 addresses; revalidates each redirect; pins the selected public IPv4 address for the request; limits redirects, response type, response size, and request duration; and avoids logging the supplied URL or page body.
-
-Automated tests now exercise redirect-to-localhost rejection, redirect limits, address pinning, oversized-response reason propagation, timeout/DNS failure propagation, and recipe-specific field extraction. These use an injected request/resolver for deterministic tests; they are **not** a real-network or deployed-runtime integration test.
-
-Remaining release gates:
-- Verify the actual Node/Vercel runtime's HTTPS/TLS and DNS lookup behavior with safe external test pages.
-- Test the known recipe URLs and confirm each page's structured data works.
-- Add reliable platform-level rate limiting before broad public exposure; an in-memory serverless counter would not be a reliable control.
-- Review the deployment's request-body parser limits and endpoint observability.
-- Do not treat URL-fetch checks as a substitute for authentication and authorization on data writes.
+- Apply both SQL migrations only to the isolated Neon Preview branch; the new API endpoints depend on those tables.
+- Verify that the legacy Preview table contains the restaurant/review records to carry forward. Migration copies them with `ON CONFLICT DO NOTHING`; it does not copy old recipes.
+- Exercise cross-account denial, stale revision conflicts, restore conflict handling, shared-link revocation, and malformed/oversized payload rejection.
+- Add durable per-account rate limits to recipe URL import and shared-recipe reads; session checks and network/body caps are present, but request quotas are not.
+- The existing root app's `/api/import-recipe` is still a legacy path. It remains outside this Architecture Preview and should be retired before any production cutover.

@@ -1,4 +1,16 @@
 const MAX_BODY_CHARS = 2_048;
+const authBaseUrl = process.env.NEON_AUTH_BASE_URL;
+const jwksUrl = process.env.NEON_AUTH_JWKS_URL;
+
+async function hasValidSession(req) {
+  const match = String(req.headers.authorization || "").match(/^Bearer\s+(.+)$/i);
+  if (!match || !authBaseUrl || !jwksUrl) return false;
+  try {
+    const { createRemoteJWKSet, jwtVerify } = await import("jose");
+    const { payload } = await jwtVerify(match[1], createRemoteJWKSet(new URL(jwksUrl)), { issuer: new URL(authBaseUrl).origin });
+    return typeof payload.sub === "string" && !!payload.sub.trim();
+  } catch { return false; }
+}
 
 export default async function handler(req, res) {
   res.setHeader("Cache-Control", "no-store, max-age=0");
@@ -7,6 +19,7 @@ export default async function handler(req, res) {
     res.setHeader("Allow", "POST");
     return res.status(405).json({ error: "Method not allowed." });
   }
+  if (!await hasValidSession(req)) return res.status(401).json({ error: "Sign in to import a recipe." });
   const input = req.body && typeof req.body.url === "string" ? req.body.url.trim() : "";
   if (!input || input.length > MAX_BODY_CHARS) return res.status(400).json({ error: "Enter one valid public recipe URL." });
   try {

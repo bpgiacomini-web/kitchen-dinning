@@ -495,3 +495,16 @@
 @media(max-width:600px){
   .app:has(> .top.homeStickyHeader) #app > .hero{margin-top:38px}
 }
+
+.recipeCardActions{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0}
+.recipeCardActions .btn{min-height:40px}
+.recipeShareStatus{overflow-wrap:anywhere;color:var(--muted,#aab2bc)}
+@media print{
+  body{background:#fff!important;color:#111!important}
+  .top,.bottomNav,#previewNotice,footer,.hero,.recipeBrowseTools,.recipeCardActions,.sectionTitle>.btn{display:none!important}
+  .app,#app,.content-panel,.readOnlyItem{max-width:none!important;margin:0!important;padding:0!important;background:#fff!important;color:#111!important;border:0!important;box-shadow:none!important}
+  .readOnlyItem[hidden]{display:none!important}
+  .readOnlyItem details{display:block!important}
+  .readOnlyItem details>summary{display:none!important}
+  .readOnlyItem li,.readOnlyItem h4,.readOnlyItem small,.readOnlyItem strong{color:#111!important}
+}

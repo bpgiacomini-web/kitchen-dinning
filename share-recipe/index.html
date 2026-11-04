@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex,nofollow,noarchive">
+  <title>Shared Metro Eats Recipe</title>
+  <style>
+    body{margin:0;padding:24px;background:#0b0d10;color:#f4f1ea;font:16px/1.6 system-ui,sans-serif}
+    main{max-width:760px;margin:5vh auto;padding:clamp(20px,5vw,48px);background:#171c22;border:1px solid #39424d;border-radius:20px}
+    h1{line-height:1.2}h2{margin-top:2em;font-size:1.15em;color:#e8b66a}
+    li{margin:.45em 0}.meta{color:#aab2bc}.actions{display:flex;gap:10px;margin-top:24px}
+    button{padding:12px 18px;border:1px solid #555d69;border-radius:10px;background:#20262e;color:inherit;font:inherit;cursor:pointer}
+    @media print{body{background:#fff;color:#111;padding:0}main{max-width:none;margin:0;padding:0;border:0;background:#fff}button,.meta{display:none!important}h2{color:#111}}
+  </style>
+</head>
+<body>
+  <main><p class="meta">Metro Eats · Shared recipe</p><h1 id="title">Loading recipe…</h1><p id="description" class="meta"></p><section><h2>Ingredients</h2><ul id="ingredients"></ul></section><section><h2>Directions</h2><ol id="directions"></ol></section><div class="actions"><button id="print" type="button">Print / Save as PDF</button></div><p id="status" class="meta" role="status"></p></main>
+  <script>
+    const status=document.querySelector('#status');
+    document.querySelector('#print').addEventListener('click',()=>window.print());
+    (async()=>{
+      const token=new URL(location.href).searchParams.get('token')||'';
+      if(!token){document.querySelector('#title').textContent='This shared recipe is unavailable.';return}
+      try{
+        const response=await fetch('/api/recipe-share?token='+encodeURIComponent(token),{cache:'no-store',headers:{Accept:'application/json'}});
+        const result=await response.json().catch(()=>({}));
+        if(!response.ok||!result.recipe)throw new Error(result.error||'This shared recipe is unavailable.');
+        const recipe=result.recipe;
+        document.title=(recipe.title||'Shared Recipe')+' · Metro Eats';
+        document.querySelector('#title').textContent=recipe.title||'Untitled recipe';
+        document.querySelector('#description').textContent=[recipe.category,recipe.servings&&('Serves '+recipe.servings),recipe.totalTime||recipe.time].filter(Boolean).join(' · ');
+        for(const value of Array.isArray(recipe.ingredients)?recipe.ingredients:[]){const li=document.createElement('li');li.textContent=String(value);document.querySelector('#ingredients').append(li)}
+        for(const value of Array.isArray(recipe.directions)?recipe.directions:[]){const li=document.createElement('li');li.textContent=String(value);document.querySelector('#directions').append(li)}
+      }catch(error){document.querySelector('#title').textContent='This shared recipe is unavailable.';status.textContent=error.message||'The link may have been revoked.'}
+    })();
+  </script>
+</body>
+</html>

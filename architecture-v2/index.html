@@ -21,6 +21,10 @@
     #metroAccountPanel button { width:100%; min-height:44px; margin-top:10px; padding:10px 12px; border:1px solid #3a434d; border-radius:10px; background:#20262e; color:#f4f1ea; font:inherit; }
     #metroAccountPanel #metroSignOut { border-color:#744848; color:#ffc3bc; }
     #metroAccountPanel [data-close] { background:transparent; }
+    #metroRestorePanel { margin-top:12px; max-height:45vh; overflow:auto; }
+    #metroRestorePanel[hidden] { display:none; }
+    #metroRestorePanel > div { display:grid; gap:8px; padding:10px 0; border-top:1px solid #39424d; }
+    #metroRestorePanel button { margin-top:0; }
   </style>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -32,7 +36,7 @@
   <link rel="apple-touch-icon" href="../icon-180.png">
   <title>Metro Eats — Architecture Preview</title>
   <link rel="stylesheet" href="./base.css?v=1">
-  <link rel="stylesheet" href="./styles.css?v=14">
+  <link rel="stylesheet" href="./styles.css?v=15">
   <link rel="stylesheet" href="./pizza-theme.css?v=4">
 </head>
 <body>
@@ -73,10 +77,12 @@
     <p id="metroAccountEmail">Signed in to Metro Eats</p>
     <p>Your account stays signed in on this device until you sign out or your session expires.</p>
     <button id="metroSignOut" type="button">Sign Out</button>
+    <button id="metroRestorePoints" type="button">Restore a previous version</button>
+    <div id="metroRestorePanel" hidden></div>
     <button type="button" data-close>Close</button>
     <p id="metroAccountStatus" role="status" aria-live="polite"></p>
   </section>
-  <script type="module" src="./src/main.mjs?v=9"></script>
+  <script type="module" src="./src/main.mjs?v=10"></script>
   <script>
     const panel = document.getElementById('metroAuthPanel');
     const form = document.getElementById('metroAuthForm');
@@ -152,6 +158,43 @@
       } finally {
         signOutButton.disabled = false;
       }
+    });
+    document.getElementById('metroRestorePoints').addEventListener('click', async () => {
+      const button = document.getElementById('metroRestorePoints');
+      const restorePanel = document.getElementById('metroRestorePanel');
+      button.disabled = true;
+      restorePanel.hidden = false;
+      restorePanel.textContent = 'Loading restore points…';
+      try {
+        const token = await window.metroGetAccessToken();
+        const response = await fetch('/api/restore-points', { cache: 'no-store', headers: { Authorization: 'Bearer ' + token, Accept: 'application/json' } });
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(payload.error || 'Restore points are unavailable.');
+        restorePanel.replaceChildren();
+        if (!payload.restorePoints?.length) { restorePanel.textContent = 'No restore points yet. They are created automatically before your next save.'; return; }
+        const heading = document.createElement('p'); heading.textContent = 'Choose a point to restore. Your current version will be kept as a new restore point.'; restorePanel.append(heading);
+        for (const point of payload.restorePoints) {
+          const row = document.createElement('div');
+          const label = document.createElement('span');
+          label.textContent = new Date(point.created_at).toLocaleString() + ' · ' + point.recipes + ' recipes · ' + point.restaurants + ' restaurants';
+          const restore = document.createElement('button'); restore.type = 'button'; restore.textContent = 'Restore';
+          restore.addEventListener('click', async () => {
+            if (!window.confirm('Restore this Metro Eats version? Your current version will remain available as a restore point.')) return;
+            restore.disabled = true;
+            try {
+              const currentToken = await window.metroGetAccessToken();
+              const restored = await fetch('/api/restore-points', { method: 'POST', cache: 'no-store', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + currentToken }, body: JSON.stringify({ id: point.id, expectedRevision: Number.isSafeInteger(window.metroDatasetRevision) ? window.metroDatasetRevision : payload.revision }) });
+              const result = await restored.json().catch(() => ({}));
+              if (!restored.ok) throw new Error(result.error || 'Restore failed.');
+              accountStatus.textContent = 'Restore complete. Reloading your collection…';
+              restorePanel.hidden = true;
+              window.dispatchEvent(new CustomEvent('metro-authenticated'));
+            } catch (error) { restore.disabled = false; accountStatus.textContent = error.message || 'Restore failed.'; }
+          });
+          row.append(label, restore); restorePanel.append(row);
+        }
+      } catch (error) { restorePanel.textContent = error.message || 'Restore points are unavailable.'; }
+      finally { button.disabled = false; }
     });
     async function setupAuth() {
       try {
