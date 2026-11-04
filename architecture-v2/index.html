@@ -105,8 +105,11 @@
     window.metroGetAccessToken = async () => {
       if (!client) return null;
       try {
-        const result = await client.getSession();
-        const token = result?.data?.session?.access_token;
+        // The default Neon Auth client exposes JWT retrieval through token();
+        // getSession() restores the user/session but isn't the token API for
+        // this client contract.
+        const result = await client.token();
+        const token = result?.data?.token;
         accessToken = typeof token === 'string' && token.trim() ? token : '';
       } catch {
         // A cached session token may remain usable during a temporary Auth outage.

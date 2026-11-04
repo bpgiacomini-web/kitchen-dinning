@@ -529,3 +529,6 @@ async function refreshDataset() {
 // which the auth module resolves. Blocking here can prevent that auth module from
 // running, leaving the user trapped on the sign-in screen.
 window.addEventListener("metro-authenticated", () => { void refreshDataset(); });
+// The auth bootstrap in index.html can finish before this module downloads.
+// If it already authenticated the page, recover here instead of missing the event.
+if (document.body.classList.contains("metro-authenticated")) void refreshDataset();
