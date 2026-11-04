@@ -14,7 +14,10 @@ async function authenticatedUser(req) {
   if (!jwksUrl || !authBaseUrl) return { error: 'Preview authentication is not configured.' };
   const header = String(req.headers.authorization || '');
   const match = header.match(/^Bearer\s+(.+)$/i);
-  if (!match) return { error: 'Sign in is required.', status: 401 };
+  if (!match) {
+    console.warn('Metro Eats user-data request has no bearer token');
+    return { error: 'Sign in is required.', status: 401 };
+  }
   try {
     // jose v6 is ESM-only. Load it dynamically because Vercel currently compiles
     // this project's API entrypoints from ESM to CommonJS during deployment.
@@ -23,7 +26,9 @@ async function authenticatedUser(req) {
     const { payload } = await jwtVerify(match[1], jwks, { issuer: new URL(authBaseUrl).origin });
     if (typeof payload.sub !== 'string' || !payload.sub.trim()) return { error: 'Invalid session.', status: 401 };
     return { userId: payload.sub };
-  } catch {
+  } catch (error) {
+    // Keep diagnostics useful without logging the JWT, its claims, or user data.
+    console.warn('Metro Eats user-data token verification failed', error?.code || error?.name || 'UnknownError');
     return { error: 'Your session is invalid or expired. Please sign in again.', status: 401 };
   }
 }
