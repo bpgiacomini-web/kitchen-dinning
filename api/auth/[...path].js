@@ -5,6 +5,15 @@
  */
 export const config = { api: { bodyParser: false } };
 
+function usePreviewHostCookie(cookie) {
+  // Neon Auth may scope its cookies to the upstream Auth host. The browser
+  // rejects those Domain cookies on the Preview origin, so make them host-only
+  // for the same-origin proxy while preserving every other cookie attribute.
+  return String(cookie).replace(/;\s*domain=[^;]*/i, "");
+}
+
+
+
 export default async function handler(req, res) {
   res.setHeader("Cache-Control", "no-store, max-age=0");
   res.setHeader("X-Content-Type-Options", "nosniff");
@@ -56,10 +65,10 @@ export default async function handler(req, res) {
       res.setHeader(name, value);
     }
     const cookies = upstream.headers.getSetCookie?.();
-    if (cookies?.length) res.setHeader("Set-Cookie", cookies);
+    if (cookies?.length) res.setHeader("Set-Cookie", cookies.map(usePreviewHostCookie));
     else {
       const cookie = upstream.headers.get("set-cookie");
-      if (cookie) res.setHeader("Set-Cookie", cookie);
+      if (cookie) res.setHeader("Set-Cookie", usePreviewHostCookie(cookie));
     }
     // Safe diagnostics: record only the route and upstream status. Never log
     // request bodies, credentials, cookies, tokens, or the Neon host.
