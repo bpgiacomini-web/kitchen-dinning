@@ -1,51 +1,71 @@
-import { put, head } from '@vercel/blob';
+import { neon } from '@neondatabase/serverless';
+const authBase = process.env.NEON_AUTH_BASE_URL;
+const databaseUrl = process.env.DATABASE_URL || process.env.POSTGRES_URL;
+let jwksPromise;
 
-const PATH = 'metro-eats/data.json';
+async function getUser(req) {
+  const header = req.headers.authorization || '';
+  const match = header.match(/^Bearer\s+(.+)$/i);
+  if (!match || !process.env.NEON_AUTH_JWKS_URL || !authBase) return null;
+  try {
+    // jose is ESM-only; dynamic import keeps this Vercel API route compatible with the project's CommonJS mode.
+    const { createRemoteJWKSet, jwtVerify } = await import('jose');
+    if (!jwksPromise) jwksPromise = Promise.resolve(createRemoteJWKSet(new URL(process.env.NEON_AUTH_JWKS_URL)));
+    const jwks = await jwksPromise;
+    const { payload } = await jwtVerify(match[1], jwks, { issuer: new URL(authBase).origin });
+    return typeof payload.sub === 'string' && payload.sub ? payload.sub : null;
+  } catch {
+    return null;
+  }
+}
 
 export default async function handler(req, res) {
   res.setHeader('Cache-Control', 'no-store, max-age=0');
-  try {
-    if (!process.env.BLOB_READ_WRITE_TOKEN) {
-      return res.status(500).json({ error: 'Blob storage is not configured.' });
-    }
+  res.setHeader('Vary', 'Authorization');
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('Referrer-Policy', 'no-referrer');
 
-    if (req.method === 'GET') {
-      try {
-        const blob = await head(PATH, { token: process.env.BLOB_READ_WRITE_TOKEN });
-        const response = await fetch(blob.url, {
-          headers: { Authorization: `Bearer ${process.env.BLOB_READ_WRITE_TOKEN}` }
-        });
-        if (!response.ok) throw new Error(`Blob read failed: ${response.status}`);
-        const data = await response.json();
-        return res.status(200).json(data);
-      } catch (e) {
-        if (e?.name === 'BlobNotFoundError' || e?.statusCode === 404 || e?.status === 404 || e?.code === 'BLOB_NOT_FOUND' || e?.code === 'not_found' || /requested blob does not exist/i.test(String(e?.message || ''))) {
-          return res.status(200).json({ recipes: [], restaurants: [] });
-        }
-        throw e;
-      }
-    }
-
-    if (req.method === 'PUT') {
-      const data = req.body;
-      if (!data || !Array.isArray(data.recipes) || !Array.isArray(data.restaurants)) {
-        return res.status(400).json({ error: 'Invalid Metro Eats data.' });
-      }
-      const blob = await put(PATH, JSON.stringify(data), {
-        access: 'private',
-        addRandomSuffix: false,
-        allowOverwrite: true,
-        cacheControlMaxAge: 60,
-        contentType: 'application/json',
-        token: process.env.BLOB_READ_WRITE_TOKEN
-      });
-      return res.status(200).json({ ok: true, url: blob.url });
-    }
-
+  if (!['GET', 'PUT'].includes(req.method)) {
     res.setHeader('Allow', 'GET, PUT');
     return res.status(405).json({ error: 'Method not allowed.' });
+  }
+
+  const userId = await getUser(req);
+  if (!userId) return res.status(401).json({ error: 'Please sign in to access your Metro Eats data.' });
+  if (!databaseUrl) return res.status(503).json({ error: 'Preview database is not configured yet. Add DATABASE_URL for this preview branch.' });
+
+  try {
+    const sql = neon(databaseUrl);
+    await sql`CREATE TABLE IF NOT EXISTS metro_eats_user_data (
+      user_id TEXT PRIMARY KEY,
+      data JSONB NOT NULL DEFAULT '{"recipes":[],"restaurants":[],"cats":[]}'::jsonb,
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )`;
+
+    if (req.method === 'GET') {
+      const rows = await sql`SELECT data FROM metro_eats_user_data WHERE user_id = ${userId} LIMIT 1`;
+      const data = rows[0]?.data || { recipes: [], restaurants: [], cats: [] };
+      return res.status(200).json(data);
+    }
+
+    const body = req.body && typeof req.body === 'object' ? req.body : {};
+    if (!Array.isArray(body.recipes) || !Array.isArray(body.restaurants)) {
+      return res.status(400).json({ error: 'Expected recipes and restaurants arrays.' });
+    }
+    if (JSON.stringify(body).length > 4_000_000) {
+      return res.status(413).json({ error: 'This backup is too large to save in one request.' });
+    }
+    const data = {
+      recipes: body.recipes,
+      restaurants: body.restaurants,
+      cats: Array.isArray(body.cats) ? body.cats : []
+    };
+    await sql`INSERT INTO metro_eats_user_data (user_id, data, updated_at)
+      VALUES (${userId}, ${JSON.stringify(data)}::jsonb, NOW())
+      ON CONFLICT (user_id) DO UPDATE SET data = EXCLUDED.data, updated_at = NOW()`;
+    return res.status(200).json({ ok: true, updatedAt: new Date().toISOString() });
   } catch (error) {
-    console.error('Metro Eats data API error', error);
-    return res.status(500).json({ error: 'Metro Eats data service unavailable.' });
+    console.error('Metro Eats user-data API failed', error);
+    return res.status(503).json({ error: 'Could not access the preview database. Check the preview database configuration.' });
   }
 }

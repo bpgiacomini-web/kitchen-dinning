@@ -2,6 +2,8 @@
   "private": true,
   "version": "1.0.0",
   "dependencies": {
-    "@vercel/blob": "^2.0.0"
+    "@vercel/blob": "^2.0.0",
+    "@neondatabase/serverless": "^1.0.2",
+    "jose": "^6.1.0"
   }
 }
