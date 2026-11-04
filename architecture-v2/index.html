@@ -104,15 +104,24 @@
     window.metroAuthReady = new Promise(resolve => { resolveMetroAuthReady = resolve; });
     window.metroGetAccessToken = async () => {
       if (!client) return null;
+      let token = '';
       try {
         // The default Neon Auth client exposes JWT retrieval through token();
         // getSession() restores the user/session but isn't the token API for
         // this client contract.
         const result = await client.token();
-        const token = result?.data?.token;
-        accessToken = typeof token === 'string' && token.trim() ? token : '';
+        token = result?.data?.token;
+      } catch { /* Fall back to the token returned with the restored session. */ }
+      if (typeof token === 'string' && token.trim()) {
+        accessToken = token;
+        return accessToken;
+      }
+      try {
+        const sessionResult = await client.getSession();
+        const sessionToken = sessionResult?.data?.session?.access_token;
+        if (typeof sessionToken === 'string' && sessionToken.trim()) accessToken = sessionToken;
       } catch {
-        // A cached session token may remain usable during a temporary Auth outage.
+        // A previously cached session token may remain usable during a temporary Auth outage.
       }
       return accessToken || null;
     };
