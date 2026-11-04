@@ -12,5 +12,5 @@ export default async function handler(req, res) {
   if (!forwardedHost || !/^[a-z0-9.-]+(?::\d+)?$/i.test(forwardedHost) || !['http', 'https'].includes(forwardedProto)) {
     return res.status(400).json({ error: 'Could not determine the Preview origin.' });
   }
-  return res.status(200).json({ authUrl: forwardedProto + '://' + forwardedHost + '/api' });
+  return res.status(200).json({ authUrl: forwardedProto + '://' + forwardedHost });
 }
