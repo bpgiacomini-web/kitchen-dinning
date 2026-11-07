@@ -118,7 +118,9 @@
       }
       try {
         const sessionResult = await client.getSession();
-        const sessionToken = sessionResult?.data?.session?.access_token;
+        // The Neon Better Auth client attaches its JWT as session.token;
+        // keep access_token as a compatibility fallback for older responses.
+        const sessionToken = sessionResult?.data?.session?.token || sessionResult?.data?.session?.access_token;
         if (typeof sessionToken === 'string' && sessionToken.trim()) accessToken = sessionToken;
       } catch {
         // A previously cached session token may remain usable during a temporary Auth outage.
@@ -241,7 +243,7 @@
             const session = verified?.data?.session || result?.data?.session;
             const user = verified?.data?.user || session?.user || verified?.user || result?.data?.user;
             if (!(session || user)) throw new Error('Sign-in did not return a verified session. Please try again.');
-            accessToken = typeof session?.access_token === 'string' ? session.access_token : '';
+            accessToken = typeof (session?.token || session?.access_token) === 'string' ? (session.token || session.access_token) : '';
             resolveMetroAuthReady(true);
             showApp(user);
             window.dispatchEvent(new CustomEvent('metro-authenticated'));
@@ -260,7 +262,7 @@
           const existingSession = existing?.data?.session;
           const existingUser = existing?.data?.user || existingSession?.user || existing?.user;
           if (existingSession || existingUser) {
-            accessToken = typeof existingSession?.access_token === 'string' ? existingSession.access_token : '';
+            accessToken = typeof (existingSession?.token || existingSession?.access_token) === 'string' ? (existingSession.token || existingSession.access_token) : '';
             resolveMetroAuthReady(true);
             showApp(existingUser);
             window.dispatchEvent(new CustomEvent('metro-authenticated'));
