@@ -2,9 +2,10 @@
 
 ## Canonical persisted collections
 
-The existing application persists two collections:
+The Preview account dataset persists three collections:
 - **Recipes:** stable `id`, `title`, `category`, `subcategory`, `ingredients[]`, `steps[]`, `servings`, `time`, `favorite`, `photos[]`, `createdAt`, and `updatedAt`. Older/imported records can use alternate title, ingredient, or instruction field names; adapters must normalize them at the boundary without mutating the source.
 - **Restaurants:** stable `id`, `name`, `type`, `location`, `website`, `menuUrl`, `notes`, `photos[]`, `survey`, `reviewHistory[]`, `rating`, `createdAt`, and `updatedAt`.
+- **Frozen pizzas:** stable `id`, `brand`, `name`, optional UPC and price, a `scores` object (0–10 ratings), notes, and timestamps. This collection is stored in the versioned per-account dataset snapshot.
 
 Existing restaurant review history is append-oriented: each visit has its own `createdAt`, score data, order information, and potentially dish-level ratings. A migration must preserve every history item and must not collapse the list to only the latest survey.
 
@@ -23,4 +24,4 @@ Existing restaurant review history is append-oriented: each visit has its own `c
 
 ## Current implementation status
 
-`src/domain/normalize.mjs` now adds display aliases while spreading original dataset, recipe, and restaurant fields forward, so unknown metadata, original `steps`, `survey`, `reviewHistory`, menu/location fields, and other legacy values survive a read/round-trip. `src/data/user-dataset-client.mjs` is connected to the Preview recipe create/edit/delete workflows through the authenticated `/api/user-data` endpoint. The endpoint derives the owner from a verified Neon Auth JWT and uses optimistic revision checks. The shared `/api/data` source remains read-only. Cloud writes remain unavailable until the migration table exists in the isolated Neon Preview branch and the signed-in Preview session can load it. Existing baseline data and browser-local records are not automatically imported into the user dataset.
+`src/domain/normalize.mjs` adds display aliases while spreading original dataset, recipe, and restaurant fields forward, so unknown metadata and legacy review history survive a read/round-trip. `src/data/user-dataset-client.mjs` is connected to the Preview recipe, restaurant, review, and frozen-pizza workflows through the authenticated `/api/user-data` endpoint. The endpoint derives the owner from a verified Neon Auth JWT and uses optimistic revision checks. The shared `/api/data` source remains read-only. Existing baseline data and browser-local records are not automatically imported into the user dataset.

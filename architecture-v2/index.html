@@ -63,11 +63,11 @@
       </nav>
       <button id="metroAccountButton" type="button" aria-label="Account and settings" title="Account &amp; Settings" aria-expanded="false" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="3.5"></circle><path d="M5 20c.7-3.4 3.1-5.2 7-5.2s6.3 1.8 7 5.2"></path></svg></button>
     </header>
-    <div id="previewNotice" class="status" role="status">Architecture preview · read-only · existing app unchanged</div>
+  <div id="previewNotice" class="status" role="status">Architecture preview · restoring your private account</div>
     <main id="app" tabindex="-1" aria-live="polite">
 <section class="section active" id="home">
   <div class="hero"><div class="heroIn"><div class="eyebrow">St. Louis • Metro East</div><h2>Metro Eats<br><span class="fl">⚜</span> Recipes & Dining</h2><p>Your personal recipe book and restaurant journal — built around the food you actually love.</p><div class="homeFeatureButtons"><button class="homeFeatureButton recipeButton" data-view="recipes"><span class="homeFeatureIcon">✦</span><span><strong>My Recipes</strong><small>Your Kitchen</small></span><span class="homeFeatureArrow">→</span></button><button class="homeFeatureButton diningButton" data-view="dining"><span class="homeFeatureIcon">⚜</span><span><strong>My Restaurants</strong><small>Your Restaurants & Reviews</small></span><span class="homeFeatureArrow">→</span></button></div></div></div>
-  <div class="homeColumns"><article class="featureCard"><div><div class="sectionKicker">Your Collection</div><h3>Saved with care</h3><p>Your recipes and restaurant notes, kept together in one place.</p></div><div class="actions"><button class="btn primary" data-view="recipes">Open My Recipes →</button><button class="btn" data-view="dining">Open My Restaurants →</button></div></article><article class="featureCard accent"><div><div class="sectionKicker">Safety First</div><h3>Existing data stays safe.</h3><p>This preview reads available records only. No recipe, restaurant, or review can be changed or overwritten here.</p></div><span class="status">Read only</span></article></div>
+  <div class="homeColumns"><article class="featureCard"><div><div class="sectionKicker">Your Collection</div><h3>Saved with care</h3><p>Your recipes, restaurant visits, and frozen-pizza ratings, kept together in one private account.</p></div><div class="actions"><button class="btn primary" data-view="recipes">Open My Recipes →</button><button class="btn" data-view="dining">Open My Restaurants →</button><button class="btn" data-view="pizzas">Open My Frozen Pizzas →</button></div></article><article class="featureCard accent"><div><div class="sectionKicker">Safety First</div><h3>Existing data stays safe.</h3><p>Shared baseline records remain read-only. Your signed-in Preview account can save and edit its own recipes, restaurant reviews, and pizza ratings.</p></div><span class="status">Private account</span></article></div>
 </section>
 <section id="recipes" class="section recipeSection"></section>
 <section id="dining" class="section diningSection"></section>
@@ -207,7 +207,7 @@
         for (const point of payload.restorePoints) {
           const row = document.createElement('div');
           const label = document.createElement('span');
-          label.textContent = new Date(point.created_at).toLocaleString() + ' · ' + point.recipes + ' recipes · ' + point.restaurants + ' restaurants';
+          label.textContent = new Date(point.created_at).toLocaleString() + ' · ' + point.recipes + ' recipes · ' + point.restaurants + ' restaurants · ' + (point.pizzas || 0) + ' pizzas';
           const restore = document.createElement('button'); restore.type = 'button'; restore.textContent = 'Restore';
           restore.addEventListener('click', async () => {
             if (!window.confirm('Restore this Metro Eats version? Your current version will remain available as a restore point.')) return;

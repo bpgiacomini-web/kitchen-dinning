@@ -47,6 +47,7 @@ test('invalid and oversized dataset writes are rejected before a transaction', a
   const handler = createUserDataHandler({ authenticateUser: account('account-A'), makeSql: () => sql });
   for (const [body, status] of [
     [{ expectedRevision: 0, data: { recipes: 'no', restaurants: [] } }, 400],
+    [{ expectedRevision: 0, data: { ...dataset('x'), pizzas: [{ id: 'p1', brand: 'Brand', name: 'Pizza', scores: { overall: 11 } }] } }, 400],
     [{ expectedRevision: 0, data: dataset('x'.repeat(1_500_100)) }, 413]
   ]) {
     const res = responseRecorder();
@@ -54,6 +55,22 @@ test('invalid and oversized dataset writes are rejected before a transaction', a
     assert.equal(res.statusCode, status);
   }
   assert.equal(transactions, 0);
+});
+
+test('valid frozen-pizza records are saved inside the account dataset snapshot', async () => {
+  let savedPayload;
+  const sql = Object.assign(taggedSql(async () => []), {
+    transaction: async queries => {
+      savedPayload = queries[0].values.find(value => typeof value === 'string' && value.includes('Pepperoni'));
+      return [[{ revision: 1 }], [], [], [], [], []];
+    }
+  });
+  const handler = createUserDataHandler({ authenticateUser: account('account-A'), makeSql: () => sql });
+  const res = responseRecorder();
+  await handler({ method: 'PUT', headers: {}, body: { expectedRevision: 0, data: { ...dataset('recipe'), pizzas: [{ id: 'p1', brand: 'Test Brand', name: 'Pepperoni', upc: '012345678905', price: 8.5, scores: { taste: 8, overall: 8 } }] } } }, res);
+  assert.equal(res.statusCode, 200);
+  assert.equal(res.body.ok, true);
+  assert.match(savedPayload, /"name":"Pepperoni"/);
 });
 
 test('stale dataset writes return 409 without reporting a save', async () => {

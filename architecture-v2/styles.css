@@ -32,6 +32,37 @@
 
 .is-hidden{display:none!important}
 #app .content-panel{margin-top:18px;padding:18px;border:1px solid var(--line);border-radius:20px;background:linear-gradient(145deg,#151b20,#101419);box-shadow:var(--shadow)}
+
+/* Private restaurant journal and frozen-pizza records. */
+#app .restaurantEditPanel,#app .pizzaEditForm{display:grid;gap:14px;max-width:820px;margin:14px auto 4px}
+#app .restaurantEditPanel>label,#app .pizzaEditForm>label{display:block;min-width:0;font-weight:750;line-height:1.4}
+#app .restaurantEditPanel input:not([type=checkbox]),#app .restaurantEditPanel textarea,#app .pizzaEditForm input,#app .pizzaEditForm textarea{display:block;box-sizing:border-box;width:100%;max-width:100%;min-width:0;margin-top:7px;padding:12px 14px;border:1px solid #394148;border-radius:12px;background:#0b0f13;color:#f4f1e8;font:inherit;line-height:1.45}
+#app .restaurantEditPanel input:focus,#app .restaurantEditPanel textarea:focus,#app .pizzaEditForm input:focus,#app .pizzaEditForm textarea:focus{outline:2px solid #d9ad5d;outline-offset:2px;border-color:#d9ad5d}
+#app .restaurantEditorGrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+#app .restaurantEditorGrid label{min-width:0;font-weight:750;line-height:1.4}
+#app .restaurantEditorGrid input{display:block;box-sizing:border-box;width:100%;max-width:100%;min-width:0;margin-top:7px;padding:12px 14px;border:1px solid #394148;border-radius:12px;background:#0b0f13;color:#f4f1e8;font:inherit}
+#app .restaurantEditPanel .inlineCheck{display:flex;align-items:center;gap:10px;font-weight:650}
+#app .restaurantEditPanel .inlineCheck input{width:20px;height:20px;accent-color:#d6a85b}
+#app .restaurantEditorPage .edit-status,#app .pizzaEditorPanel .edit-status{min-height:1.4em;margin:4px 0;color:#f0d28d;overflow-wrap:anywhere}
+#app .restaurantCard .recipeCardHeader,#app .pizzaCard .recipeCardHeader{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+#app .restaurantCard .recipeCardActions,#app .pizzaCard .recipeCardActions{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:7px}
+#app .restaurantCard .recipeCardActions .btn,#app .pizzaCard .recipeCardActions .btn{margin:0}
+#app .restaurantCard .recipeCardActions .danger,#app .pizzaCard .recipeCardActions .danger{border-color:#744848;color:#ffc3bc}
+#app .savedReview{margin-top:12px;padding:12px;border:1px solid #35404a;border-radius:12px;background:#10151a}
+#app .savedReview+.savedReview{margin-top:9px}
+#app .savedReview p{margin:8px 0 0;line-height:1.5;overflow-wrap:anywhere}
+#app .savedReviewHeading{display:flex;flex-wrap:wrap;justify-content:space-between;gap:8px}
+#app .reviewScores{display:flex;flex-wrap:wrap;gap:6px 12px;color:#e3c477;font-size:13px}
+#app .pizzaCollection{display:grid;gap:10px}
+#app .pizzaScoreLine{margin:10px 0 0;color:#e3c477;font-size:14px;line-height:1.5}
+#app .pizzaEditorPanel{margin-top:14px}
+#app .pizzaEditorPanel .sectionTitle{margin-bottom:6px}
+#app .pizzaScoreGrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+#app .pizzaScoreGrid label{display:block;min-width:0;font-weight:700;line-height:1.35}
+#app .pizzaScoreGrid input{width:100%;min-width:0}
+#app .diningSection .restaurantEditorGrid{grid-template-columns:repeat(2,minmax(0,1fr))}
+@media(max-width:620px){#app .restaurantEditorGrid{grid-template-columns:1fr}#app .pizzaScoreGrid{grid-template-columns:repeat(2,minmax(0,1fr))}#app .restaurantCard .recipeCardHeader,#app .pizzaCard .recipeCardHeader{display:grid}#app .restaurantCard .recipeCardActions,#app .pizzaCard .recipeCardActions{justify-content:flex-start}}
+@media(max-width:380px){#app .pizzaScoreGrid{grid-template-columns:1fr}}
 #app .panel-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
 #app .panel-heading h2{margin:4px 0;font-size:24px}
 #app .panel-heading .eyebrow{margin:0}

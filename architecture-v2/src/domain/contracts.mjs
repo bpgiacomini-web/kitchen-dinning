@@ -38,5 +38,6 @@ export function validateDatasetEnvelope(value) {
   if (!isRecord(value)) return { valid: false, errors: ["dataset must be an object"] };
   checkCollection("recipes", value.recipes, errors);
   checkCollection("restaurants", value.restaurants, errors);
+  if (value.pizzas != null) checkCollection("pizzas", value.pizzas, errors);
   return { valid: errors.length === 0, errors };
 }

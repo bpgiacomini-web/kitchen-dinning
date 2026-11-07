@@ -2,7 +2,6 @@ import { randomUUID } from 'node:crypto';
 
 const authBaseUrl = process.env.NEON_AUTH_BASE_URL;
 const jwksUrl = process.env.NEON_AUTH_JWKS_URL;
-const empty = { recipes: [], restaurants: [], cats: [] };
 
 async function getUser(req) {
   const match = String(req.headers.authorization || '').match(/^Bearer\s+(.+)$/i);
@@ -34,7 +33,8 @@ export function createRestorePointsHandler({ authenticateUser = getUser, makeSql
     if (!sql) return res.status(503).json({ error: 'Preview database is not configured.' });
     if (req.method === 'GET') {
       const rows = await sql`SELECT id, created_at, jsonb_array_length(COALESCE(snapshot->'recipes','[]'::jsonb)) AS recipes,
-        jsonb_array_length(COALESCE(snapshot->'restaurants','[]'::jsonb)) AS restaurants
+        jsonb_array_length(COALESCE(snapshot->'restaurants','[]'::jsonb)) AS restaurants,
+        jsonb_array_length(COALESCE(snapshot->'pizzas','[]'::jsonb)) AS pizzas
         FROM metro_eats_restore_points WHERE user_id = ${userId}
         ORDER BY created_at DESC, id DESC LIMIT 10`;
       const current = await sql`SELECT revision FROM metro_eats_user_datasets WHERE user_id = ${userId} LIMIT 1`;

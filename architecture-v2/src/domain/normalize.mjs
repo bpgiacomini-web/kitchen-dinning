@@ -81,12 +81,33 @@ export function normalizeRestaurant(record, index = 0) {
   };
 }
 
+export function normalizeFrozenPizza(record, index = 0) {
+  const item = record && typeof record === "object" && !Array.isArray(record) ? record : {};
+  const scores = item.scores && typeof item.scores === "object" && !Array.isArray(item.scores) ? item.scores : {};
+  return {
+    ...item,
+    id: asText(item.id ?? item._id) || `legacy-pizza-${index}`,
+    upc: asText(item.upc ?? item.barcode),
+    brand: asText(item.brand),
+    name: asText(item.name ?? item.productName ?? item.title),
+    price: item.price == null || item.price === "" ? null : Number.isFinite(Number(item.price)) ? Number(item.price) : null,
+    scores: Object.fromEntries(["taste", "crust", "sauce", "cheese", "toppings", "value", "overall"].map(key => {
+      const value = scores[key];
+      return [key, value == null || value === "" || !Number.isFinite(Number(value)) ? null : Number(value)];
+    })),
+    notes: asText(item.notes),
+    createdAt: asText(item.createdAt),
+    updatedAt: asText(item.updatedAt)
+  };
+}
+
 export function normalizeDataset(value) {
   const data = value && typeof value === "object" && !Array.isArray(value) ? value : {};
   return {
     ...data,
     recipes: (Array.isArray(data.recipes) ? data.recipes : []).map(normalizeRecipe),
     restaurants: (Array.isArray(data.restaurants) ? data.restaurants : []).map(normalizeRestaurant),
+    pizzas: (Array.isArray(data.pizzas) ? data.pizzas : []).map(normalizeFrozenPizza),
     cats: data.cats && typeof data.cats === "object" ? data.cats : []
   };
 }

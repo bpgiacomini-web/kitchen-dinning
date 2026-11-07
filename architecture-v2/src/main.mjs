@@ -5,14 +5,16 @@ import { parsePastedRecipeText, parseRecipeJsonLd } from "./features/recipes/imp
 
 const root = document.querySelector("#app");
 const status = document.querySelector("#previewNotice");
-let dataset = { recipes: [], restaurants: [], cats: [] };
-let cloudDataset = { recipes: [], restaurants: [], cats: [] };
+let dataset = { recipes: [], restaurants: [], pizzas: [], cats: [] };
+let cloudDataset = { recipes: [], restaurants: [], pizzas: [], cats: [] };
 let cloudRevision = 0;
 let cloudClient = null;
 let cloudReady = false;
 let cloudRecipeIds = new Set();
 let activeView = "home";
 let activeRecipeId = null;
+let activeRestaurantId = null;
+let activePizzaId = null;
 let extractedRecipe = null;
 function mergeVisibleDataset() {
   cloudRecipeIds = new Set(cloudDataset.recipes.map(item => String(item.id)));
@@ -36,8 +38,50 @@ function setStatus(label, kind = "") {
   status.textContent = label;
   status.className = `status ${kind}`.trim();
 }
+function restaurantReviewRecords(restaurant) {
+  const records = [...(Array.isArray(restaurant?.reviewHistory) ? restaurant.reviewHistory : []), ...(restaurant?.survey ? [restaurant.survey] : [])];
+  const signatures = new Set();
+  return records.filter(review => {
+    if (!review || typeof review !== "object" || Array.isArray(review)) return false;
+    const signature = JSON.stringify(Object.keys(review).filter(key => !["id", "_id", "restaurantId"].includes(key)).sort().map(key => [key, review[key]]));
+    if (signatures.has(signature)) return false;
+    signatures.add(signature);
+    return true;
+  });
+}
+function renderRestaurants(items) {
+  const rows = items.map(restaurant => {
+    const reviews = restaurantReviewRecords(restaurant);
+    const rating = restaurant.rating == null ? null : (restaurant.ratingScale === 10 ? Number(restaurant.rating) : Number(restaurant.rating) <= 5 ? Number(restaurant.rating) * 2 : Number(restaurant.rating));
+    const reviewRows = reviews.slice().reverse().map((review, index) => {
+      const reviewDate = review.visitedAt || review.createdAt || review.reviewDate || "";
+      const dateText = reviewDate && !Number.isNaN(new Date(reviewDate).getTime()) ? new Date(reviewDate).toLocaleDateString() : reviewDate;
+      const scores = [["Overall", reviewRating(review, "overall") ?? reviewRating(review, "rating")], ["Food", reviewRating(review, "food")], ["Service", reviewRating(review, "service")], ["Value", reviewRating(review, "value")], ["Ambiance", reviewRating(review, "ambiance")]]
+        .filter(([, value]) => value != null && value !== "")
+        .map(([label, value]) => `<span>${label}: ${escapeHtml(value)}/10</span>`).join("");
+      return `<article class="savedReview"><div class="savedReviewHeading"><strong>${dateText ? escapeHtml(dateText) : `Visit ${reviews.length - index}`}</strong>${scores ? `<div class="reviewScores">${scores}</div>` : ""}</div>${review.order ? `<p><strong>What you ordered:</strong> ${escapeHtml(review.order)}</p>` : ""}${review.notes ? `<p>${escapeHtml(review.notes)}</p>` : ""}</article>`;
+    }).join("");
+    const details = [["Cuisine", restaurant.cuisine], ["Address", restaurant.address], ["Website", restaurant.website], ["Notes", restaurant.notes], ["Favorite", restaurant.favorite ? "Yes" : ""]]
+      .filter(([, value]) => value != null && value !== "")
+      .map(([label, value]) => `<div><dt>${label}</dt><dd>${label === "Website" && /^https?:\/\//i.test(String(value)) ? `<a href="${escapeHtml(value)}" target="_blank" rel="noopener noreferrer">${escapeHtml(value)}</a>` : escapeHtml(value)}</dd></div>`).join("");
+    return `<article class="readOnlyItem restaurantCard"><div class="recipeCardHeader"><strong>${escapeHtml(restaurant.name)}</strong><div class="recipeCardActions"><button class="btn" type="button" data-action="edit-restaurant" data-restaurant-id="${escapeHtml(restaurant.id)}">Edit</button><button class="btn" type="button" data-action="add-restaurant-review" data-restaurant-id="${escapeHtml(restaurant.id)}">Add visit / review</button><button class="btn danger" type="button" data-action="delete-restaurant" data-restaurant-id="${escapeHtml(restaurant.id)}">Delete</button></div></div><small>${escapeHtml([restaurant.cuisine, restaurant.address, rating == null ? "" : `Rating ${rating.toFixed(1)}/10`, restaurant.favorite ? "Favorite" : "", `${reviews.length} ${reviews.length === 1 ? "visit" : "visits"}`].filter(Boolean).join(" · ") || "No additional details saved")}</small><details><summary>Restaurant details and visit history</summary><section class="restaurantDetailBlock"><h4>Restaurant information</h4><dl>${details || `<div><dt>Details</dt><dd>No additional details saved.</dd></div>`}</dl></section><section class="restaurantDetailBlock"><h4>Visit history</h4>${reviewRows || `<p class="hint">No visits or reviews yet. Add a visit to start your personal history.</p>`}</section></details></article>`;
+  }).join("");
+  root.innerHTML = `<section class="hero"><div class="heroIn"><div class="eyebrow">Your dining journal</div><h2>My Restaurants</h2><p>Keep your restaurant details and visit-by-visit reviews together in your private Metro Eats account.</p></div></section><section class="content-panel"><div class="sectionTitle"><div><div class="sectionKicker">${items.length} saved</div><h3>Your restaurants &amp; reviews</h3></div><button class="btn primary" type="button" data-action="new-restaurant">＋ Add a Restaurant</button></div><div class="readOnlyList">${rows || `<div class="empty">No restaurants saved yet. Add one to start your private dining journal.</div>`}</div><p class="hint">Restaurants and every visit review are saved to your signed-in Preview account. Existing shared baseline records stay unchanged.</p></section>`;
+}
+function renderRestaurantEditor(restaurantId = null) {
+  const restaurant = restaurantId ? cloudDataset.restaurants.find(item => String(item.id) === String(restaurantId)) : null;
+  if (restaurantId && !restaurant) { activeView = "dining"; render(); return; }
+  root.innerHTML = `<section class="hero"><div class="heroIn"><div class="eyebrow">Your dining journal</div><h2>${restaurant ? "Edit Restaurant" : "Add a Restaurant"}</h2><p>Save restaurant details once, then add a separate review for each visit.</p></div></section><section class="content-panel restaurantEditorPage"><div class="restaurantEditPanel"><label>Restaurant name<input id="restaurant-name" required maxlength="180" value="${escapeHtml(restaurant?.name || "")}" placeholder="e.g. Main Street Cafe"></label><div class="restaurantEditorGrid"><label>Cuisine<input id="restaurant-cuisine" maxlength="120" value="${escapeHtml(restaurant?.cuisine || "")}" placeholder="e.g. Italian"></label><label>Website<input id="restaurant-website" type="url" maxlength="500" value="${escapeHtml(restaurant?.website || "")}" placeholder="https://"></label></div><label>Address<input id="restaurant-address" maxlength="300" value="${escapeHtml(restaurant?.address || "")}" placeholder="Street, city"></label><label>Notes<textarea id="restaurant-notes" rows="3" maxlength="5000" placeholder="Anything you want to remember">${escapeHtml(restaurant?.notes || "")}</textarea></label><label class="inlineCheck"><input id="restaurant-favorite" type="checkbox"${restaurant?.favorite ? " checked" : ""}> Favorite</label><div class="recipeEditActions"><button class="btn" type="button" data-action="cancel-restaurant-edit">Cancel</button><button class="btn primary" type="button" data-action="save-restaurant" data-restaurant-id="${escapeHtml(restaurant?.id || "")}">${restaurant ? "Save Changes" : "Save Restaurant"}</button></div><p class="edit-status" role="status" aria-live="polite"></p></div></section>`;
+}
+function renderRestaurantReviewForm(restaurantId) {
+  const restaurant = cloudDataset.restaurants.find(item => String(item.id) === String(restaurantId));
+  if (!restaurant) { activeView = "dining"; render(); return; }
+  const now = new Date();
+  const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+  root.innerHTML = `<section class="hero"><div class="heroIn"><div class="eyebrow">Your dining journal · Visit review</div><h2>Add a Visit</h2><p>For ${escapeHtml(restaurant.name)}. Each visit is saved separately so your history stays intact.</p></div></section><section class="content-panel restaurantEditorPage"><div class="restaurantEditPanel"><label>Visit date<input id="review-visited-at" type="date" value="${today}" required></label><div class="pizzaScoreGrid restaurantScoreGrid">${[["overall","Overall"],["food","Food"],["service","Service"],["value","Value"],["ambiance","Ambiance"]].map(([key,label])=>`<label>${label} (0–10)<input id="review-${key}" type="number" min="0" max="10" step=".1" inputmode="decimal"></label>`).join("")}</div><label>What you ordered<input id="review-order" maxlength="500" placeholder="Dishes or drinks"></label><label>Notes<textarea id="review-notes" rows="4" maxlength="5000" placeholder="What stood out? Would you return?"></textarea></label><div class="recipeEditActions"><button class="btn" type="button" data-action="cancel-restaurant-edit">Cancel</button><button class="btn primary" type="button" data-action="save-restaurant-review" data-restaurant-id="${escapeHtml(restaurant.id)}">Save Visit Review</button></div><p class="edit-status" role="status" aria-live="polite"></p></div></section>`;
+}
 function renderHome() {
-  root.innerHTML = `<section class="hero"><div class="heroIn"><div class="eyebrow">St. Louis • Metro East</div><h2>Metro Eats<br><span class="fl">⚜</span> Recipes & Dining</h2><p>Your personal recipe book and restaurant journal — built around the food you actually love.</p><div class="homeFeatureButtons"><button class="homeFeatureButton recipeButton" data-view="recipes"><span class="homeFeatureIcon">✦</span><span><strong>My Recipes</strong><small>Your Kitchen</small></span><span class="homeFeatureArrow">→</span></button><button class="homeFeatureButton diningButton" data-view="dining"><span class="homeFeatureIcon" aria-hidden="true">⚜</span><span><strong>My Restaurants</strong><small>Your Restaurants & Reviews</small></span><span class="homeFeatureArrow">→</span></button><button class="homeFeatureButton pizzaButton" data-view="pizzas"><span class="homeFeatureIcon pizzaIcon" aria-hidden="true"></span><span><strong>My Frozen Pizzas</strong><small>Scan, rate, and compare</small></span><span class="homeFeatureArrow">→</span></button></div></div></section><section class="localNewsPanel" aria-labelledby="local-news-title"><div class="panel-heading"><div><p class="eyebrow">St. Louis • Metro East</p><h2 id="local-news-title">Local Food News</h2></div><span class="status">Food & restaurants</span></div><p class="newsIntro">Restaurant openings, local food stories, dining news, and Sauce Magazine highlights.</p><div id="local-food-news" class="localNewsList" aria-live="polite"><p class="hint">Loading local food stories…</p></div><p class="hint" id="local-news-updated"></p></section><div class="homeColumns"><article class="featureCard"><div><div class="sectionKicker">Your Collection</div><h3>Saved with care</h3><p>Your recipes and restaurant notes, kept together in one place.</p></div><div class="actions"><button class="btn primary" data-view="recipes">Open My Recipes →</button><button class="btn" data-view="dining">Open My Restaurants →</button><button class="btn" data-view="pizzas">Open My Frozen Pizzas →</button></div></article><article class="featureCard accent"><div><div class="sectionKicker">Safety First</div><h3>Existing data stays safe.</h3><p>Shared baseline records stay read-only. Your signed-in Preview account can save and edit its own recipes in isolated cloud storage.</p></div><span class="status">Read only</span></article></div>`;
+  root.innerHTML = `<section class="hero"><div class="heroIn"><div class="eyebrow">St. Louis • Metro East</div><h2>Metro Eats<br><span class="fl">⚜</span> Recipes & Dining</h2><p>Your personal recipe book and restaurant journal — built around the food you actually love.</p><div class="homeFeatureButtons"><button class="homeFeatureButton recipeButton" data-view="recipes"><span class="homeFeatureIcon">✦</span><span><strong>My Recipes</strong><small>Your Kitchen</small></span><span class="homeFeatureArrow">→</span></button><button class="homeFeatureButton diningButton" data-view="dining"><span class="homeFeatureIcon" aria-hidden="true">⚜</span><span><strong>My Restaurants</strong><small>Your Restaurants & Reviews</small></span><span class="homeFeatureArrow">→</span></button><button class="homeFeatureButton pizzaButton" data-view="pizzas"><span class="homeFeatureIcon pizzaIcon" aria-hidden="true"></span><span><strong>My Frozen Pizzas</strong><small>Rate and compare</small></span><span class="homeFeatureArrow">→</span></button></div></div></section><section class="localNewsPanel" aria-labelledby="local-news-title"><div class="panel-heading"><div><p class="eyebrow">St. Louis • Metro East</p><h2 id="local-news-title">Local Food News</h2></div><span class="status">Food & restaurants</span></div><p class="newsIntro">Restaurant openings, local food stories, dining news, and Sauce Magazine highlights.</p><div id="local-food-news" class="localNewsList" aria-live="polite"><p class="hint">Loading local food stories…</p></div><p class="hint" id="local-news-updated"></p></section><div class="homeColumns"><article class="featureCard"><div><div class="sectionKicker">Your Collection</div><h3>Saved with care</h3><p>Your recipes, restaurant visits, and frozen-pizza ratings stay with your account.</p></div><div class="actions"><button class="btn primary" data-view="recipes">Open My Recipes →</button><button class="btn" data-view="dining">Open My Restaurants →</button><button class="btn" data-view="pizzas">Open My Frozen Pizzas →</button></div></article><article class="featureCard accent"><div><div class="sectionKicker">Safety First</div><h3>Existing data stays safe.</h3><p>Shared baseline records stay read-only. Your signed-in Preview account saves its own recipes, reviews, and pizza ratings.</p></div><span class="status">Private account</span></article></div>`;
 }
 async function loadLocalFoodNews() {
   const list = document.querySelector("#local-food-news");
@@ -81,7 +125,14 @@ function ratingValue(value, key = "") {
   // Convert legacy restaurant/review ratings on a 5-point scale for display only.
   return number >= 0 && number <= 5 ? number * 2 : number;
 }
+function reviewRating(review, key) {
+  const value = review?.[key];
+  const number = Number(value);
+  if (value == null || value === "" || !Number.isFinite(number)) return null;
+  return review?.ratingScale === 10 || number > 5 ? number : number * 2;
+}
 function renderList(title, eyebrow, items, kind) {
+  if (kind === "dining") { renderRestaurants(items); return; }
   const isRecipe = kind === "recipes";
   const visibleItems = isRecipe ? items.filter(item => !/^PREVIEW TEST\b/i.test(String(item.title || ""))) : items;
   const rows = visibleItems.map(item => {
@@ -199,17 +250,19 @@ function renderAddRecipe() {
   syncImportMode("text");
 }
 function renderFrozenPizzas() {
-  root.innerHTML = `<section class="hero"><div class="heroIn"><div class="eyebrow">Your freezer • Your ratings</div><h2>My Frozen Pizzas <span class="pizzaHeadingIcon" aria-hidden="true"><svg viewBox="0 0 64 64" focusable="false"><circle cx="32" cy="32" r="25"/><circle cx="32" cy="32" r="21"/><path d="M32 11 L49 46 Q32 39 15 46 Z"/><circle cx="29" cy="25" r="2.3"/><circle cx="35" cy="32" r="2.3"/><circle cx="29" cy="36" r="2.3"/></svg></span></h2><p>Build your personal frozen-pizza rankings with product details, category scores, photos, and an overall rating out of 10.</p></div></section>
-  <section class="content-panel"><div class="sectionTitle"><div><div class="sectionKicker">Product lookup</div><h3>Find a frozen pizza</h3></div><span class="status">Preview concept</span></div>
-  <p>Barcode lookup is planned to fill in brand and product details when a matching UPC is available. Live barcode scanning and product lookup are not connected in this preview yet.</p>
-  <div class="field"><label for="pizza-upc">UPC barcode (manual fallback)</label><input id="pizza-upc" inputmode="numeric" autocomplete="off" placeholder="Enter UPC digits"></div>
-  <div class="field"><label for="pizza-brand">Brand</label><input id="pizza-brand" placeholder="e.g. DiGiorno"></div>
-  <div class="field"><label for="pizza-name">Pizza name / variety</label><input id="pizza-name" placeholder="e.g. Rising Crust Pepperoni"></div>
-  <div class="field"><label for="pizza-price">Purchase price</label><input id="pizza-price" inputmode="decimal" placeholder="$"></div>
-  <div class="pizzaScoreGrid"><div class="field"><label for="pizza-taste">Taste (0–10)</label><input id="pizza-taste" type="number" min="0" max="10" step=".1"></div><div class="field"><label for="pizza-crust">Crust (0–10)</label><input id="pizza-crust" type="number" min="0" max="10" step=".1"></div><div class="field"><label for="pizza-sauce">Sauce (0–10)</label><input id="pizza-sauce" type="number" min="0" max="10" step=".1"></div><div class="field"><label for="pizza-cheese">Cheese (0–10)</label><input id="pizza-cheese" type="number" min="0" max="10" step=".1"></div><div class="field"><label for="pizza-toppings">Toppings (0–10)</label><input id="pizza-toppings" type="number" min="0" max="10" step=".1"></div><div class="field"><label for="pizza-value">Value (0–10)</label><input id="pizza-value" type="number" min="0" max="10" step=".1"></div></div>
-  <div class="field"><label for="pizza-overall">Overall score (0–10)</label><input id="pizza-overall" type="number" min="0" max="10" step=".1"></div>
-  <div class="field"><label for="pizza-notes">Review notes</label><textarea id="pizza-notes" rows="3" placeholder="What stood out? Would you buy it again?"></textarea></div>
-  <p class="hint">This is a layout prototype only. It does not save data, change existing records, or connect to a barcode database. We will wire up scanning, product lookup, and private account storage separately.</p></section>`;
+  const pizza = activePizzaId ? cloudDataset.pizzas.find(item => String(item.id) === String(activePizzaId)) : null;
+  if (activePizzaId && !pizza) activePizzaId = null;
+  const scores = pizza?.scores || {};
+  const pizzaRows = [...(dataset.pizzas || [])].sort((a, b) => Number(b.scores?.overall ?? -1) - Number(a.scores?.overall ?? -1) || String(a.name).localeCompare(String(b.name))).map(item => {
+    const itemScores = item.scores || {};
+    const scoreLine = [["Overall",itemScores.overall],["Taste",itemScores.taste],["Crust",itemScores.crust],["Sauce",itemScores.sauce],["Cheese",itemScores.cheese],["Toppings",itemScores.toppings],["Value",itemScores.value]].filter(([,value])=>value!=null).map(([label,value])=>`${label} ${Number(value).toFixed(1)}`).join(" · ");
+    return `<article class="readOnlyItem pizzaCard"><div class="recipeCardHeader"><strong>${escapeHtml([item.brand,item.name].filter(Boolean).join(" · "))}</strong><div class="recipeCardActions"><button class="btn" type="button" data-action="edit-pizza" data-pizza-id="${escapeHtml(item.id)}">Edit</button><button class="btn danger" type="button" data-action="delete-pizza" data-pizza-id="${escapeHtml(item.id)}">Delete</button></div></div><small>${escapeHtml([item.upc ? `UPC ${item.upc}` : "", item.price == null ? "" : `$${Number(item.price).toFixed(2)}`].filter(Boolean).join(" · ") || "No barcode or price saved")}</small>${scoreLine ? `<p class="pizzaScoreLine">${escapeHtml(scoreLine)}</p>` : `<p class="hint">No ratings saved yet.</p>`}${item.notes ? `<p>${escapeHtml(item.notes)}</p>` : ""}</article>`;
+  }).join("");
+  const scoreFields = [["taste","Taste"],["crust","Crust"],["sauce","Sauce"],["cheese","Cheese"],["toppings","Toppings"],["value","Value"],["overall","Overall score"]]
+    .map(([key,label])=>`<label>${label} (0–10)<input id="pizza-${key}" type="number" min="0" max="10" step=".1" inputmode="decimal" value="${scores[key] ?? ""}"></label>`).join("");
+  root.innerHTML = `<section class="hero"><div class="heroIn"><div class="eyebrow">Your freezer • Your ratings</div><h2>My Frozen Pizzas <span class="pizzaHeadingIcon" aria-hidden="true"><svg viewBox="0 0 64 64" focusable="false"><circle cx="32" cy="32" r="25"/><circle cx="32" cy="32" r="21"/><path d="M32 11 L49 46 Q32 39 15 46 Z"/><circle cx="29" cy="25" r="2.3"/><circle cx="35" cy="32" r="2.3"/><circle cx="29" cy="36" r="2.3"/></svg></span></h2><p>Save and compare your frozen-pizza ratings in your private Metro Eats account.</p></div></section>
+  <section class="content-panel"><div class="sectionTitle"><div><div class="sectionKicker">${(dataset.pizzas || []).length} saved</div><h3>Your frozen-pizza ratings</h3></div></div><div class="pizzaCollection">${pizzaRows || `<div class="empty">No frozen pizzas saved yet. Add one below to start your rankings.</div>`}</div></section>
+  <section class="content-panel pizzaEditorPanel"><div class="sectionTitle"><div><div class="sectionKicker">${pizza ? "Edit saved pizza" : "Your next review"}</div><h3>${pizza ? "Update a Frozen Pizza" : "Add a Frozen Pizza"}</h3></div></div><p class="hint">Enter a UPC by hand if you have it. Camera scanning and automatic product lookup are not connected yet.</p><div class="pizzaEditForm"><div class="restaurantEditorGrid"><label>UPC barcode<input id="pizza-upc" inputmode="numeric" autocomplete="off" maxlength="14" value="${escapeHtml(pizza?.upc || "")}" placeholder="8–14 digits"></label><label>Brand<input id="pizza-brand" maxlength="120" required value="${escapeHtml(pizza?.brand || "")}" placeholder="e.g. DiGiorno"></label></div><label>Pizza name / variety<input id="pizza-name" maxlength="180" required value="${escapeHtml(pizza?.name || "")}" placeholder="e.g. Rising Crust Pepperoni"></label><label>Purchase price<input id="pizza-price" type="number" inputmode="decimal" min="0" step=".01" value="${pizza?.price ?? ""}" placeholder="0.00"></label><div class="pizzaScoreGrid">${scoreFields}</div><label>Review notes<textarea id="pizza-notes" rows="3" maxlength="5000" placeholder="What stood out? Would you buy it again?">${escapeHtml(pizza?.notes || "")}</textarea></label><div class="recipeEditActions"><button class="btn" type="button" data-action="cancel-pizza-edit">${pizza ? "Cancel" : "Clear"}</button><button class="btn primary" type="button" data-action="save-pizza" data-pizza-id="${escapeHtml(pizza?.id || "")}">${pizza ? "Save Changes" : "Save Pizza & Ratings"}</button></div><p class="edit-status" role="status" aria-live="polite"></p></div><p class="hint">Pizza entries are private to your account and are included in automatic restore points.</p></section>`;
 }
 function formatRecipeDuration(value) {
   const raw = String(value ?? "").trim();
@@ -248,12 +301,13 @@ function renderImportPreview(recipe) {
 function render() {
   document.querySelector(".app > .top")?.classList.toggle("homeStickyHeader", activeView === "home");
   root.classList.add("section", "active");
-  root.classList.remove("recipeSection", "diningSection");
+  root.classList.remove("recipeSection", "diningSection", "pizzaSection");
   if (activeView === "recipes") root.classList.add("recipeSection");
-  if (activeView === "dining") root.classList.add("diningSection");
+  if (activeView === "dining" || activeView.startsWith("restaurant-")) root.classList.add("diningSection");
   if (activeView === "pizzas") root.classList.add("pizzaSection");
   document.querySelectorAll("[data-view]").forEach(button => {
-    const active = button.dataset.view === activeView;
+    const currentSection = activeView.startsWith("restaurant-") ? "dining" : activeView;
+    const active = button.dataset.view === currentSection;
     button.classList.toggle("active", active);
     if (active) button.setAttribute("aria-current", "page"); else button.removeAttribute("aria-current");
   });
@@ -261,6 +315,8 @@ function render() {
   else if (activeView === "add-recipe") renderAddRecipe();
   else if (activeView === "edit-recipe") renderRecipeEditor(activeRecipeId);
   else if (activeView === "dining") renderList("My Restaurants", "Your restaurants", dataset.restaurants, "dining");
+  else if (activeView === "restaurant-edit") renderRestaurantEditor(activeRestaurantId);
+  else if (activeView === "restaurant-review") renderRestaurantReviewForm(activeRestaurantId);
   else if (activeView === "pizzas") renderFrozenPizzas();
   else renderHome();
 }
@@ -304,6 +360,192 @@ document.addEventListener("click", async event => {
   }
   const actionButton = event.target.closest("[data-action]");
   if (!actionButton) return;
+  if (actionButton.dataset.action === "new-restaurant") {
+    activeRestaurantId = null;
+    activeView = "restaurant-edit";
+    render();
+    window.scrollTo({ top: 0, left: 0, behavior: "instant" });
+    return;
+  }
+  if (actionButton.dataset.action === "edit-restaurant") {
+    activeRestaurantId = actionButton.dataset.restaurantId;
+    activeView = "restaurant-edit";
+    render();
+    window.scrollTo({ top: 0, left: 0, behavior: "instant" });
+    return;
+  }
+  if (actionButton.dataset.action === "add-restaurant-review") {
+    activeRestaurantId = actionButton.dataset.restaurantId;
+    activeView = "restaurant-review";
+    render();
+    window.scrollTo({ top: 0, left: 0, behavior: "instant" });
+    return;
+  }
+  if (actionButton.dataset.action === "cancel-restaurant-edit") {
+    activeRestaurantId = null;
+    activeView = "dining";
+    render();
+    return;
+  }
+  if (actionButton.dataset.action === "save-restaurant") {
+    const statusLine = actionButton.closest(".restaurantEditPanel")?.querySelector(".edit-status");
+    const name = document.querySelector("#restaurant-name")?.value.trim() || "";
+    const cuisine = document.querySelector("#restaurant-cuisine")?.value.trim() || "";
+    const address = document.querySelector("#restaurant-address")?.value.trim() || "";
+    const website = document.querySelector("#restaurant-website")?.value.trim() || "";
+    const notes = document.querySelector("#restaurant-notes")?.value.trim() || "";
+    const favorite = Boolean(document.querySelector("#restaurant-favorite")?.checked);
+    if (!name) { if (statusLine) statusLine.textContent = "Enter a restaurant name before saving."; return; }
+    if (website) {
+      try { const url = new URL(website); if (!/^https?:$/.test(url.protocol)) throw new Error(); }
+      catch { if (statusLine) statusLine.textContent = "Enter a complete http:// or https:// website address."; return; }
+    }
+    const id = actionButton.dataset.restaurantId;
+    const existing = id ? cloudDataset.restaurants.find(item => String(item.id) === String(id)) : null;
+    if (id && !existing) { if (statusLine) statusLine.textContent = "This restaurant is no longer in your account. Reload before saving."; return; }
+    const now = new Date().toISOString();
+    const restaurant = { ...(existing || {}), id: existing?.id || `metro-restaurant-${crypto.randomUUID()}`, name, cuisine, address, website, notes, favorite, ratingScale: 10, createdAt: existing?.createdAt || now, updatedAt: now };
+    const restaurants = existing
+      ? cloudDataset.restaurants.map(item => String(item.id) === String(id) ? restaurant : item)
+      : [...cloudDataset.restaurants, restaurant];
+    actionButton.disabled = true;
+    try {
+      await saveCloudDataset({ ...cloudDataset, restaurants });
+      activeRestaurantId = null;
+      activeView = "dining";
+      render();
+      window.scrollTo({ top: 0, left: 0, behavior: "instant" });
+    } catch (error) {
+      if (statusLine) statusLine.textContent = error?.message || "Cloud save failed. The restaurant was not reported as saved.";
+      actionButton.disabled = false;
+    }
+    return;
+  }
+  if (actionButton.dataset.action === "save-restaurant-review") {
+    const statusLine = actionButton.closest(".restaurantEditPanel")?.querySelector(".edit-status");
+    const id = actionButton.dataset.restaurantId;
+    const restaurant = cloudDataset.restaurants.find(item => String(item.id) === String(id));
+    if (!restaurant) { if (statusLine) statusLine.textContent = "This restaurant is no longer in your account. Reload before saving."; return; }
+    const visitedAt = document.querySelector("#review-visited-at")?.value || "";
+    const scores = Object.fromEntries(["overall", "food", "service", "value", "ambiance"].map(key => {
+      const raw = document.querySelector(`#review-${key}`)?.value ?? "";
+      return [key, raw === "" ? null : Number(raw)];
+    }));
+    const order = document.querySelector("#review-order")?.value.trim() || "";
+    const notes = document.querySelector("#review-notes")?.value.trim() || "";
+    if (!visitedAt || scores.overall == null || !Number.isFinite(scores.overall) || scores.overall < 0 || scores.overall > 10) {
+      if (statusLine) statusLine.textContent = "Choose a visit date and an overall rating from 0 to 10.";
+      return;
+    }
+    if (Object.values(scores).some(value => value != null && (!Number.isFinite(value) || value < 0 || value > 10))) {
+      if (statusLine) statusLine.textContent = "Every rating must be between 0 and 10.";
+      return;
+    }
+    const now = new Date().toISOString();
+    const review = { id: `metro-review-${crypto.randomUUID()}`, visitedAt, createdAt: now, ...scores, order, notes, ratingScale: 10 };
+    const reviewHistory = [...(Array.isArray(restaurant.reviewHistory) ? restaurant.reviewHistory : []), review];
+    const previousScores = restaurantReviewRecords(restaurant).map(item => reviewRating(item, "overall") ?? reviewRating(item, "rating")).filter(value => Number.isFinite(Number(value))).map(Number);
+    const allScores = [...previousScores, scores.overall];
+    const updated = { ...restaurant, reviewHistory, rating: allScores.reduce((sum, value) => sum + value, 0) / allScores.length, ratingScale: 10, updatedAt: now };
+    actionButton.disabled = true;
+    try {
+      await saveCloudDataset({ ...cloudDataset, restaurants: cloudDataset.restaurants.map(item => String(item.id) === String(id) ? updated : item) });
+      activeRestaurantId = null;
+      activeView = "dining";
+      render();
+      window.scrollTo({ top: 0, left: 0, behavior: "instant" });
+    } catch (error) {
+      if (statusLine) statusLine.textContent = error?.message || "Cloud save failed. No visit was reported as saved.";
+      actionButton.disabled = false;
+    }
+    return;
+  }
+  if (actionButton.dataset.action === "delete-restaurant") {
+    const id = actionButton.dataset.restaurantId;
+    const restaurant = cloudDataset.restaurants.find(item => String(item.id) === String(id));
+    if (!restaurant || !window.confirm(`Delete “${restaurant.name}” and its visit history from your Preview account?`)) return;
+    actionButton.disabled = true;
+    try {
+      await saveCloudDataset({ ...cloudDataset, restaurants: cloudDataset.restaurants.filter(item => String(item.id) !== String(id)) });
+      render();
+    } catch (error) {
+      actionButton.disabled = false;
+      const card = actionButton.closest(".restaurantCard");
+      let statusLine = card?.querySelector(".edit-status");
+      if (!statusLine && card) { statusLine = document.createElement("p"); statusLine.className = "edit-status"; statusLine.setAttribute("role", "status"); card.append(statusLine); }
+      if (statusLine) statusLine.textContent = error?.message || "Cloud delete failed. Nothing was removed.";
+    }
+    return;
+  }
+  if (actionButton.dataset.action === "save-pizza") {
+    const statusLine = actionButton.closest(".pizzaEditorPanel")?.querySelector(".edit-status");
+    const brand = document.querySelector("#pizza-brand")?.value.trim() || "";
+    const name = document.querySelector("#pizza-name")?.value.trim() || "";
+    const upc = document.querySelector("#pizza-upc")?.value.trim() || "";
+    const priceRaw = document.querySelector("#pizza-price")?.value ?? "";
+    const notes = document.querySelector("#pizza-notes")?.value.trim() || "";
+    const scores = Object.fromEntries(["taste", "crust", "sauce", "cheese", "toppings", "value", "overall"].map(key => {
+      const raw = document.querySelector(`#pizza-${key}`)?.value ?? "";
+      return [key, raw === "" ? null : Number(raw)];
+    }));
+    const componentScores = ["taste", "crust", "sauce", "cheese", "toppings", "value"].map(key => scores[key]).filter(value => value != null);
+    if (!brand || !name) { if (statusLine) statusLine.textContent = "Enter both a brand and a pizza name."; return; }
+    if (upc && !/^\d{8,14}$/.test(upc)) { if (statusLine) statusLine.textContent = "Enter 8 to 14 UPC digits, or leave the barcode blank."; return; }
+    const price = priceRaw === "" ? null : Number(priceRaw);
+    if (price != null && (!Number.isFinite(price) || price < 0)) { if (statusLine) statusLine.textContent = "Enter a valid nonnegative price."; return; }
+    if (Object.values(scores).some(value => value != null && (!Number.isFinite(value) || value < 0 || value > 10))) { if (statusLine) statusLine.textContent = "Every rating must be between 0 and 10."; return; }
+    if (scores.overall == null) {
+      if (!componentScores.length) { if (statusLine) statusLine.textContent = "Enter at least one category rating or an overall rating."; return; }
+      scores.overall = Math.round(componentScores.reduce((sum, value) => sum + value, 0) / componentScores.length * 10) / 10;
+    }
+    const id = actionButton.dataset.pizzaId;
+    const existing = id ? cloudDataset.pizzas.find(item => String(item.id) === String(id)) : null;
+    if (id && !existing) { if (statusLine) statusLine.textContent = "This pizza is no longer in your account. Reload before saving."; return; }
+    const now = new Date().toISOString();
+    const pizza = { ...(existing || {}), id: existing?.id || `metro-pizza-${crypto.randomUUID()}`, upc, brand, name, price, scores, notes, createdAt: existing?.createdAt || now, updatedAt: now };
+    const pizzas = existing
+      ? cloudDataset.pizzas.map(item => String(item.id) === String(id) ? pizza : item)
+      : [...(cloudDataset.pizzas || []), pizza];
+    actionButton.disabled = true;
+    try {
+      await saveCloudDataset({ ...cloudDataset, pizzas });
+      activePizzaId = null;
+      render();
+      window.scrollTo({ top: 0, left: 0, behavior: "instant" });
+    } catch (error) {
+      if (statusLine) statusLine.textContent = error?.message || "Cloud save failed. The pizza was not reported as saved.";
+      actionButton.disabled = false;
+    }
+    return;
+  }
+  if (actionButton.dataset.action === "edit-pizza") {
+    activePizzaId = actionButton.dataset.pizzaId;
+    render();
+    document.querySelector(".pizzaEditorPanel")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    return;
+  }
+  if (actionButton.dataset.action === "cancel-pizza-edit") {
+    activePizzaId = null;
+    render();
+    return;
+  }
+  if (actionButton.dataset.action === "delete-pizza") {
+    const id = actionButton.dataset.pizzaId;
+    const pizza = cloudDataset.pizzas.find(item => String(item.id) === String(id));
+    if (!pizza || !window.confirm(`Delete “${pizza.brand} ${pizza.name}” from your Preview account?`)) return;
+    actionButton.disabled = true;
+    try {
+      await saveCloudDataset({ ...cloudDataset, pizzas: cloudDataset.pizzas.filter(item => String(item.id) !== String(id)) });
+      render();
+    } catch (error) {
+      actionButton.disabled = false;
+      const card = actionButton.closest(".pizzaCard");
+      let statusLine = card?.querySelector(".edit-status");
+      if (!statusLine && card) { statusLine = document.createElement("p"); statusLine.className = "edit-status"; statusLine.setAttribute("role", "status"); card.append(statusLine); }
+      if (statusLine) statusLine.textContent = error?.message || "Cloud delete failed. Nothing was removed.";
+    }
+    return;
+  }
   if (actionButton.dataset.action === "print-recipe") {
     const card = actionButton.closest(".readOnlyItem");
     card?.querySelectorAll("details").forEach(item => { item.open = true; });
@@ -497,7 +739,7 @@ document.addEventListener("click", async event => {
 async function refreshDataset() {
   try {
     cloudReady = false;
-    cloudDataset = { recipes: [], restaurants: [], cats: [] };
+    cloudDataset = { recipes: [], restaurants: [], pizzas: [], cats: [] };
     cloudRevision = 0;
     try {
       cloudClient = createUserDatasetClient({ getAccessToken: () => globalThis.metroGetAccessToken?.() });

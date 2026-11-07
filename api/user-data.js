@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 
 const MAX_BODY_BYTES = 1_500_000;
-const EMPTY_DATASET = { recipes: [], restaurants: [], cats: [] };
+const EMPTY_DATASET = { recipes: [], restaurants: [], pizzas: [], cats: [] };
 const jwksUrl = process.env.NEON_AUTH_JWKS_URL;
 const authBaseUrl = process.env.NEON_AUTH_BASE_URL;
 
@@ -35,18 +35,28 @@ async function authenticatedUser(req) {
 function validDataset(value) {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
   if (!Array.isArray(value.recipes) || !Array.isArray(value.restaurants)) return false;
+  if (value.pizzas != null && !Array.isArray(value.pizzas)) return false;
   if (value.cats != null && !Array.isArray(value.cats) && (typeof value.cats !== 'object' || value.cats === null)) return false;
-  if (value.recipes.length > 10000 || value.restaurants.length > 10000) return false;
+  if (value.recipes.length > 10000 || value.restaurants.length > 10000 || (value.pizzas?.length || 0) > 10000) return false;
   const validRows = rows => rows.every(row => row && typeof row === 'object' && !Array.isArray(row)
     && typeof row.id === 'string' && row.id.trim().length > 0);
   if (!validRows(value.recipes) || !validRows(value.restaurants)) return false;
   if (new Set(value.recipes.map(row => row.id)).size !== value.recipes.length) return false;
   if (new Set(value.restaurants.map(row => row.id)).size !== value.restaurants.length) return false;
+  const pizzas = value.pizzas || [];
+  if (!validRows(pizzas) || new Set(pizzas.map(row => row.id)).size !== pizzas.length) return false;
   if (value.recipes.some(row => typeof row.title !== 'string' || !row.title.trim()
     || !Array.isArray(row.ingredients) || !row.ingredients.length
     || !Array.isArray(row.directions) || !row.directions.length
     || row.ingredients.some(item => typeof item !== 'string' || !item.trim())
     || row.directions.some(item => typeof item !== 'string' || !item.trim()))) return false;
+  const scoreKeys = ['taste', 'crust', 'sauce', 'cheese', 'toppings', 'value', 'overall'];
+  if (pizzas.some(row => typeof row.brand !== 'string' || !row.brand.trim()
+    || typeof row.name !== 'string' || !row.name.trim()
+    || (row.upc != null && row.upc !== '' && !/^\d{8,14}$/.test(String(row.upc)))
+    || (row.price != null && row.price !== '' && (!Number.isFinite(Number(row.price)) || Number(row.price) < 0))
+    || !row.scores || typeof row.scores !== 'object' || Array.isArray(row.scores)
+    || scoreKeys.some(key => row.scores[key] != null && row.scores[key] !== '' && (!Number.isFinite(Number(row.scores[key])) || Number(row.scores[key]) < 0 || Number(row.scores[key]) > 10)))) return false;
   return true;
 }
 

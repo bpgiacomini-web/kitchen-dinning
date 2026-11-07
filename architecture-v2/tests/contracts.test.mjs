@@ -12,6 +12,10 @@ test("dataset contract accepts current recipe and dining record shapes", () => {
   assert.deepEqual(data, before);
 });
 
+test("dataset contract accepts an optional frozen-pizza collection", () => {
+  assert.deepEqual(validateDatasetEnvelope({ recipes: [], restaurants: [], pizzas: [{ id: "p1", brand: "Metro", name: "Pepperoni" }] }), { valid: true, errors: [] });
+});
+
 test("dataset contract rejects malformed envelopes and collection entries", () => {
   assert.deepEqual(validateDatasetEnvelope(null), { valid: false, errors: ["dataset must be an object"] });
   const result = validateDatasetEnvelope({ recipes: {}, restaurants: [null] });

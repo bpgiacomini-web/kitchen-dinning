@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { asText, normalizeDataset, normalizeRecipe, normalizeRestaurant } from "../src/domain/normalize.mjs";
+import { asText, normalizeDataset, normalizeFrozenPizza, normalizeRecipe, normalizeRestaurant } from "../src/domain/normalize.mjs";
 
 test("recipe normalization supports the fields used by the current Metro Eats app", () => {
   const source = {
@@ -57,8 +57,20 @@ test("restaurant normalization handles object addresses and a legacy single surv
   assert.equal(result.latestReviewAt, "2026-10-03");
 });
 
+test("frozen pizza normalization preserves original fields and numeric scores", () => {
+  const source = { id: "pizza-1", barcode: "012345678905", brand: "Test Brand", productName: "Pepperoni", price: "7.99", scores: { taste: "8.5", overall: "8", custom: true }, notes: "Crispy crust", customField: "preserved" };
+  const result = normalizeFrozenPizza(source);
+  assert.equal(result.upc, "012345678905");
+  assert.equal(result.name, "Pepperoni");
+  assert.equal(result.price, 7.99);
+  assert.equal(result.scores.taste, 8.5);
+  assert.equal(result.scores.overall, 8);
+  assert.equal(result.customField, "preserved");
+  assert.deepEqual(normalizeDataset({}).pizzas, []);
+});
+
 test("dataset normalization safely handles malformed top-level shapes", () => {
-  assert.deepEqual(normalizeDataset(null), { recipes: [], restaurants: [], cats: [] });
+  assert.deepEqual(normalizeDataset(null), { recipes: [], restaurants: [], pizzas: [], cats: [] });
   assert.deepEqual(normalizeDataset({ cats: { Beef: ["Main Dishes", "Beef"] } }).cats, { Beef: ["Main Dishes", "Beef"] });
   assert.equal(normalizeDataset({ recipes: [null], restaurants: [null] }).recipes[0].title, "Untitled recipe");
   assert.deepEqual(normalizeDataset({ recipes: "bad", restaurants: {} }).restaurants, []);
