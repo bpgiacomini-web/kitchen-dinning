@@ -3,6 +3,7 @@ import { normalizeDataset } from "./domain/normalize.mjs";
 import { importedRecipeCategory, recipeEditorCategories, RECIPE_CATEGORIES } from "./features/recipes/categories.mjs";
 import { parsePastedRecipeText, parseRecipeJsonLd } from "./features/recipes/import-parser.mjs";
 import { createRestaurantReview } from "./domain/restaurant-review.mjs";
+import { searchRestaurantNames } from "./domain/restaurant-lookup.mjs";
 
 const root = document.querySelector("#app");
 const status = document.querySelector("#previewNotice");
@@ -18,6 +19,10 @@ let activeRestaurantId = null;
 let activePizzaId = null;
 let extractedRecipe = null;
 let newRestaurantPrefill = null;
+let restaurantLookupTimer = null;
+let restaurantLookupRequest = 0;
+let restaurantLookupLocation = null;
+let restaurantLookupResults = [];
 function mergeVisibleDataset() {
   cloudRecipeIds = new Set(cloudDataset.recipes.map(item => String(item.id)));
   dataset = { ...cloudDataset };
@@ -90,7 +95,7 @@ function renderRestaurants(items) {
 function renderRestaurantEditor(restaurantId = null) {
   const restaurant = restaurantId ? cloudDataset.restaurants.find(item => String(item.id) === String(restaurantId)) : newRestaurantPrefill;
   if (restaurantId && !restaurant) { activeView = "dining"; render(); return; }
-  root.innerHTML = `<section class="hero"><div class="heroIn"><div class="eyebrow">Your dining journal</div><h2>${restaurantId ? "Edit Restaurant" : "Add a Restaurant"}</h2><p>Save restaurant details once, then add a separate review for each visit.</p></div></section><section class="content-panel restaurantEditorPage"><div class="restaurantEditPanel"><label>Restaurant name<input id="restaurant-name" required maxlength="180" value="${escapeHtml(restaurant?.name || "")}" placeholder="e.g. Main Street Cafe"></label><div class="restaurantEditorGrid"><label>Cuisine<input id="restaurant-cuisine" maxlength="120" value="${escapeHtml(restaurant?.cuisine || restaurant?.type || "")}" placeholder="e.g. Italian"></label><label>Website<input id="restaurant-website" type="url" maxlength="500" value="${escapeHtml(restaurant?.website || "")}" placeholder="https://"></label></div><label>Menu link<input id="restaurant-menu" type="url" maxlength="500" value="${escapeHtml(restaurant?.menuUrl || "")}" placeholder="https://"></label><label>Address<input id="restaurant-address" maxlength="300" value="${escapeHtml(restaurant?.address || "")}" placeholder="Street, city"></label><label>Notes<textarea id="restaurant-notes" rows="3" maxlength="5000" placeholder="Anything you want to remember">${escapeHtml(restaurant?.notes || "")}</textarea></label><label class="inlineCheck"><input id="restaurant-favorite" type="checkbox"${restaurant?.favorite ? " checked" : ""}> Favorite</label><div class="recipeEditActions"><button class="btn" type="button" data-action="cancel-restaurant-edit">Cancel</button><button class="btn primary" type="button" data-action="save-restaurant" data-restaurant-id="${escapeHtml(restaurant?.id || "")}">${restaurantId ? "Save Changes" : "Save Restaurant"}</button></div><p class="edit-status" role="status" aria-live="polite"></p></div></section>`;
+  root.innerHTML = `<section class="hero"><div class="heroIn"><div class="eyebrow">Your dining journal</div><h2>${restaurantId ? "Edit Restaurant" : "Add a Restaurant"}</h2><p>Save restaurant details once, then add a separate review for each visit.</p></div></section><section class="content-panel restaurantEditorPage"><div class="restaurantEditPanel"><label>Restaurant name<input id="restaurant-name" required maxlength="180" value="${escapeHtml(restaurant?.name || "")}" placeholder="Start typing a restaurant name" autocomplete="organization"></label><div class="restaurantLookupTools"><button class="btn" type="button" data-action="enable-restaurant-location">⌖ Use my location for nearby matches</button><p class="hint">Typing searches OpenStreetMap for restaurant matches. Location is optional; if allowed, it helps show nearby matches first.</p></div><div id="restaurant-lookup-status" role="status" aria-live="polite" class="restaurantLookupStatus"></div><div id="restaurant-lookup-results" class="restaurantLookupResults"></div><div class="restaurantEditorGrid"><label>Cuisine<input id="restaurant-cuisine" maxlength="120" value="${escapeHtml(restaurant?.cuisine || restaurant?.type || "")}" placeholder="e.g. Italian"></label><label>Website<input id="restaurant-website" type="url" maxlength="500" value="${escapeHtml(restaurant?.website || "")}" placeholder="https://"></label></div><label>Menu link<input id="restaurant-menu" type="url" maxlength="500" value="${escapeHtml(restaurant?.menuUrl || "")}" placeholder="https://"></label><label>Address<input id="restaurant-address" maxlength="300" value="${escapeHtml(restaurant?.address || "")}" placeholder="Street, city"></label><label>Notes<textarea id="restaurant-notes" rows="3" maxlength="5000" placeholder="Anything you want to remember">${escapeHtml(restaurant?.notes || "")}</textarea></label><label class="inlineCheck"><input id="restaurant-favorite" type="checkbox"${restaurant?.favorite ? " checked" : ""}> Favorite</label><div class="recipeEditActions"><button class="btn" type="button" data-action="cancel-restaurant-edit">Cancel</button><button class="btn primary" type="button" data-action="save-restaurant" data-restaurant-id="${escapeHtml(restaurant?.id || "")}">${restaurantId ? "Save Changes" : "Save Restaurant"}</button></div><p class="edit-status" role="status" aria-live="polite"></p></div></section>`;
 }
 function renderRestaurantReviewForm(restaurantId) {
   const restaurant = cloudDataset.restaurants.find(item => String(item.id) === String(restaurantId));
@@ -113,11 +118,12 @@ async function searchNearbyRestaurants() {
   const statusLine = root.querySelector("#nearby-status");
   const results = root.querySelector("#nearby-results");
   if (!statusLine || !results) return;
-  if (!navigator.geolocation) { statusLine.textContent = "Location search is not available in this browser."; return; }
+  if (!navigator.geolocation) { statusLine.textContent = "This browser does not provide location access here. You can still search restaurant names when adding a restaurant."; return; }
   statusLine.textContent = "Requesting your location…";
   results.innerHTML = "";
   navigator.geolocation.getCurrentPosition(async position => {
     const { latitude, longitude } = position.coords;
+    restaurantLookupLocation = { lat: latitude, lon: longitude };
     statusLine.textContent = "Looking for restaurants nearby…";
     const query = `[out:json][timeout:20];nwr["amenity"~"^(restaurant|fast_food|cafe|bar|pub)$",i]["name"](around:8047,${latitude},${longitude});out center tags;`;
     let data = null;
@@ -151,7 +157,43 @@ async function searchNearbyRestaurants() {
     if (!places.length) { statusLine.textContent = "No named restaurants appeared within about five miles. You can still add one by name."; return; }
     statusLine.textContent = `Found ${places.length} nearby places. Select one to review its details before saving.`;
     results.innerHTML = places.map(place => `<article class="nearbyPlace"><div><strong>${escapeHtml(place.name)}</strong><small>${escapeHtml([place.cuisine, place.distance == null ? "" : place.distance < 1609 ? `${Math.round(place.distance * 3.28084)} ft` : `${(place.distance / 1609.34).toFixed(1)} mi`, place.address].filter(Boolean).join(" · ") || "Nearby food place")}</small></div><button class="btn" type="button" data-action="use-nearby" data-nearby="${escapeHtml(JSON.stringify(place))}">Review this restaurant</button></article>`).join("");
-  }, () => { statusLine.textContent = "Location permission was denied or unavailable. You can still add a restaurant by name."; }, { enableHighAccuracy: false, timeout: 12000, maximumAge: 30000 });
+  }, error => { statusLine.textContent = restaurantLocationError(error); }, { enableHighAccuracy: false, timeout: 12000, maximumAge: 30000 });
+}
+function restaurantLocationError(error) {
+  if (!navigator.geolocation) return "This browser does not provide location access here. Restaurant name search still works without it.";
+  if (error?.code === 1) return "Chrome blocked location for this site. In Chrome, open the site controls beside the address, set Location to Allow, reload, then try again. Name search works without location.";
+  if (error?.code === 2) return "Your device could not determine its location. Check that device location services are on, or continue with name search.";
+  if (error?.code === 3) return "Location lookup timed out. Try again, or continue with name search.";
+  return "Location is unavailable right now. You can continue with name search.";
+}
+function renderRestaurantLookupResults(results, message = "") {
+  const statusLine = root.querySelector("#restaurant-lookup-status");
+  const container = root.querySelector("#restaurant-lookup-results");
+  if (!container || !statusLine) return;
+  restaurantLookupResults = results;
+  container.innerHTML = "";
+  if (message) { statusLine.textContent = message; return; }
+  if (!results.length) { statusLine.textContent = "No restaurant matches found. Keep entering the name or fill in the details manually."; return; }
+  statusLine.textContent = `Choose the right match to fill available details${restaurantLookupLocation ? "; nearby matches are listed first" : ""}.`;
+  container.innerHTML = results.map((place, index) => `<button class="restaurantLookupResult" type="button" data-action="select-restaurant-lookup" data-result-index="${index}"><strong>${escapeHtml(place.name)}</strong><small>${escapeHtml([place.cuisine, place.address, place.distance == null ? "" : place.distance < 1609 ? `${Math.round(place.distance * 3.28084)} ft away` : `${(place.distance / 1609.34).toFixed(1)} mi away`].filter(Boolean).join(" · ") || "Address not listed")}</small></button>`).join("");
+}
+function searchRestaurantName(query) {
+  clearTimeout(restaurantLookupTimer);
+  const value = query.trim();
+  const statusLine = root.querySelector("#restaurant-lookup-status");
+  if (value.length < 2) { restaurantLookupRequest += 1; restaurantLookupResults = []; root.querySelector("#restaurant-lookup-results")?.replaceChildren(); if (statusLine) statusLine.textContent = ""; return; }
+  statusLine && (statusLine.textContent = "Searching restaurant names on OpenStreetMap…");
+  const requestId = ++restaurantLookupRequest;
+  restaurantLookupTimer = setTimeout(async () => {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 8000);
+    try {
+      const results = await searchRestaurantNames(value, { location: restaurantLookupLocation, signal: controller.signal });
+      if (requestId === restaurantLookupRequest) renderRestaurantLookupResults(results);
+    } catch {
+      if (requestId === restaurantLookupRequest) renderRestaurantLookupResults([], "Online restaurant search is unavailable right now. You can still enter the details manually.");
+    } finally { clearTimeout(timeout); }
+  }, 300);
 }
 function updateReviewFoodAverage() {
   const dishes = [...root.querySelectorAll("[data-review-dish-id]")];
@@ -403,6 +445,7 @@ function render() {
 }
 let importMode = "text";
 document.addEventListener("input", event => {
+  if (event.target.id === "restaurant-name" && activeView === "restaurant-edit") searchRestaurantName(event.target.value);
   if (event.target.id === "restaurant-search") {
     const query = event.target.value.trim().toLocaleLowerCase();
     const cards = [...root.querySelectorAll(".restaurantCard[data-search]")];
@@ -454,6 +497,30 @@ document.addEventListener("click", async event => {
   if (!actionButton) return;
   if (actionButton.dataset.action === "open-rankings") { activeView = "restaurant-rankings"; render(); window.scrollTo({ top: 0, left: 0, behavior: "instant" }); return; }
   if (actionButton.dataset.action === "search-nearby") { searchNearbyRestaurants(); return; }
+  if (actionButton.dataset.action === "enable-restaurant-location") {
+    const statusLine = root.querySelector("#restaurant-lookup-status");
+    if (!navigator.geolocation) { if (statusLine) statusLine.textContent = restaurantLocationError(); return; }
+    if (statusLine) statusLine.textContent = "Requesting your location to prioritize nearby restaurant matches…";
+    navigator.geolocation.getCurrentPosition(position => {
+      restaurantLookupLocation = { lat: position.coords.latitude, lon: position.coords.longitude };
+      const query = root.querySelector("#restaurant-name")?.value || "";
+      if (query.trim().length >= 2) searchRestaurantName(query);
+      else if (statusLine) statusLine.textContent = "Location ready. Start typing a restaurant name to find nearby matches.";
+    }, error => { if (statusLine) statusLine.textContent = restaurantLocationError(error); }, { enableHighAccuracy: false, timeout: 12000, maximumAge: 300000 });
+    return;
+  }
+  if (actionButton.dataset.action === "select-restaurant-lookup") {
+    const place = restaurantLookupResults[Number(actionButton.dataset.resultIndex)];
+    if (!place) return;
+    const fields = [["restaurant-name", place.name], ["restaurant-cuisine", place.cuisine], ["restaurant-address", place.address], ["restaurant-website", place.website]];
+    fields.forEach(([id, value]) => { const field = root.querySelector(`#${id}`); if (field && value) field.value = value; });
+    if (place.lat != null && place.lon != null) restaurantLookupLocation = { lat: place.lat, lon: place.lon };
+    restaurantLookupResults = [];
+    root.querySelector("#restaurant-lookup-results")?.replaceChildren();
+    const statusLine = root.querySelector("#restaurant-lookup-status");
+    if (statusLine) statusLine.textContent = "Restaurant details filled in. Check them and save when ready.";
+    return;
+  }
   if (actionButton.dataset.action === "use-nearby") {
     try { newRestaurantPrefill = JSON.parse(actionButton.dataset.nearby); } catch { newRestaurantPrefill = null; }
     activeRestaurantId = null; activeView = "restaurant-edit"; render(); window.scrollTo({ top: 0, left: 0, behavior: "instant" }); return;

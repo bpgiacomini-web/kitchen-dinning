@@ -104,6 +104,14 @@
 #app .nearbyPlace{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px;align-items:center;padding:11px 12px;border:1px solid #35463f;border-radius:12px;background:#0e1413}
 #app .nearbyPlace strong{display:block;overflow-wrap:anywhere}
 #app .nearbyPlace small{display:block;margin-top:4px;color:var(--muted);line-height:1.4}
+#app .restaurantLookupTools{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px}
+#app .restaurantLookupTools .hint{flex:1 1 280px;margin:0}
+#app .restaurantLookupStatus{min-height:1.35em;color:#a6c9b8;font-size:13px;line-height:1.45}
+#app .restaurantLookupResults{display:grid;gap:7px}
+#app .restaurantLookupResult{display:block;width:100%;padding:12px 14px;text-align:left;border:1px solid #315047;border-radius:12px;background:#101816;color:var(--text);cursor:pointer}
+#app .restaurantLookupResult:hover{border-color:#8fb7a6;background:#15231e}
+#app .restaurantLookupResult strong{display:block;overflow-wrap:anywhere}
+#app .restaurantLookupResult small{display:block;margin-top:4px;color:var(--muted);line-height:1.4}
 @media(max-width:560px){#app .diningActions{width:100%}#app .diningActions .btn{flex:1}#app .reviewDishHead{grid-template-columns:1fr}#app .reviewDishHead .btn{justify-self:start}#app .restaurantRanking{gap:9px;padding:12px}}
 @media(max-width:560px){#app .nearbyPanel{grid-template-columns:1fr}#app .nearbyPlace{grid-template-columns:1fr}#app .nearbyPlace .btn{justify-self:start}}
 

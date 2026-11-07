@@ -26,10 +26,10 @@
 - Stage 7: side-by-side user acceptance. Only after explicit approval should a separate release process switch users over.
 
 ## Restaurant Preview implementation status
-- Private restaurant records support search, manual details, website/menu links, visit history, a Production-compatible Food Critic review, dish-level ratings and notes across seven categories, calculated food and overall scores, and personal rankings.
+- Private restaurant records support saved-record search, type-ahead lookup via OpenStreetMap, manual details, website/menu links, visit history, a Production-compatible Food Critic review, dish-level ratings and notes across seven categories, calculated food and overall scores, and personal rankings.
 - Nearby lookup is an explicit action. It asks the browser for location and sends coordinates to the public OpenStreetMap Overpass service. Selecting a result only pre-fills the restaurant form; the user must save it.
 - Restaurant photos are deferred until a dedicated image-storage path exists. Base64 photos are not added to the bounded per-account dataset.
-- Future parity candidates from Production include restaurant-name lookup, automatic official website/menu lookup, review editing, and richer type-specific dish suggestions. Review-history editing should preserve the append-only visit audit unless an explicit versioned correction flow is designed.
+- Future parity candidates from Production include automatic official website/menu lookup, review editing, and richer type-specific dish suggestions. Review-history editing should preserve the append-only visit audit unless an explicit versioned correction flow is designed.
 
 ## Release gates
 Unit tests and static checks pass; primary workflows have browser tests; export/import round trip loses or duplicates no records; API security review is complete; exact preview commit and served assets are verified; user approves the preview. Production remains unchanged until explicitly requested.
