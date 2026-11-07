@@ -2,7 +2,7 @@ import { createUserDatasetClient } from "./data/user-dataset-client.mjs";
 import { normalizeDataset } from "./domain/normalize.mjs";
 import { importedRecipeCategory, recipeEditorCategories, RECIPE_CATEGORIES } from "./features/recipes/categories.mjs";
 import { parsePastedRecipeText, parseRecipeJsonLd } from "./features/recipes/import-parser.mjs";
-import { createRestaurantReview } from "./domain/restaurant-review.mjs";
+import { createRestaurantReview, RESTAURANT_REVIEW_DIMENSIONS } from "./domain/restaurant-review.mjs";
 import { searchNearbyRestaurants as lookupNearbyRestaurants, searchRestaurantNames } from "./domain/restaurant-lookup.mjs";
 
 const root = document.querySelector("#app");
@@ -57,8 +57,11 @@ function restaurantReviewRecords(restaurant) {
   });
 }
 const RESTAURANT_REVIEW_CATEGORIES = ["Appetizers", "Entrées", "Salads", "Soups", "Sides", "Desserts", "Drinks"];
-function reviewScoreButtons(score, itemId = "", scoreKey = "") {
-  return `<div class="reviewScore" role="group" aria-label="${itemId ? "Dish" : "Overall experience"} rating, 1 to 10">${Array.from({ length: 10 }, (_, index) => index + 1).map(value => `<button type="button" data-action="set-review-score" data-review-item-id="${escapeHtml(itemId)}" data-score-key="${escapeHtml(scoreKey)}" aria-pressed="${Number(score) === value}" class="${Number(score) === value ? "active" : ""}">${value}</button>`).join("")}</div>`;
+function reviewScoreButtons(score, itemId = "", scoreKey = "", label = "Overall Experience", required = false) {
+  return `<div class="reviewScore" role="group" aria-label="${escapeHtml(label)} rating from 1 to 10"${required ? ' aria-required="true"' : ""}>${Array.from({ length: 10 }, (_, index) => index + 1).map(value => `<button type="button" data-action="set-review-score" data-review-item-id="${escapeHtml(itemId)}" data-score-key="${escapeHtml(scoreKey)}" aria-label="${escapeHtml(label)}: ${value} out of 10" aria-pressed="${Number(score) === value}" class="${Number(score) === value ? "active" : ""}">${value}</button>`).join("")}</div>`;
+}
+function reviewScaleGuide() {
+  return `<div class="reviewScaleGuide"><span>1 · Poor</span><span>5 · Average</span><span>10 · Exceptional</span></div>`;
 }
 function reviewFoodItems(review) {
   if (Array.isArray(review?.foodItems)) return review.foodItems;
@@ -77,12 +80,16 @@ function renderRestaurants(items) {
     const reviewRows = reviews.slice().reverse().map((review, index) => {
       const reviewDate = review.visitedAt || review.createdAt || review.reviewDate || "";
       const dateText = reviewDate && !Number.isNaN(new Date(reviewDate).getTime()) ? new Date(reviewDate).toLocaleDateString() : reviewDate;
-      const scores = [["Overall", reviewRating(review, "overall") ?? reviewRating(review, "rating")], ["Food", reviewRating(review, "food")], ["Service", reviewRating(review, "service")], ["Value", reviewRating(review, "value")], ["Ambiance", reviewRating(review, "ambiance")]]
+      const scores = [["Overall", reviewRating(review, "overall") ?? reviewRating(review, "rating")], ["Food", reviewRating(review, "food")], ["Service", reviewRating(review, "service")], ["Value", reviewRating(review, "value")]]
         .filter(([, value]) => value != null && value !== "")
         .map(([label, value]) => `<span>${label}: ${escapeHtml(value)}/10</span>`).join("");
+      const additionalScores = RESTAURANT_REVIEW_DIMENSIONS
+        .map(({ key, label }) => ({ label, score: reviewSurveyScore(review, key) }))
+        .filter(({ score }) => score != null)
+        .map(({ label, score }) => `<span>${escapeHtml(label)}: ${escapeHtml(score)}/10</span>`).join("");
       const foodItems = reviewFoodItems(review);
-      const topFoods = foodItems.filter(item => item?.name && Number(item.rating) > 0).sort((a, b) => Number(b.rating) - Number(a.rating)).slice(0, 3);
-      return `<article class="savedReview"><div class="savedReviewHeading"><strong>${dateText ? escapeHtml(dateText) : `Visit ${reviews.length - index}`}</strong>${scores ? `<div class="reviewScores">${scores}</div>` : ""}</div>${review.order || review.ordered ? `<p><strong>What you ordered:</strong> ${escapeHtml(review.order || review.ordered)}</p>` : ""}${topFoods.length ? `<p><strong>Top dishes:</strong> ${topFoods.map(item => `${escapeHtml(item.name)} (${escapeHtml(item.rating)}/10)`).join(" · ")}</p>` : ""}${review.orderAgain ? `<p><strong>Order again:</strong> ${escapeHtml(review.orderAgain)}</p>` : ""}${review.notes ? `<p>${escapeHtml(review.notes)}</p>` : ""}</article>`;
+      const dishRows = foodItems.filter(item => item?.name).map(item => `<li><strong>${escapeHtml(item.name)}</strong>${Number(item.rating) > 0 ? ` · ${escapeHtml(item.rating)}/10` : ""}${item.notes ? `<span>${escapeHtml(item.notes)}</span>` : ""}</li>`).join("");
+      return `<article class="savedReview"><div class="savedReviewHeading"><strong>${dateText ? escapeHtml(dateText) : `Visit ${reviews.length - index}`}</strong>${scores ? `<div class="reviewScores">${scores}</div>` : ""}</div>${additionalScores ? `<div class="reviewScores reviewAdditionalScores">${additionalScores}</div>` : ""}${review.order || review.ordered ? `<p><strong>What you ordered:</strong> ${escapeHtml(review.order || review.ordered)}</p>` : ""}${dishRows ? `<div class="savedReviewDishes"><strong>Food &amp; drink ratings</strong><ul>${dishRows}</ul></div>` : ""}${review.orderAgain ? `<p><strong>Order again:</strong> ${escapeHtml(review.orderAgain)}</p>` : ""}${review.notes ? `<p class="savedReviewNotes">${escapeHtml(review.notes)}</p>` : ""}</article>`;
     }).join("");
     const details = [["Cuisine", restaurant.cuisine], ["Address", restaurant.address], ["Website", restaurant.website], ["Menu", restaurant.menuUrl], ["Notes", restaurant.notes], ["Favorite", restaurant.favorite ? "Yes" : ""]]
       .filter(([, value]) => value != null && value !== "")
@@ -103,7 +110,35 @@ function renderRestaurantReviewForm(restaurantId) {
   const now = new Date();
   const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
   const categories = RESTAURANT_REVIEW_CATEGORIES.map(category => `<details class="reviewCategory"${category === "Entrées" ? " open" : ""}><summary>${category}</summary><div class="reviewCategoryBody" data-review-category="${category}"><p class="hint">Add the dishes or drinks you tried in this category.</p><div class="reviewDishList"></div><button class="btn" type="button" data-action="add-review-dish" data-category="${category}">＋ Add ${category === "Drinks" ? "a drink" : "a dish"}</button></div></details>`).join("");
-  root.innerHTML = `<section class="hero"><div class="heroIn"><div class="eyebrow">Your dining journal · Food Critic</div><h2>Rate a Visit (1–10)</h2><p>For ${escapeHtml(restaurant.name)}. Score your overall experience, service, value, and each dish from 1 to 10. Metro Eats calculates your food score from your dish ratings.</p></div></section><section class="content-panel restaurantEditorPage"><div class="restaurantEditPanel"><label>Visit date<input id="review-visited-at" type="date" value="${today}" required></label><section class="surveyCard"><h3>Critic Rating · 1–10</h3><p class="hint">Choose a score from 1 (poor) to 10 (excellent) for your overall experience, service, and value. Food Quality is calculated from your rated dishes.</p>${[["overall","Overall Experience"],["service","Service"],["value","Value"]].map(([key,label]) => `<div class="reviewQuestion"><div class="reviewQuestionHead"><b>${label}</b><span data-score-label="${key}">Select 1–10</span></div>${reviewScoreButtons(0, "", key)}</div>`).join("")}<div class="reviewQuestion"><div class="reviewQuestionHead"><b>Food Quality</b><span id="review-food-average">Calculated from dishes</span></div><p class="hint">Average of the dish and drink ratings below.</p></div></section><section class="reviewFoodSection"><h3>What I Ate</h3><p class="hint">Add the dishes and drinks you actually had. Dish ratings use a 1–10 scale.</p>${categories}</section><label>Order note<input id="review-order" maxlength="500" placeholder="Optional: tasting menu, shared plates, drinks…"></label><label>Would you order it again?<select id="review-order-again"><option value="">Choose Yes or No</option><option>Yes</option><option>No</option></select></label><label>Visit notes<textarea id="review-notes" rows="4" maxlength="5000" placeholder="What stood out? How was the service and atmosphere?"></textarea></label><div class="recipeEditActions"><button class="btn" type="button" data-action="cancel-restaurant-edit">Cancel</button><button class="btn primary" type="button" data-action="save-restaurant-review" data-restaurant-id="${escapeHtml(restaurant.id)}">Save Visit Review</button></div><p class="edit-status" role="status" aria-live="polite"></p></div></section>`;
+  const coreQuestions = [["overall", "Overall Experience"], ["service", "Service"], ["value", "Value"]];
+  const coreRatings = coreQuestions.map(([key, label]) => `<div class="reviewQuestion"><div class="reviewQuestionHead"><b>${label}<span class="requiredMark" aria-label="required">*</span></b><span data-score-label="${key}">Select 1–10</span></div>${reviewScoreButtons(0, "", key, label, true)}</div>`).join("");
+  const optionalRatings = RESTAURANT_REVIEW_DIMENSIONS.map(({ key, label, description }) => `<div class="reviewQuestion"><div class="reviewQuestionHead"><b>${escapeHtml(label)}</b><span data-score-label="${key}">Optional</span></div><p class="hint">${escapeHtml(description)}</p>${reviewScoreButtons(0, "", key, label)}</div>`).join("");
+  root.innerHTML = `
+    <section class="hero"><div class="heroIn"><div class="eyebrow">Your dining journal · Food Critic</div><h2>Rate a Visit</h2><p>Review your visit to <strong>${escapeHtml(restaurant.name)}</strong>. Use the ten point scale, rate the dishes you tried, and keep notes for this visit.</p></div></section>
+    <section class="content-panel restaurantEditorPage">
+      <div class="restaurantEditPanel">
+        <section class="reviewLiveSummary" aria-labelledby="review-live-title">
+          <div class="reviewLiveScore"><span id="review-live-title">Current Food Critic score</span><strong id="review-overall-average">—<small>/10</small></strong></div>
+          <div class="reviewProgress"><progress id="review-completion-progress" max="5" value="0" aria-label="Review completion"></progress><p id="review-completion" role="status" aria-live="polite">0 of 5 required parts complete. Notes are optional.</p></div>
+        </section>
+        <label>Visit date<input id="review-visited-at" type="date" value="${today}" required></label>
+        <section class="surveyCard reviewCoreCard">
+          <h3>Your 1–10 ratings</h3>
+          <p class="hint">Rate each item from 1 (poor) to 10 (exceptional). Overall Experience, Service, Value, one rated dish or drink, and “Would you order it again?” are required. Food Quality is calculated from dish ratings.</p>
+          <div class="reviewScaleLegend"><span>1 · Poor</span><span>5 · Average</span><span>10 · Exceptional</span></div>
+          ${coreRatings}
+          <div class="reviewQuestion reviewFoodAverage"><div class="reviewQuestionHead"><b>Food Quality</b><span id="review-food-average">Calculated from dishes</span></div><p class="hint">Average of the dish and drink ratings below.</p></div>
+        </section>
+        <details class="reviewOptionalRatings"><summary>More visit ratings <span>Optional · 6 categories</span></summary><p class="hint">Add extra detail when it applies to your visit. These scores are saved with this visit.</p>${reviewScaleGuide()}${optionalRatings}</details>
+        <section class="reviewFoodSection"><h3>Food &amp; drink ratings</h3><p class="hint">Add everything you tried, then tap its score from 1 to 10. Every item you add needs a name and rating. Notes on each dish are optional.</p>${categories}</section>
+        <label>What else did you order? <span class="optionalMark">Optional</span><input id="review-order" maxlength="500" placeholder="For example, shared plates or drinks"></label>
+        <label>Would you order it again? <span class="requiredMark" aria-label="required">*</span><select id="review-order-again" required><option value="">Choose Yes or No</option><option>Yes</option><option>No</option></select></label>
+        <label>Visit notes <span class="optionalMark">Optional</span><textarea id="review-notes" rows="4" maxlength="5000" placeholder="What stood out about this visit?"></textarea></label>
+        <div class="recipeEditActions"><button class="btn" type="button" data-action="cancel-restaurant-edit">Cancel</button><button class="btn primary" type="button" data-action="save-restaurant-review" data-restaurant-id="${escapeHtml(restaurant.id)}">Save Visit Review</button></div>
+        <p class="edit-status" role="status" aria-live="polite"></p>
+      </div>
+    </section>`;
+  updateReviewSurveySummary();
 }
 function renderRestaurantRankings() {
   const ranked = dataset.restaurants.map(restaurant => {
@@ -189,6 +224,34 @@ function updateReviewFoodAverage() {
   const ratings = dishes.map(dish => Number(dish.dataset.rating)).filter(value => Number.isFinite(value) && value >= 1 && value <= 10);
   const label = root.querySelector("#review-food-average");
   if (label) label.textContent = ratings.length ? `${(ratings.reduce((sum, value) => sum + value, 0) / ratings.length).toFixed(1)}/10 from ${ratings.length} rated ${ratings.length === 1 ? "dish" : "dishes"}` : "Calculated from dishes";
+  updateReviewSurveySummary();
+}
+function updateReviewSurveySummary() {
+  const progress = root.querySelector("#review-completion-progress");
+  const summary = root.querySelector("#review-completion");
+  const overallLabel = root.querySelector("#review-overall-average");
+  if (!progress || !summary || !overallLabel) return;
+  const score = key => Number(root.querySelector(`[data-score-key="${key}"]`)?.closest(".reviewScore")?.querySelector("button.active")?.textContent || 0);
+  const dishes = [...root.querySelectorAll("[data-review-dish-id]")];
+  const foodRatings = dishes.map(dish => Number(dish.dataset.rating)).filter(value => Number.isFinite(value) && value >= 1 && value <= 10);
+  const foodAverage = foodRatings.length ? foodRatings.reduce((sum, value) => sum + value, 0) / foodRatings.length : 0;
+  const coreScores = [score("overall"), score("service"), score("value")];
+  const currentScore = coreScores.every(value => value >= 1 && value <= 10) && foodAverage > 0
+    ? (coreScores.reduce((sum, value) => sum + value, 0) + foodAverage) / 4
+    : null;
+  overallLabel.innerHTML = currentScore == null ? `—<small>/10</small>` : `${currentScore.toFixed(1)}<small>/10</small>`;
+
+  const foodsComplete = dishes.length > 0 && dishes.every(dish => {
+    const name = dish.querySelector("[data-dish-name]")?.value.trim();
+    const rating = Number(dish.dataset.rating || 0);
+    return Boolean(name) && rating >= 1 && rating <= 10;
+  });
+  const orderAgain = root.querySelector("#review-order-again")?.value || "";
+  const completed = [coreScores[0] >= 1 && coreScores[0] <= 10, coreScores[1] >= 1 && coreScores[1] <= 10, coreScores[2] >= 1 && coreScores[2] <= 10, foodsComplete, ["Yes", "No"].includes(orderAgain)].filter(Boolean).length;
+  progress.value = completed;
+  summary.textContent = completed === 5
+    ? "Review ready to save. Your notes are optional."
+    : `${completed} of 5 required parts complete. Finish the ratings and choices below; notes are optional.`;
 }
 function renderHome() {
   root.innerHTML = `<section class="hero"><div class="heroIn"><div class="eyebrow">St. Louis • Metro East</div><h2>Metro Eats<br><span class="fl">⚜</span> Recipes & Dining</h2><p>Your personal recipe book and restaurant journal — built around the food you actually love.</p><div class="homeFeatureButtons"><button class="homeFeatureButton recipeButton" data-view="recipes"><span class="homeFeatureIcon">✦</span><span><strong>My Recipes</strong><small>Your Kitchen</small></span><span class="homeFeatureArrow">→</span></button><button class="homeFeatureButton diningButton" data-view="dining"><span class="homeFeatureIcon" aria-hidden="true">⚜</span><span><strong>My Restaurants</strong><small>Your Restaurants & Reviews</small></span><span class="homeFeatureArrow">→</span></button><button class="homeFeatureButton pizzaButton" data-view="pizzas"><span class="homeFeatureIcon pizzaIcon" aria-hidden="true"></span><span><strong>My Frozen Pizzas</strong><small>Rate and compare</small></span><span class="homeFeatureArrow">→</span></button></div></div></section><section class="localNewsPanel" aria-labelledby="local-news-title"><div class="panel-heading"><div><p class="eyebrow">St. Louis • Metro East</p><h2 id="local-news-title">Local Food News</h2></div><span class="status">Food & restaurants</span></div><p class="newsIntro">Restaurant openings, local food stories, dining news, and Sauce Magazine highlights.</p><div id="local-food-news" class="localNewsList" aria-live="polite"><p class="hint">Loading local food stories…</p></div><p class="hint" id="local-news-updated"></p></section><div class="homeColumns"><article class="featureCard"><div><div class="sectionKicker">Your Collection</div><h3>Saved with care</h3><p>Your recipes, restaurant visits, and frozen-pizza ratings stay with your account.</p></div><div class="actions"><button class="btn primary" data-view="recipes">Open My Recipes →</button><button class="btn" data-view="dining">Open My Restaurants →</button><button class="btn" data-view="pizzas">Open My Frozen Pizzas →</button></div></article><article class="featureCard accent"><div><div class="sectionKicker">Safety First</div><h3>Existing data stays safe.</h3><p>Shared baseline records stay read-only. Your signed-in Preview account saves its own recipes, reviews, and pizza ratings.</p></div><span class="status">Private account</span></article></div>`;
@@ -236,11 +299,19 @@ function ratingValue(value, key = "") {
   return number >= 0 && number <= 5 ? number * 2 : number;
 }
 function reviewRating(review, key) {
-  const legacyScoreIndex = { experience: 0, food: 1, service: 2, value: 3 };
-  const value = review?.[key] ?? (key === "overall" ? review?.scores?.overall : undefined) ?? (key === "rating" ? review?.scores?.overall : undefined) ?? (legacyScoreIndex[key] != null ? review?.scores?.[legacyScoreIndex[key]] : undefined);
+  const scores = review?.scores;
+  const legacyTenQuestion = scores && [4, 5, 6, 7, 8, 9].some(index => scores[index] != null && scores[index] !== "");
+  const legacyScoreIndex = legacyTenQuestion
+    ? { experience: 0, food: 1, menuSelection: 2, service: 3, atmosphere: 4, ambiance: 4, cleanliness: 5, value: 6, drinksBar: 7, locationAccess: 8, returnIntent: 9 }
+    : { experience: 0, food: 1, service: 2, value: 3 };
+  const value = review?.[key] ?? (key === "overall" ? scores?.overall : undefined) ?? (key === "rating" ? scores?.overall : undefined) ?? (legacyScoreIndex[key] != null ? scores?.[legacyScoreIndex[key]] : undefined);
   const number = Number(value);
   if (value == null || value === "" || !Number.isFinite(number)) return null;
-  return review?.ratingScale === 10 || number > 5 ? number : number * 2;
+  return review?.ratingScale === 10 || legacyTenQuestion || number > 5 ? number : number * 2;
+}
+function reviewSurveyScore(review, key) {
+  const value = review?.surveyScores?.[key];
+  return value == null ? reviewRating(review, key) : reviewRating({ ...review, [key]: value, ratingScale: 10 }, key);
 }
 function renderList(title, eyebrow, items, kind) {
   if (kind === "dining") { renderRestaurants(items); return; }
@@ -444,6 +515,10 @@ document.addEventListener("input", event => {
     if (count) count.textContent = query ? `Showing ${visible} of ${cards.length} ${cards.length === 1 ? "restaurant" : "restaurants"}.` : `Showing ${visible} ${visible === 1 ? "restaurant" : "restaurants"}.`;
   }
   if (event.target.matches("[data-dish-name], [data-dish-notes]")) updateReviewFoodAverage();
+  if (event.target.matches("#review-visited-at, #review-order-again")) updateReviewSurveySummary();
+});
+document.addEventListener("change", event => {
+  if (event.target.matches("#review-visited-at, #review-order-again")) updateReviewSurveySummary();
 });
 function syncImportMode(mode = importMode) {
   importMode = mode;
@@ -522,9 +597,10 @@ document.addEventListener("click", async event => {
     const dish = document.createElement("article");
     dish.className = "reviewDish";
     dish.dataset.reviewDishId = id;
-    dish.innerHTML = `<div class="reviewDishHead"><label>Dish or drink<input data-dish-name maxlength="180" placeholder="e.g. toasted ravioli"></label><button class="btn danger" type="button" data-action="remove-review-dish" aria-label="Remove dish">Remove</button></div><div class="reviewQuestionHead"><b>Rating</b><span data-dish-rating-label>Select 1–10</span></div>${reviewScoreButtons(0, id)}<label>Dish notes<textarea data-dish-notes rows="2" maxlength="1200" placeholder="Taste, texture, preparation, portion…"></textarea></label>`;
+    dish.innerHTML = `<div class="reviewDishHead"><label>Dish or drink<input data-dish-name maxlength="180" placeholder="e.g. toasted ravioli"></label><button class="btn danger" type="button" data-action="remove-review-dish" aria-label="Remove dish">Remove</button></div><div class="reviewQuestionHead"><b>Food rating</b><span data-dish-rating-label>Select 1–10</span></div>${reviewScoreButtons(0, id, "", "Dish or drink", true)}${reviewScaleGuide()}<label>Dish notes <span class="optionalMark">Optional</span><textarea data-dish-notes rows="2" maxlength="1200" placeholder="Taste, texture, preparation, portion…"></textarea></label>`;
     list.append(dish);
     actionButton.closest("details").open = true;
+    updateReviewFoodAverage();
     dish.querySelector("[data-dish-name]")?.focus();
     return;
   }
@@ -542,6 +618,7 @@ document.addEventListener("click", async event => {
       const key = actionButton.dataset.scoreKey;
       const label = root.querySelector(`[data-score-label="${key}"]`); if (label) label.textContent = `${value}/10`;
     }
+    updateReviewSurveySummary();
     return;
   }
   if (actionButton.dataset.action === "new-restaurant") {
@@ -618,6 +695,7 @@ document.addEventListener("click", async event => {
     const experience = score("overall");
     const service = score("service");
     const value = score("value");
+    const surveyScores = Object.fromEntries(RESTAURANT_REVIEW_DIMENSIONS.map(({ key }) => [key, score(key) || null]));
     const dishes = [...root.querySelectorAll("[data-review-dish-id]")].map(dish => ({
       category: dish.closest("[data-review-category]")?.dataset.reviewCategory || "Entrées",
       name: dish.querySelector("[data-dish-name]")?.value.trim() || "",
@@ -629,7 +707,7 @@ document.addEventListener("click", async event => {
     const notes = document.querySelector("#review-notes")?.value.trim() || "";
     const now = new Date().toISOString();
     let review;
-    try { review = createRestaurantReview({ id: `metro-review-${crypto.randomUUID()}`, visitedAt, createdAt: now, experience, service, value, foodItems: dishes, order, orderAgain, notes }); }
+    try { review = createRestaurantReview({ id: `metro-review-${crypto.randomUUID()}`, visitedAt, createdAt: now, experience, service, value, foodItems: dishes, surveyScores, order, orderAgain, notes }); }
     catch (error) { if (statusLine) statusLine.textContent = error?.message || "Review values are incomplete or invalid."; return; }
     const reviewHistory = [...(Array.isArray(restaurant.reviewHistory) ? restaurant.reviewHistory : []), review];
     const previousScores = restaurantReviewRecords(restaurant).map(item => reviewRating(item, "overall") ?? reviewRating(item, "rating")).filter(value => Number.isFinite(Number(value))).map(Number);
