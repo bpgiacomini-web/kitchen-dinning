@@ -37,13 +37,14 @@ export function cleanSourceUrl(value) {
   if (!raw) return "";
   try {
     const url = new URL(raw);
+    if (!["http:", "https:"].includes(url.protocol) || url.username || url.password) return "";
     for (const key of [...url.searchParams.keys()]) {
       if (/^(utm_.+|gclid|dclid|gbraid|wbraid|gad_source|gad_campaignid|fbclid|msclkid|mc_cid|mc_eid)$/i.test(key)) url.searchParams.delete(key);
     }
     url.hash = "";
     return url.toString();
   } catch {
-    return raw.split(/[?#]/, 1)[0];
+    return "";
   }
 }
 

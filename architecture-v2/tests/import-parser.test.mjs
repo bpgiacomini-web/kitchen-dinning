@@ -74,6 +74,21 @@ test("plainText safely handles Schema.org property values", () => {
   assert.equal(normalizeImportedRecipe(null), null);
 });
 
+test("source links only retain safe HTTP and HTTPS URLs", () => {
+  assert.equal(parseRecipeJsonLd(JSON.stringify({
+    "@type": "Recipe", name: "Soup", recipeIngredient: ["stock"], recipeInstructions: "Simmer", url: "javascript:alert(1)"
+  })).source, "");
+  assert.equal(parseRecipeJsonLd(JSON.stringify({
+    "@type": "Recipe", name: "Soup", recipeIngredient: ["stock"], recipeInstructions: "Simmer", url: "data:text/html,unsafe"
+  })).source, "");
+  assert.equal(parseRecipeJsonLd(JSON.stringify({
+    "@type": "Recipe", name: "Soup", recipeIngredient: ["stock"], recipeInstructions: "Simmer", url: "https://user:pass@example.com/soup"
+  })).source, "");
+  assert.equal(parseRecipeJsonLd(JSON.stringify({
+    "@type": "Recipe", name: "Soup", recipeIngredient: ["stock"], recipeInstructions: "Simmer", url: "https://example.com/soup?utm_source=copy#recipe"
+  })).source, "https://example.com/soup");
+});
+
 test("pasted recipe title is taken from the pre-ingredients heading, not later story text", () => {
   const result = parsePastedRecipeText(`Chicken Alfredo
 https://example.com/story

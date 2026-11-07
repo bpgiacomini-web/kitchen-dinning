@@ -1,5 +1,6 @@
 import { createUserDatasetClient } from "./data/user-dataset-client.mjs";
 import { normalizeDataset } from "./domain/normalize.mjs";
+import { importedRecipeCategory, recipeEditorCategories, RECIPE_CATEGORIES } from "./features/recipes/categories.mjs";
 import { parsePastedRecipeText, parseRecipeJsonLd } from "./features/recipes/import-parser.mjs";
 
 const root = document.querySelector("#app");
@@ -13,7 +14,6 @@ let cloudRecipeIds = new Set();
 let activeView = "home";
 let activeRecipeId = null;
 let extractedRecipe = null;
-const RECIPE_CATEGORIES = ["Appetizers & Snacks", "Breakfast & Brunch", "Soups, Salads & Sandwiches", "Main Dishes", "Mexican & Latin", "Italian", "BBQ & Grilling", "Side Dishes", "Sauces, Gravies & Condiments", "Bread & Baking", "Desserts", "Drinks", "Other"];
 function mergeVisibleDataset() {
   cloudRecipeIds = new Set(cloudDataset.recipes.map(item => String(item.id)));
   dataset = { ...cloudDataset };
@@ -178,11 +178,13 @@ function renderRecipeEditor(recipeId) {
   }
   const ingredients = Array.isArray(recipe.ingredients) ? recipe.ingredients : [];
   const directions = Array.isArray(recipe.directions) ? recipe.directions : [];
+  const currentCategory = String(recipe.category || "Other");
+  const editorCategories = recipeEditorCategories(currentCategory);
   root.innerHTML = `<section class="hero"><div class="heroIn"><div class="eyebrow">Your kitchen · Recipe editor</div><h2>Edit Recipe</h2><p>Update your recipe details, then save to return to your recipe list.</p></div></section>
     <section class="content-panel recipeEditorPage"><form class="recipeEditPanel recipeEditorForm" data-recipe-id="${escapeHtml(recipe.id)}">
       <div class="sectionTitle"><div><div class="sectionKicker">Editing recipe</div><h3>${escapeHtml(recipe.title)}</h3></div></div>
       <label>Recipe title<input data-edit-field="title" value="${escapeHtml(recipe.title)}" required maxlength="180"></label>
-      <div class="recipeEditorTaxonomy"><label>Recipe category<select data-edit-field="category">${RECIPE_CATEGORIES.map(category => `<option value="${escapeHtml(category)}"${(recipe.category || "Other") === category ? " selected" : ""}>${escapeHtml(category)}</option>`).join("")}</select></label><label>Subcategory<input data-edit-field="subcategory" value="${escapeHtml(recipe.subcategory || "")}" placeholder="e.g. Beef"></label></div>
+      <div class="recipeEditorTaxonomy"><label>Recipe category<select data-edit-field="category">${editorCategories.map(category => `<option value="${escapeHtml(category)}"${currentCategory === category ? " selected" : ""}>${escapeHtml(category)}</option>`).join("")}</select></label><label>Subcategory<input data-edit-field="subcategory" value="${escapeHtml(recipe.subcategory || "")}" placeholder="e.g. Beef"></label></div>
       <label>Ingredients, one per line<textarea data-edit-field="ingredients" rows="8" required>${escapeHtml(ingredients.join("\n"))}</textarea></label>
       <label>Directions, one step per line<textarea data-edit-field="directions" rows="8" required>${escapeHtml(directions.join("\n"))}</textarea></label>
       <div class="recipeEditActions"><button class="btn" type="button" data-view="recipes">Cancel</button><button class="btn primary" type="button" data-action="save-recipe-edit" data-recipe-id="${escapeHtml(recipe.id)}">Save Changes</button><button class="btn danger" type="button" data-action="delete-recipe" data-recipe-id="${escapeHtml(recipe.id)}">Delete Recipe</button></div><p class="edit-status" role="status" aria-live="polite"></p>
@@ -241,7 +243,7 @@ function renderImportPreview(recipe) {
   const metadata = [["Servings", recipe.servings], ["Prep time", formatRecipeDuration(recipe.prepTime)], ["Cook time", formatRecipeDuration(recipe.cookTime)], ["Total time", formatRecipeDuration(recipe.totalTime)]].filter(([, value]) => value);
   const ingredients = (Array.isArray(recipe.ingredients) ? recipe.ingredients : []).map(cleanImportedIngredient);
   const directions = Array.isArray(recipe.directions) ? recipe.directions : [];
-  preview.innerHTML = `<article class="parsedRecipe"><p class="sectionKicker">Review before saving</p><div class="field"><label for="review-recipe-title">Recipe title</label><input id="review-recipe-title" maxlength="180" value="${escapeHtml(recipe.title)}"></div>${metadata.length ? `<dl>${metadata.map(([label, value]) => `<div><dt>${label}</dt><dd>${escapeHtml(value)}</dd></div>`).join("")}</dl>` : ""}${recipe.source ? `<p class="note"><a class="recipeSourceLink" href="${escapeHtml(recipe.source)}" target="_blank" rel="noopener noreferrer">Recipe link ↗</a></p>` : ""}<div class="field"><label for="review-recipe-ingredients">Ingredients (one per line)</label><textarea id="review-recipe-ingredients" rows="8" maxlength="30000">${escapeHtml(ingredients.join("\n"))}</textarea></div><div class="field"><label for="review-recipe-directions">Directions (one step per line)</label><textarea id="review-recipe-directions" rows="8" maxlength="30000">${escapeHtml(directions.join("\n"))}</textarea></div><div class="actions"><button class="btn primary" type="button" data-action="save-recipe">Save to My Recipes</button></div><p id="recipe-save-status" class="importFeedback" role="status" aria-live="polite"></p></article>`;
+  preview.innerHTML = `<article class="parsedRecipe"><p class="sectionKicker">Review before saving</p><div class="field"><label for="review-recipe-title">Recipe title</label><input id="review-recipe-title" maxlength="180" value="${escapeHtml(recipe.title)}"></div><div class="field"><label for="review-recipe-category">Recipe category</label><select id="review-recipe-category">${RECIPE_CATEGORIES.map(category => `<option value="${escapeHtml(category)}"${category === "Other" ? " selected" : ""}>${escapeHtml(category)}</option>`).join("")}</select></div>${metadata.length ? `<dl>${metadata.map(([label, value]) => `<div><dt>${label}</dt><dd>${escapeHtml(value)}</dd></div>`).join("")}</dl>` : ""}${recipe.source ? `<p class="note"><a class="recipeSourceLink" href="${escapeHtml(recipe.source)}" target="_blank" rel="noopener noreferrer">Recipe link ↗</a></p>` : ""}<div class="field"><label for="review-recipe-ingredients">Ingredients (one per line)</label><textarea id="review-recipe-ingredients" rows="8" maxlength="30000">${escapeHtml(ingredients.join("\n"))}</textarea></div><div class="field"><label for="review-recipe-directions">Directions (one step per line)</label><textarea id="review-recipe-directions" rows="8" maxlength="30000">${escapeHtml(directions.join("\n"))}</textarea></div><div class="actions"><button class="btn primary" type="button" data-action="save-recipe">Save to My Recipes</button></div><p id="recipe-save-status" class="importFeedback" role="status" aria-live="polite"></p></article>`;
 }
 function render() {
   document.querySelector(".app > .top")?.classList.toggle("homeStickyHeader", activeView === "home");
@@ -409,6 +411,7 @@ document.addEventListener("click", async event => {
       return;
     }
     const title = document.querySelector("#review-recipe-title")?.value.trim() || "";
+    const category = importedRecipeCategory(document.querySelector("#review-recipe-category")?.value);
     const ingredients = (document.querySelector("#review-recipe-ingredients")?.value || "").split("\n").map(value => value.trim()).filter(Boolean);
     const directions = (document.querySelector("#review-recipe-directions")?.value || "").split("\n").map(value => value.trim()).filter(Boolean);
     if (!title || !ingredients.length || !directions.length) { if (feedback) feedback.textContent = "Please provide a title, at least one ingredient, and at least one direction."; return; }
@@ -424,7 +427,7 @@ document.addEventListener("click", async event => {
       if (feedback) feedback.textContent = "This recipe is already saved in your cloud account.";
       return;
     }
-    const recipe = { ...extractedRecipe, id: "metro-recipe-" + crypto.randomUUID(), title, ingredients, directions, category: "Imported", createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() };
+    const recipe = { ...extractedRecipe, id: "metro-recipe-" + crypto.randomUUID(), title, ingredients, directions, category, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() };
     actionButton.disabled = true;
     try {
       await saveCloudDataset({ ...cloudDataset, recipes: [...cloudDataset.recipes, recipe] });
