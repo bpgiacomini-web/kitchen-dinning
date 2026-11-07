@@ -45,15 +45,34 @@ export default async function handler(req, res) {
     if (!point.length) return res.status(404).json({ error: 'That restore point is no longer available.' });
     const writeToken = randomUUID();
     const results = await sql.transaction([
-      sql`INSERT INTO metro_eats_restore_points (user_id, snapshot)
-        SELECT ${userId}, payload FROM metro_eats_user_datasets
-        WHERE user_id = ${userId} AND revision = ${expectedRevision} AND ${expectedRevision} > 0`,
-      sql`INSERT INTO metro_eats_user_datasets (user_id, payload, revision, updated_at, last_write_token)
-        SELECT ${userId}, ${JSON.stringify(point[0].snapshot)}::jsonb, 1, now(), ${writeToken} WHERE ${expectedRevision} = 0
-        ON CONFLICT (user_id) DO UPDATE SET payload = EXCLUDED.payload,
-          revision = metro_eats_user_datasets.revision + 1, updated_at = now(), last_write_token = ${writeToken}
-        WHERE metro_eats_user_datasets.revision = ${expectedRevision}
-        RETURNING revision`,
+      sql`
+      WITH previous AS MATERIALIZED (
+        SELECT payload FROM metro_eats_user_datasets
+        WHERE user_id = ${userId} AND revision = ${expectedRevision} AND ${expectedRevision} > 0
+      ), updated AS (
+        UPDATE metro_eats_user_datasets
+        SET payload = ${JSON.stringify(point[0].snapshot)}::jsonb,
+            revision = revision + 1,
+            updated_at = now(),
+            last_write_token = ${writeToken}
+        WHERE user_id = ${userId} AND revision = ${expectedRevision} AND ${expectedRevision} > 0
+        RETURNING revision
+      ), inserted AS (
+        INSERT INTO metro_eats_user_datasets (user_id, payload, revision, updated_at, last_write_token)
+        SELECT ${userId}, ${JSON.stringify(point[0].snapshot)}::jsonb, 1, now(), ${writeToken}
+        WHERE ${expectedRevision} = 0
+        ON CONFLICT (user_id) DO NOTHING
+        RETURNING revision
+      ), backup AS (
+        INSERT INTO metro_eats_restore_points (user_id, snapshot)
+        SELECT ${userId}, previous.payload FROM previous
+        WHERE EXISTS (SELECT 1 FROM updated)
+        RETURNING id
+      )
+      SELECT revision FROM updated
+      UNION ALL
+      SELECT revision FROM inserted
+      `,
       sql`DELETE FROM metro_eats_recipes WHERE user_id = ${userId}
         AND id NOT IN (SELECT value->>'id' FROM jsonb_array_elements(${JSON.stringify(point[0].snapshot.recipes || [])}::jsonb))
         AND EXISTS (SELECT 1 FROM metro_eats_user_datasets WHERE user_id = ${userId} AND last_write_token = ${writeToken})`,
@@ -71,9 +90,10 @@ export default async function handler(req, res) {
         ON CONFLICT (user_id, id) DO UPDATE SET payload = EXCLUDED.payload,
           revision = metro_eats_restaurants.revision + 1, updated_at = now()`,
       sql`DELETE FROM metro_eats_restore_points WHERE user_id = ${userId} AND id NOT IN
-        (SELECT id FROM metro_eats_restore_points WHERE user_id = ${userId} ORDER BY created_at DESC, id DESC LIMIT 10)`
+        (SELECT id FROM metro_eats_restore_points WHERE user_id = ${userId} ORDER BY created_at DESC, id DESC LIMIT 10)
+        AND EXISTS (SELECT 1 FROM metro_eats_user_datasets WHERE user_id = ${userId} AND last_write_token = ${writeToken})`
     ]);
-    const restored = results[1];
+    const restored = results[0];
     if (!restored.length) return res.status(409).json({ error: 'Your data changed. Reload before restoring.' });
     return res.status(200).json({ ok: true, revision: Number(restored[0].revision) });
   } catch (error) {
