@@ -1,0 +1,33 @@
+name: Metro Eats Regression Checks
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+      - integrate-sorting-into-production-2026-10-25
+      - metro-eats-regression-guardrails-2026-10-25
+
+permissions:
+  contents: read
+
+jobs:
+  regression:
+    name: Syntax and browser regression tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Check JavaScript syntax
+        run: node --check app.js
+      - name: Install browser test runner
+        run: npm install --no-save @playwright/test
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Run browser regression tests
+        run: npx playwright test
