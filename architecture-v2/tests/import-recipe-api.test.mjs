@@ -16,7 +16,7 @@ function responseRecorder() {
 test("recipe URL import requires an authenticated session", async () => {
   let fetchCalled = false;
   const handler = createImportRecipeHandler({
-    isAuthenticated: async () => false,
+    authenticateUser: async () => null,
     fetchPage: async () => { fetchCalled = true; }
   });
   const res = responseRecorder();
@@ -36,7 +36,8 @@ test("recipe URL import returns reviewed fields and a cleaned final source witho
     url: "javascript:alert(1)"
   })}</script>`;
   const handler = createImportRecipeHandler({
-    isAuthenticated: async () => true,
+    authenticateUser: async () => 'test-account',
+    consumeLimit: async () => ({ allowed: true }),
     fetchPage: async url => {
       requestedUrl = url;
       return { body: html, contentType: "text/html; charset=utf-8", finalUrl: "https://example.com/soup?utm_source=metro#recipe" };
@@ -55,7 +56,7 @@ test("recipe URL import returns reviewed fields and a cleaned final source witho
 });
 
 test("recipe URL import rejects unsupported methods and oversized URL input", async () => {
-  const handler = createImportRecipeHandler({ isAuthenticated: async () => true, fetchPage: async () => { throw new Error("unexpected fetch"); } });
+  const handler = createImportRecipeHandler({ authenticateUser: async () => 'test-account', consumeLimit: async () => ({ allowed: true }), fetchPage: async () => { throw new Error("unexpected fetch"); } });
   const methodResponse = responseRecorder();
   await handler({ method: "GET", headers: {}, body: {} }, methodResponse);
   assert.equal(methodResponse.statusCode, 405);
@@ -67,9 +68,41 @@ test("recipe URL import rejects unsupported methods and oversized URL input", as
 });
 
 test("recipe URL import maps unsafe destination failures to a client error", async () => {
-  const handler = createImportRecipeHandler({ isAuthenticated: async () => true, fetchPage: async () => { throw new Error("blocked_host"); } });
+  const handler = createImportRecipeHandler({ authenticateUser: async () => 'test-account', consumeLimit: async () => ({ allowed: true }), fetchPage: async () => { throw new Error("blocked_host"); } });
   const res = responseRecorder();
   await handler({ method: "POST", headers: {}, body: { url: "http://127.0.0.1/recipe" } }, res);
   assert.equal(res.statusCode, 400);
   assert.match(res.body.error, /public recipe webpage/);
+});
+
+test("recipe URL import stops before fetching when the account limit is reached", async () => {
+  let fetchCalled = false;
+  const handler = createImportRecipeHandler({
+    authenticateUser: async () => 'account-123',
+    consumeLimit: async input => {
+      assert.equal(input.scope, 'recipe-import');
+      assert.equal(input.accountId, 'account-123');
+      assert.equal(input.limit, 20);
+      return { allowed: false, retryAfterSeconds: 120 };
+    },
+    fetchPage: async () => { fetchCalled = true; }
+  });
+  const res = responseRecorder();
+  await handler({ method: 'POST', headers: {}, body: { url: 'https://example.com/recipe' } }, res);
+  assert.equal(res.statusCode, 429);
+  assert.equal(res.headers['Retry-After'], '120');
+  assert.equal(fetchCalled, false);
+});
+
+test("recipe URL import fails closed when durable rate-limit storage is unavailable", async () => {
+  let fetchCalled = false;
+  const handler = createImportRecipeHandler({
+    authenticateUser: async () => 'account-123',
+    consumeLimit: async () => { throw new Error('database unavailable'); },
+    fetchPage: async () => { fetchCalled = true; }
+  });
+  const res = responseRecorder();
+  await handler({ method: 'POST', headers: {}, body: { url: 'https://example.com/recipe' } }, res);
+  assert.equal(res.statusCode, 502);
+  assert.equal(fetchCalled, false);
 });

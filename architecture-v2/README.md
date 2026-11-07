@@ -13,9 +13,9 @@ This is the preview implementation, separate from the root app and Production. I
 
 ## Persistence and deployment
 
-`api/user-data.js` verifies the Neon Auth JWT and scopes all dataset operations to its subject. It validates recipe structure, caps request size, and uses a revision compare-and-swap. Recipes and restaurants are indexed as per-user rows; a JSONB envelope remains the revisioned snapshot boundary. Restore points are per user and capped at 10. Public recipe shares use random bearer tokens stored as hashes and can be revoked.
+`api/user-data.js` verifies the Neon Auth JWT and scopes all dataset operations to its subject. It validates recipe structure, caps request size, and uses a revision compare-and-swap. Recipes and restaurants are indexed as per-user rows; a JSONB envelope remains the revisioned snapshot boundary. Restore points are per user and capped at 10. Public recipe shares use random bearer tokens stored as hashes and can be revoked. URL imports are limited to 20 requests per account per hour, and shared recipe reads to 300 per sharing account per hour. Both counters use atomic Neon Postgres updates and return `429` with `Retry-After` when exhausted.
 
-Before deploying this code, apply `migrations/001_user_datasets.sql` and `migrations/002_private_recipe_storage.sql` only to the isolated Neon Preview branch. The second migration is idempotent and copies legacy restaurant/review rows without copying legacy recipes. Do not apply it to Production. The root app and its legacy `/api/data` path are unchanged and must not be used as the Architecture Preview persistence path.
+Before deploying this code, apply `migrations/001_user_datasets.sql`, `migrations/002_private_recipe_storage.sql`, and `migrations/003_durable_rate_limits.sql` only to the isolated Neon Preview branch. The second migration is idempotent and copies legacy restaurant/review rows without copying legacy recipes. Do not apply any of them to Production. The root app and its legacy `/api/data` path are unchanged and must not be used as the Architecture Preview persistence path.
 
 ## Verification
 
