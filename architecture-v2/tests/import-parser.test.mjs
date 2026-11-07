@@ -43,6 +43,26 @@ Calories 200`);
   assert.deepEqual(result.directions, ["Brown the sausage.", "Stir in flour, then whisk in milk."]);
 });
 
+test("pasted recipe parser keeps serving and time labels out of recipe directions", () => {
+  const result = parsePastedRecipeText(`Title: Simple Tomato Basil Pasta
+Servings: 2
+Prep time: 10 minutes
+Cook time: 15 minutes
+Total time: 25 minutes
+Ingredients:
+- 8 oz spaghetti
+- 1 tablespoon olive oil
+Directions:
+1. Cook the spaghetti, then drain.
+2. Simmer the tomato sauce until thickened.`);
+  assert.equal(result.title, "Simple Tomato Basil Pasta");
+  assert.equal(result.servings, "2");
+  assert.equal(result.prepTime, "10 minutes");
+  assert.equal(result.cookTime, "15 minutes");
+  assert.equal(result.totalTime, "25 minutes");
+  assert.deepEqual(result.directions, ["Cook the spaghetti, then drain.", "Simmer the tomato sauce until thickened."]);
+});
+
 test("pasted recipe parser declines ambiguous text instead of inventing recipe fields", () => {
   assert.equal(parsePastedRecipeText("This is a long food blog story with no recipe sections."), null);
   assert.equal(parsePastedRecipeText(""), null);
