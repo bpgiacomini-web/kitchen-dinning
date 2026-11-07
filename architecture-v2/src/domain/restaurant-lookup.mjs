@@ -33,7 +33,7 @@ export function normalizeRestaurantLookup(features, origin = null) {
       distance: distanceMeters(origin, point),
       source: "OpenStreetMap"
     };
-  }).filter(place => {
+  }).sort((a, b) => (a.distance ?? Infinity) - (b.distance ?? Infinity)).filter(place => {
     const key = `${place.name.toLocaleLowerCase()}|${place.address.toLocaleLowerCase()}`;
     if (!place.name || seen.has(key)) return false;
     seen.add(key);
@@ -43,23 +43,36 @@ export function normalizeRestaurantLookup(features, origin = null) {
 
 export async function searchRestaurantNames(query, { location = null, fetcher = fetch, signal } = {}) {
   const name = String(query || "").trim();
-  if (name.length < 2) return [];
-  const url = new URL("https://photon.komoot.io/api/");
-  url.searchParams.set("q", name);
-  url.searchParams.set("limit", "20");
-  url.searchParams.set("lang", "en");
-  if (location && Number.isFinite(Number(location.lat)) && Number.isFinite(Number(location.lon))) {
-    url.searchParams.set("lat", String(Number(location.lat)));
-    url.searchParams.set("lon", String(Number(location.lon)));
-  }
-  const response = await fetcher(url, { headers: { Accept: "application/json" }, signal });
+  if (name.length < 2) return { places: [], location };
+  const response = await fetcher("/api/restaurant-lookup", {
+    method: "POST",
+    headers: { Accept: "application/json", "Content-Type": "application/json" },
+    body: JSON.stringify({ mode: "name", query: name, location }),
+    signal
+  });
   if (!response.ok) throw new Error(`Restaurant lookup returned HTTP ${response.status}.`);
   const payload = await response.json();
-  const results = normalizeRestaurantLookup(payload?.features, location);
+  const lookupLocation = payload?.location || location;
+  const results = lookupLocation
+    ? normalizeRestaurantLookup(payload?.features, lookupLocation).filter(place => place.distance == null || place.distance <= 200_000)
+    : [];
   const normalizedQuery = name.toLocaleLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
   const rank = restaurant => {
     const normalizedName = restaurant.name.toLocaleLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
     return normalizedName === normalizedQuery ? 0 : normalizedName.startsWith(normalizedQuery) ? 1 : normalizedName.includes(normalizedQuery) ? 2 : 3;
   };
-  return results.sort((a, b) => rank(a) - rank(b) || (a.distance ?? Infinity) - (b.distance ?? Infinity)).slice(0, 8);
+  const places = results.sort((a, b) => rank(a) - rank(b) || (a.distance ?? Infinity) - (b.distance ?? Infinity)).slice(0, 8);
+  return { places, location: lookupLocation };
+}
+
+export async function searchNearbyRestaurants({ location = null, fetcher = fetch, signal } = {}) {
+  const response = await fetcher("/api/restaurant-lookup", {
+    method: "POST",
+    headers: { Accept: "application/json", "Content-Type": "application/json" },
+    body: JSON.stringify({ mode: "nearby", location }),
+    signal
+  });
+  const payload = await response.json();
+  if (!response.ok) throw new Error(payload?.error || `Nearby restaurant lookup returned HTTP ${response.status}.`);
+  return { places: Array.isArray(payload?.places) ? payload.places : [], location: payload?.location || location };
 }

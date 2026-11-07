@@ -3,7 +3,7 @@ import { normalizeDataset } from "./domain/normalize.mjs";
 import { importedRecipeCategory, recipeEditorCategories, RECIPE_CATEGORIES } from "./features/recipes/categories.mjs";
 import { parsePastedRecipeText, parseRecipeJsonLd } from "./features/recipes/import-parser.mjs";
 import { createRestaurantReview } from "./domain/restaurant-review.mjs";
-import { searchRestaurantNames } from "./domain/restaurant-lookup.mjs";
+import { searchNearbyRestaurants as lookupNearbyRestaurants, searchRestaurantNames } from "./domain/restaurant-lookup.mjs";
 
 const root = document.querySelector("#app");
 const status = document.querySelector("#previewNotice");
@@ -90,12 +90,12 @@ function renderRestaurants(items) {
     const bestDishes = topReviewFoods(restaurant);
     return `<article class="readOnlyItem restaurantCard" data-search="${escapeHtml(JSON.stringify(restaurant).toLowerCase())}"><div class="recipeCardHeader"><strong>${escapeHtml(restaurant.name)}</strong><div class="recipeCardActions"><button class="btn" type="button" data-action="edit-restaurant" data-restaurant-id="${escapeHtml(restaurant.id)}">Edit</button><button class="btn" type="button" data-action="add-restaurant-review" data-restaurant-id="${escapeHtml(restaurant.id)}">Review Again</button><button class="btn danger" type="button" data-action="delete-restaurant" data-restaurant-id="${escapeHtml(restaurant.id)}">Delete</button></div></div><small>${escapeHtml([restaurant.cuisine, restaurant.address, rating == null ? null : `Rating ${rating.toFixed(1)}/10`, restaurant.favorite ? "Favorite" : "", `${reviews.length} ${reviews.length === 1 ? "visit" : "visits"}`].filter(Boolean).join(" · ") || "No additional details saved")}</small>${bestDishes.length ? `<p class="restaurantTopDishes"><strong>Top rated dishes:</strong> ${bestDishes.map(item => `${escapeHtml(item.name)} ${escapeHtml(item.rating)}/10`).join(" · ")}</p>` : ""}<details><summary>Restaurant details and visit history</summary><section class="restaurantDetailBlock"><h4>Restaurant information</h4><dl>${details || `<div><dt>Details</dt><dd>No additional details saved.</dd></div>`}</dl></section><section class="restaurantDetailBlock"><h4>Visit history</h4>${reviewRows || `<p class="hint">No visits or reviews yet. Add a visit to start your personal history.</p>`}</section></details></article>`;
   }).join("");
-  root.innerHTML = `<section class="hero"><div class="heroIn"><div class="eyebrow">Your dining journal</div><h2>My Restaurants</h2><p>Keep restaurant details and visit-by-visit food critic reviews together in your private Metro Eats account.</p></div></section><section class="content-panel"><div class="sectionTitle"><div><div class="sectionKicker">${items.length} saved</div><h3>Your restaurants &amp; reviews</h3></div><div class="diningActions"><button class="btn" type="button" data-action="open-rankings">★ My Rankings</button><button class="btn primary" type="button" data-action="new-restaurant">＋ Add a Restaurant</button></div></div><section class="nearbyPanel"><div><h3>Restaurants Around Me</h3><p class="hint">Use your location to look up nearby restaurants from OpenStreetMap. Your location is sent only when you choose this search.</p></div><button class="btn" type="button" data-action="search-nearby">⌖ Find Nearby</button><p class="edit-status" id="nearby-status" role="status" aria-live="polite"></p><div class="nearbyResults" id="nearby-results"></div></section><label class="restaurantSearchLabel" for="restaurant-search">Search your restaurants</label><input id="restaurant-search" class="restaurantSearch" type="search" placeholder="Name, cuisine, address, dish, or note" autocomplete="off"><p class="hint" id="restaurant-search-count" aria-live="polite">Showing ${items.length} ${items.length === 1 ? "restaurant" : "restaurants"}.</p><div class="readOnlyList" id="restaurant-list">${rows || `<div class="empty">No restaurants saved yet. Add one to start your private dining journal.</div>`}</div><p class="hint">Restaurant search, critic scores, rated dishes, and every visit review are saved to your signed-in Preview account. Existing shared baseline records stay unchanged.</p></section>`;
+  root.innerHTML = `<section class="hero"><div class="heroIn"><div class="eyebrow">Your dining journal</div><h2>My Restaurants</h2><p>Keep restaurant details and visit-by-visit food critic reviews together in your private Metro Eats account.</p></div></section><section class="content-panel"><div class="sectionTitle"><div><div class="sectionKicker">${items.length} saved</div><h3>Your restaurants &amp; reviews</h3></div><div class="diningActions"><button class="btn" type="button" data-action="open-rankings">★ My Rankings</button><button class="btn primary" type="button" data-action="new-restaurant">＋ Add a Restaurant</button></div></div><section class="nearbyPanel"><div><h3>Restaurants Around Me</h3><p class="hint">Find Nearby asks your browser for precise location. If unavailable, Metro Eats uses Vercel’s approximate area for this search. Location is not saved.</p></div><button class="btn" type="button" data-action="search-nearby">⌖ Find Nearby</button><p class="edit-status" id="nearby-status" role="status" aria-live="polite"></p><div class="nearbyResults" id="nearby-results"></div></section><label class="restaurantSearchLabel" for="restaurant-search">Search your restaurants</label><input id="restaurant-search" class="restaurantSearch" type="search" placeholder="Name, cuisine, address, dish, or note" autocomplete="off"><p class="hint" id="restaurant-search-count" aria-live="polite">Showing ${items.length} ${items.length === 1 ? "restaurant" : "restaurants"}.</p><div class="readOnlyList" id="restaurant-list">${rows || `<div class="empty">No restaurants saved yet. Add one to start your private dining journal.</div>`}</div><p class="hint">Restaurant search, critic scores, rated dishes, and every visit review are saved to your signed-in Preview account. Existing shared baseline records stay unchanged.</p></section>`;
 }
 function renderRestaurantEditor(restaurantId = null) {
   const restaurant = restaurantId ? cloudDataset.restaurants.find(item => String(item.id) === String(restaurantId)) : newRestaurantPrefill;
   if (restaurantId && !restaurant) { activeView = "dining"; render(); return; }
-  root.innerHTML = `<section class="hero"><div class="heroIn"><div class="eyebrow">Your dining journal</div><h2>${restaurantId ? "Edit Restaurant" : "Add a Restaurant"}</h2><p>Save restaurant details once, then add a separate review for each visit.</p></div></section><section class="content-panel restaurantEditorPage"><div class="restaurantEditPanel"><label>Restaurant name<input id="restaurant-name" required maxlength="180" value="${escapeHtml(restaurant?.name || "")}" placeholder="Start typing a restaurant name" autocomplete="organization"></label><div class="restaurantLookupTools"><button class="btn" type="button" data-action="enable-restaurant-location">⌖ Use my location for nearby matches</button><p class="hint">Typing searches OpenStreetMap for restaurant matches. Location is optional; if allowed, it helps show nearby matches first.</p></div><div id="restaurant-lookup-status" role="status" aria-live="polite" class="restaurantLookupStatus"></div><div id="restaurant-lookup-results" class="restaurantLookupResults"></div><div class="restaurantEditorGrid"><label>Cuisine<input id="restaurant-cuisine" maxlength="120" value="${escapeHtml(restaurant?.cuisine || restaurant?.type || "")}" placeholder="e.g. Italian"></label><label>Website<input id="restaurant-website" type="url" maxlength="500" value="${escapeHtml(restaurant?.website || "")}" placeholder="https://"></label></div><label>Menu link<input id="restaurant-menu" type="url" maxlength="500" value="${escapeHtml(restaurant?.menuUrl || "")}" placeholder="https://"></label><label>Address<input id="restaurant-address" maxlength="300" value="${escapeHtml(restaurant?.address || "")}" placeholder="Street, city"></label><label>Notes<textarea id="restaurant-notes" rows="3" maxlength="5000" placeholder="Anything you want to remember">${escapeHtml(restaurant?.notes || "")}</textarea></label><label class="inlineCheck"><input id="restaurant-favorite" type="checkbox"${restaurant?.favorite ? " checked" : ""}> Favorite</label><div class="recipeEditActions"><button class="btn" type="button" data-action="cancel-restaurant-edit">Cancel</button><button class="btn primary" type="button" data-action="save-restaurant" data-restaurant-id="${escapeHtml(restaurant?.id || "")}">${restaurantId ? "Save Changes" : "Save Restaurant"}</button></div><p class="edit-status" role="status" aria-live="polite"></p></div></section>`;
+  root.innerHTML = `<section class="hero"><div class="heroIn"><div class="eyebrow">Your dining journal</div><h2>${restaurantId ? "Edit Restaurant" : "Add a Restaurant"}</h2><p>Save restaurant details once, then add a separate review for each visit.</p></div></section><section class="content-panel restaurantEditorPage"><div class="restaurantEditPanel"><label>Restaurant name<input id="restaurant-name" required maxlength="180" value="${escapeHtml(restaurant?.name || "")}" placeholder="Start typing a restaurant name" autocomplete="organization"></label><div class="restaurantLookupTools"><button class="btn" type="button" data-action="enable-restaurant-location">⌖ Use my location for nearby matches</button><p class="hint">Name search prefers your precise browser location when allowed. Otherwise, Vercel uses an approximate area. Add a city to narrow the search. Search location is not saved.</p></div><div id="restaurant-lookup-status" role="status" aria-live="polite" class="restaurantLookupStatus"></div><div id="restaurant-lookup-results" class="restaurantLookupResults"></div><div class="restaurantEditorGrid"><label>Cuisine<input id="restaurant-cuisine" maxlength="120" value="${escapeHtml(restaurant?.cuisine || restaurant?.type || "")}" placeholder="e.g. Italian"></label><label>Website<input id="restaurant-website" type="url" maxlength="500" value="${escapeHtml(restaurant?.website || "")}" placeholder="https://"></label></div><label>Menu link<input id="restaurant-menu" type="url" maxlength="500" value="${escapeHtml(restaurant?.menuUrl || "")}" placeholder="https://"></label><label>Address<input id="restaurant-address" maxlength="300" value="${escapeHtml(restaurant?.address || "")}" placeholder="Street, city"></label><label>Notes<textarea id="restaurant-notes" rows="3" maxlength="5000" placeholder="Anything you want to remember">${escapeHtml(restaurant?.notes || "")}</textarea></label><label class="inlineCheck"><input id="restaurant-favorite" type="checkbox"${restaurant?.favorite ? " checked" : ""}> Favorite</label><div class="recipeEditActions"><button class="btn" type="button" data-action="cancel-restaurant-edit">Cancel</button><button class="btn primary" type="button" data-action="save-restaurant" data-restaurant-id="${escapeHtml(restaurant?.id || "")}">${restaurantId ? "Save Changes" : "Save Restaurant"}</button></div><p class="edit-status" role="status" aria-live="polite"></p></div></section>`;
 }
 function renderRestaurantReviewForm(restaurantId) {
   const restaurant = cloudDataset.restaurants.find(item => String(item.id) === String(restaurantId));
@@ -118,52 +118,36 @@ async function searchNearbyRestaurants() {
   const statusLine = root.querySelector("#nearby-status");
   const results = root.querySelector("#nearby-results");
   if (!statusLine || !results) return;
-  if (!navigator.geolocation) { statusLine.textContent = "This browser does not provide location access here. You can still search restaurant names when adding a restaurant."; return; }
-  statusLine.textContent = "Requesting your location…";
+  statusLine.textContent = "Finding your area…";
   results.innerHTML = "";
-  navigator.geolocation.getCurrentPosition(async position => {
-    const { latitude, longitude } = position.coords;
-    restaurantLookupLocation = { lat: latitude, lon: longitude };
-    statusLine.textContent = "Looking for restaurants nearby…";
-    const query = `[out:json][timeout:20];nwr["amenity"~"^(restaurant|fast_food|cafe|bar|pub)$",i]["name"](around:8047,${latitude},${longitude});out center tags;`;
-    let data = null;
-    for (const endpoint of ["https://overpass-api.de/api/interpreter", "https://overpass.kumi.systems/api/interpreter"]) {
-      const controller = new AbortController();
-      const timer = setTimeout(() => controller.abort(), 10000);
-      try {
-        const response = await fetch(`${endpoint}?data=${encodeURIComponent(query)}`, { headers: { Accept: "application/json" }, signal: controller.signal });
-        if (response.ok) { data = await response.json(); break; }
-      } catch { /* Try the public fallback endpoint. */ }
-      finally { clearTimeout(timer); }
+  const search = async location => {
+    statusLine.textContent = "Searching nearby restaurants…";
+    try {
+      const response = await lookupNearbyRestaurants({ location });
+      restaurantLookupLocation = response.location || location;
+      if (!response.places.length) {
+        statusLine.textContent = "No named restaurants appeared within about five miles. Try Add a Restaurant and search by name.";
+        return;
+      }
+      const placeLabel = response.location?.source === "network"
+        ? `Showing places near the approximate area Vercel detected${response.location.city ? ` (${response.location.city})` : ""}. Allow precise location for a closer match.`
+        : `Found ${response.places.length} nearby places. Select one to review its details before saving.`;
+      statusLine.textContent = placeLabel;
+      results.innerHTML = response.places.map(place => `<article class="nearbyPlace"><div><strong>${escapeHtml(place.name)}</strong><small>${escapeHtml([place.cuisine, place.distance == null ? "" : place.distance < 1609 ? `${Math.round(place.distance * 3.28084)} ft` : `${(place.distance / 1609.34).toFixed(1)} mi`, place.address].filter(Boolean).join(" · ") || "Nearby food place")}</small></div><button class="btn" type="button" data-action="use-nearby" data-nearby="${escapeHtml(JSON.stringify(place))}">Review this restaurant</button></article>`).join("");
+    } catch (error) {
+      statusLine.textContent = error.message || "Nearby restaurant search is unavailable right now. Try Add a Restaurant and search by name.";
     }
-    if (!data) { statusLine.textContent = "Nearby restaurant search is unavailable right now. You can still add a restaurant by name."; return; }
-    const meters = (lat, lon) => {
-      const radians = Math.PI / 180;
-      const dLat = (lat - latitude) * radians, dLon = (lon - longitude) * radians;
-      const a = Math.sin(dLat / 2) ** 2 + Math.cos(latitude * radians) * Math.cos(lat * radians) * Math.sin(dLon / 2) ** 2;
-      return Math.round(6371000 * 2 * Math.asin(Math.sqrt(a)));
-    };
-    const seen = new Set();
-    const places = (Array.isArray(data.elements) ? data.elements : []).map(item => {
-      const tags = item.tags || {};
-      const lat = Number(item.lat ?? item.center?.lat), lon = Number(item.lon ?? item.center?.lon);
-      const address = [tags["addr:housenumber"], tags["addr:street"], tags["addr:city"], tags["addr:state"]].filter(Boolean).join(", ");
-      return { name: tags.name || "", cuisine: tags.cuisine || "", address, website: tags.website || tags["contact:website"] || "", lat, lon, distance: Number.isFinite(lat) && Number.isFinite(lon) ? meters(lat, lon) : null };
-    }).filter(place => {
-      const key = `${place.name.toLocaleLowerCase()}|${place.address.toLocaleLowerCase()}`;
-      if (!place.name || seen.has(key)) return false;
-      seen.add(key); return true;
-    }).sort((a, b) => (a.distance ?? Infinity) - (b.distance ?? Infinity)).slice(0, 15);
-    if (!places.length) { statusLine.textContent = "No named restaurants appeared within about five miles. You can still add one by name."; return; }
-    statusLine.textContent = `Found ${places.length} nearby places. Select one to review its details before saving.`;
-    results.innerHTML = places.map(place => `<article class="nearbyPlace"><div><strong>${escapeHtml(place.name)}</strong><small>${escapeHtml([place.cuisine, place.distance == null ? "" : place.distance < 1609 ? `${Math.round(place.distance * 3.28084)} ft` : `${(place.distance / 1609.34).toFixed(1)} mi`, place.address].filter(Boolean).join(" · ") || "Nearby food place")}</small></div><button class="btn" type="button" data-action="use-nearby" data-nearby="${escapeHtml(JSON.stringify(place))}">Review this restaurant</button></article>`).join("");
-  }, error => { statusLine.textContent = restaurantLocationError(error); }, { enableHighAccuracy: false, timeout: 12000, maximumAge: 30000 });
+  };
+  if (!navigator.geolocation) { await search(null); return; }
+  navigator.geolocation.getCurrentPosition(position => {
+    search({ lat: position.coords.latitude, lon: position.coords.longitude });
+  }, () => { search(null); }, { enableHighAccuracy: false, timeout: 8000, maximumAge: 300000 });
 }
 function restaurantLocationError(error) {
   if (!navigator.geolocation) return "This browser does not provide location access here. Restaurant name search still works without it.";
   if (error?.code === 1) return "Chrome blocked location for this site. In Chrome, open the site controls beside the address, set Location to Allow, reload, then try again. Name search works without location.";
   if (error?.code === 2) return "Your device could not determine its location. Check that device location services are on, or continue with name search.";
-  if (error?.code === 3) return "Location lookup timed out. Try again, or continue with name search.";
+  if (error?.code === 3) return "Device location timed out. Metro Eats can still use the approximate network area for a search.";
   return "Location is unavailable right now. You can continue with name search.";
 }
 function renderRestaurantLookupResults(results, message = "") {
@@ -173,7 +157,7 @@ function renderRestaurantLookupResults(results, message = "") {
   restaurantLookupResults = results;
   container.innerHTML = "";
   if (message) { statusLine.textContent = message; return; }
-  if (!results.length) { statusLine.textContent = "No restaurant matches found. Keep entering the name or fill in the details manually."; return; }
+  if (!results.length) { statusLine.textContent = restaurantLookupLocation ? "No restaurant matches found nearby. Add a city or state to the search, or fill in the details manually." : "Could not determine a nearby area. Include the city and state with the restaurant name, or use the location button."; return; }
   statusLine.textContent = `Choose the right match to fill available details${restaurantLookupLocation ? "; nearby matches are listed first" : ""}.`;
   container.innerHTML = results.map((place, index) => `<button class="restaurantLookupResult" type="button" data-action="select-restaurant-lookup" data-result-index="${index}"><strong>${escapeHtml(place.name)}</strong><small>${escapeHtml([place.cuisine, place.address, place.distance == null ? "" : place.distance < 1609 ? `${Math.round(place.distance * 3.28084)} ft away` : `${(place.distance / 1609.34).toFixed(1)} mi away`].filter(Boolean).join(" · ") || "Address not listed")}</small></button>`).join("");
 }
@@ -188,8 +172,13 @@ function searchRestaurantName(query) {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 8000);
     try {
-      const results = await searchRestaurantNames(value, { location: restaurantLookupLocation, signal: controller.signal });
-      if (requestId === restaurantLookupRequest) renderRestaurantLookupResults(results);
+      const { places, location } = await searchRestaurantNames(value, { location: restaurantLookupLocation, signal: controller.signal });
+      if (requestId === restaurantLookupRequest) {
+        restaurantLookupLocation = location || restaurantLookupLocation;
+        renderRestaurantLookupResults(places);
+        const currentStatus = root.querySelector("#restaurant-lookup-status");
+        if (currentStatus && location?.source === "network" && places.length) currentStatus.textContent = `Choose a match near the approximate area${location.city ? ` (${location.city})` : ""}. Precise device location is more accurate.`;
+      }
     } catch {
       if (requestId === restaurantLookupRequest) renderRestaurantLookupResults([], "Online restaurant search is unavailable right now. You can still enter the details manually.");
     } finally { clearTimeout(timeout); }

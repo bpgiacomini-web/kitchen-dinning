@@ -27,7 +27,7 @@
 
 ## Restaurant Preview implementation status
 - Private restaurant records support saved-record search, type-ahead lookup via OpenStreetMap, manual details, website/menu links, visit history, a Production-compatible Food Critic review, dish-level ratings and notes across seven categories, calculated food and overall scores, and personal rankings.
-- Nearby lookup is an explicit action. It asks the browser for location and sends coordinates to the public OpenStreetMap Overpass service. Selecting a result only pre-fills the restaurant form; the user must save it.
+- Name and nearby lookups go through the same-origin `/api/restaurant-lookup` route to avoid browser-specific cross-origin failures. Browser location is preferred; Vercel's approximate IP area is used as a fallback, and matches over 200 km away are excluded from name search. Location is not stored. Selecting a result only pre-fills the restaurant form; the user must save it.
 - Restaurant photos are deferred until a dedicated image-storage path exists. Base64 photos are not added to the bounded per-account dataset.
 - Future parity candidates from Production include automatic official website/menu lookup, review editing, and richer type-specific dish suggestions. Review-history editing should preserve the append-only visit audit unless an explicit versioned correction flow is designed.
 
