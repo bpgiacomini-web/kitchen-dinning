@@ -1,4 +1,3 @@
-import { neon } from '@neondatabase/serverless';
 import { randomUUID } from 'node:crypto';
 
 const MAX_BODY_BYTES = 1_500_000;
@@ -55,7 +54,12 @@ function roughSize(value) {
   try { return Buffer.byteLength(JSON.stringify(value), 'utf8'); } catch { return Infinity; }
 }
 
-export default async function handler(req, res) {
+export function createUserDataHandler({ authenticateUser: authenticate = authenticatedUser, makeSql = async () => {
+  if (!process.env.DATABASE_URL) return null;
+  const { neon } = await import('@neondatabase/serverless');
+  return neon(process.env.DATABASE_URL);
+} } = {}) {
+ return async function handler(req, res) {
   res.setHeader('Cache-Control', 'no-store, max-age=0');
   res.setHeader('X-Content-Type-Options', 'nosniff');
   res.setHeader('Vary', 'Authorization');
@@ -65,14 +69,13 @@ export default async function handler(req, res) {
     return send(res, 405, { error: 'Method not allowed.' });
   }
 
-  const identity = await authenticatedUser(req);
+  const identity = await authenticate(req);
   if (identity.error) return send(res, identity.status || 503, { error: identity.error });
-
-  if (!process.env.DATABASE_URL) return send(res, 503, { error: 'Preview database is not configured.' });
 
   let sql;
   try {
-    sql = neon(process.env.DATABASE_URL);
+    sql = await makeSql();
+    if (!sql) return send(res, 503, { error: 'Preview database is not configured.' });
     if (req.method === 'GET') {
       const rows = await sql`SELECT payload, revision FROM metro_eats_user_datasets WHERE user_id = ${identity.userId} LIMIT 1`;
       const recipes = await sql`SELECT payload FROM metro_eats_recipes WHERE user_id = ${identity.userId} ORDER BY updated_at DESC, id`;
@@ -159,4 +162,7 @@ export default async function handler(req, res) {
     console.error('Metro Eats user dataset request failed', error?.name || 'UnknownError');
     return send(res, 503, { error: 'Secure preview storage is unavailable. No data was reported as saved.' });
   }
+ };
 }
+
+export default createUserDataHandler();

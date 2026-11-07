@@ -1,4 +1,3 @@
-import { neon } from '@neondatabase/serverless';
 import { randomUUID } from 'node:crypto';
 
 const authBaseUrl = process.env.NEON_AUTH_BASE_URL;
@@ -15,7 +14,12 @@ async function getUser(req) {
   } catch { return null; }
 }
 
-export default async function handler(req, res) {
+export function createRestorePointsHandler({ authenticateUser = getUser, makeSql = async () => {
+  if (!process.env.DATABASE_URL) return null;
+  const { neon } = await import('@neondatabase/serverless');
+  return neon(process.env.DATABASE_URL);
+} } = {}) {
+ return async function handler(req, res) {
   res.setHeader('Cache-Control', 'no-store, max-age=0');
   res.setHeader('Vary', 'Authorization');
   res.setHeader('X-Content-Type-Options', 'nosniff');
@@ -23,11 +27,11 @@ export default async function handler(req, res) {
     res.setHeader('Allow', 'GET, POST');
     return res.status(405).json({ error: 'Method not allowed.' });
   }
-  const userId = await getUser(req);
+  const userId = await authenticateUser(req);
   if (!userId) return res.status(401).json({ error: 'Sign in to access restore points.' });
-  if (!process.env.DATABASE_URL) return res.status(503).json({ error: 'Preview database is not configured.' });
   try {
-    const sql = neon(process.env.DATABASE_URL);
+    const sql = await makeSql();
+    if (!sql) return res.status(503).json({ error: 'Preview database is not configured.' });
     if (req.method === 'GET') {
       const rows = await sql`SELECT id, created_at, jsonb_array_length(COALESCE(snapshot->'recipes','[]'::jsonb)) AS recipes,
         jsonb_array_length(COALESCE(snapshot->'restaurants','[]'::jsonb)) AS restaurants
@@ -100,4 +104,7 @@ export default async function handler(req, res) {
     console.error('Metro Eats restore point request failed', error?.name || 'UnknownError');
     return res.status(503).json({ error: 'Restore points are unavailable. Your data was not reported as restored.' });
   }
+ };
 }
+
+export default createRestorePointsHandler();
