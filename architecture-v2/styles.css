@@ -68,6 +68,45 @@
 #app .panel-heading .eyebrow{margin:0}
 #app .note{font-size:12px;color:var(--muted);line-height:1.5}
 
+/* Production Food Critic survey adapted for private Preview records. */
+#app .diningActions{display:flex;flex-wrap:wrap;gap:8px}
+#app .restaurantSearchLabel{display:block;margin:14px 0 6px;font-weight:750}
+#app .restaurantSearch{box-sizing:border-box;width:100%;min-height:48px;padding:12px 14px;border:1px solid #315047;border-radius:13px;background:#0b1111;color:var(--text);font:inherit}
+#app .restaurantSearch:focus{outline:2px solid #8fb7a6;outline-offset:2px}
+#app .restaurantTopDishes{margin:10px 0 0;color:#a6c9b8;font-size:13px;line-height:1.5}
+#app .reviewFoodSection{padding:18px;border:1px solid #315047;border-radius:18px;background:linear-gradient(145deg,#13231f,#101719)}
+#app .reviewFoodSection h3,#app .surveyCard h3{margin:0 0 8px}
+#app .reviewCategory{margin:10px 0;border:1px solid #315047;border-radius:14px;background:#101816;overflow:hidden}
+#app .reviewCategory>summary{padding:14px 16px;color:#dce7e0;cursor:pointer;font-weight:800;list-style-position:inside}
+#app .reviewCategory[open]>summary{border-bottom:1px solid #315047;color:#a6c9b8}
+#app .reviewCategoryBody{padding:12px}
+#app .reviewDishList{display:grid;gap:12px}
+#app .reviewDish{padding:14px;border:1px solid #34433d;border-radius:14px;background:#0e1413}
+#app .reviewDishHead{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:end}
+#app .reviewDish label{display:block;min-width:0;font-weight:700;line-height:1.4}
+#app .reviewDish input,#app .reviewDish textarea{display:block;box-sizing:border-box;width:100%;min-width:0;margin-top:6px;padding:11px 12px;border:1px solid #394148;border-radius:10px;background:#0b0f13;color:#f4f1e8;font:inherit}
+#app .reviewDish textarea{resize:vertical}
+#app .reviewDish .reviewScore{margin:9px 0}
+#app .restaurantRankings{display:grid;gap:10px;margin-top:14px}
+#app .restaurantRanking{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:14px;align-items:center;padding:15px;border:1px solid #315047;border-radius:15px;background:linear-gradient(145deg,#13231f,#101719)}
+#app .restaurantRanking>div{min-width:0}
+#app .restaurantRanking strong{display:block;overflow-wrap:anywhere}
+#app .restaurantRanking small{display:block;margin-top:4px;color:var(--muted)}
+#app .restaurantRanking p{margin:7px 0 0;color:#a6c9b8;font-size:13px;line-height:1.45}
+#app .rankingScore{color:#a6c9b8;font-size:26px;white-space:nowrap}
+#app .rankingScore small{display:inline;margin-left:2px;font-size:12px}
+#app .restaurantCard[hidden]{display:none}
+#app .nearbyPanel{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px 14px;align-items:center;margin:16px 0 20px;padding:16px;border:1px solid #315047;border-radius:17px;background:linear-gradient(145deg,#13231f,#101719)}
+#app .nearbyPanel h3{margin:0 0 4px}
+#app .nearbyPanel p{margin:4px 0}
+#app .nearbyPanel .edit-status,#app .nearbyResults{grid-column:1/-1}
+#app .nearbyResults{display:grid;gap:8px}
+#app .nearbyPlace{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px;align-items:center;padding:11px 12px;border:1px solid #35463f;border-radius:12px;background:#0e1413}
+#app .nearbyPlace strong{display:block;overflow-wrap:anywhere}
+#app .nearbyPlace small{display:block;margin-top:4px;color:var(--muted);line-height:1.4}
+@media(max-width:560px){#app .diningActions{width:100%}#app .diningActions .btn{flex:1}#app .reviewDishHead{grid-template-columns:1fr}#app .reviewDishHead .btn{justify-self:start}#app .restaurantRanking{gap:9px;padding:12px}}
+@media(max-width:560px){#app .nearbyPanel{grid-template-columns:1fr}#app .nearbyPlace{grid-template-columns:1fr}#app .nearbyPlace .btn{justify-self:start}}
+
 
 /* Approved branding fit: use the wide logo as a real full-width banner on phones. */
 @media(max-width:760px){
