@@ -3,6 +3,9 @@
 <head>
   <style>
     body:not(.metro-authenticated) .app, body:not(.metro-authenticated) .bottomNav { display:none !important; }
+    #metroAuthLoading { box-sizing:border-box; max-width:440px; margin:18vh auto 0; padding:20px 24px; color:#c1c6cf; background:#171a20; border:1px solid #3b414b; border-radius:18px; text-align:center; font:16px/1.5 system-ui,sans-serif; }
+    #metroAuthLoading[hidden] { display:none !important; }
+    #metroAuthContinue { margin-top:12px; padding:10px 14px; border:1px solid #555d69; border-radius:8px; background:#20262e; color:#f6f1e9; font:inherit; cursor:pointer; }
     #metroAuthPanel { box-sizing:border-box; max-width:440px; margin:10vh auto; padding:28px; color:#f6f1e9; background:#171a20; border:1px solid #3b414b; border-radius:18px; font:16px/1.5 system-ui,sans-serif; }
     #metroAuthPanel h1 { margin:0 0 8px; font-size:28px; }
     #metroAuthPanel p { color:#c1c6cf; }
@@ -40,7 +43,8 @@
   <link rel="stylesheet" href="./pizza-theme.css?v=4">
 </head>
 <body>
-  <section id="metroAuthPanel" aria-labelledby="metroAuthTitle">
+  <div id="metroAuthLoading" role="status" aria-live="polite"><p id="metroAuthLoadingStatus">Restoring your Metro Eats session…</p><button id="metroAuthContinue" type="button" hidden>Show sign-in form</button></div>
+  <section id="metroAuthPanel" aria-labelledby="metroAuthTitle" hidden>
     <h1 id="metroAuthTitle">Metro Eats</h1><p>Sign in to open the Architecture Preview.</p>
     <form id="metroAuthForm">
       <label for="metroAuthEmail">Email</label><input id="metroAuthEmail" name="email" type="email" autocomplete="username" required>
@@ -85,6 +89,9 @@
   <script type="module" src="./src/main.mjs?v=10"></script>
   <script>
     const panel = document.getElementById('metroAuthPanel');
+    const loading = document.getElementById('metroAuthLoading');
+    const loadingStatus = document.getElementById('metroAuthLoadingStatus');
+    const continueToLogin = document.getElementById('metroAuthContinue');
     const form = document.getElementById('metroAuthForm');
     const status = document.getElementById('metroAuthStatus');
     const submit = document.getElementById('metroAuthSubmit');
@@ -96,10 +103,16 @@
     let client;
     let signInInProgress = false;
     let accessToken = '';
-    // Keep a visible fallback while auth config / session restoration loads.
-    // Without this, both the app shell and auth panel start hidden, producing a blank screen if startup stalls.
-    panel.hidden = false;
-    status.textContent = 'Checking your Metro Eats sign-in…';
+    let sessionFallbackTimer;
+    function clearSessionFallback() {
+      if (sessionFallbackTimer) window.clearTimeout(sessionFallbackTimer);
+      sessionFallbackTimer = undefined;
+      continueToLogin.hidden = true;
+    }
+    // Do not flash the sign-in form before the persisted session has been checked.
+    // If that check stalls after the auth client is ready, let the user reveal the form manually.
+    continueToLogin.addEventListener('click', () => showLogin('Session check is taking longer than usual. You can sign in below.'));
+    status.textContent = 'Sign-in is loading…';
     let resolveMetroAuthReady;
     window.metroAuthReady = new Promise(resolve => { resolveMetroAuthReady = resolve; });
     window.metroGetAccessToken = async () => {
@@ -128,12 +141,16 @@
       return accessToken || null;
     };
     function showApp(user) {
+      clearSessionFallback();
+      loading.hidden = true;
       document.body.classList.add('metro-authenticated');
       panel.hidden = true;
       accountButton.hidden = false;
       accountEmail.textContent = user?.email || 'Signed in to Metro Eats';
     }
     function showLogin(message) {
+      clearSessionFallback();
+      loading.hidden = true;
       document.body.classList.remove('metro-authenticated');
       panel.hidden = false;
       accountButton.hidden = true;
@@ -255,6 +272,12 @@
             submit.disabled = false;
           }
         });
+        sessionFallbackTimer = window.setTimeout(() => {
+          if (!document.body.classList.contains('metro-authenticated') && !signInInProgress) {
+            loadingStatus.textContent = 'Your session check is taking longer than usual.';
+            continueToLogin.hidden = false;
+          }
+        }, 5000);
         // Restore an existing session in the background; never block form setup.
         try {
           const existing = await client.getSession();
