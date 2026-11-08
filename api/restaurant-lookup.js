@@ -34,7 +34,7 @@ function distanceMeters(origin, lat, lon) {
   return Math.round(6371000 * 2 * Math.asin(Math.sqrt(a)));
 }
 
-function normalizeNearby(elements, location) {
+function normalizeNearby(elements, location, { filter = () => true, limit = 20 } = {}) {
   const seen = new Set();
   return (Array.isArray(elements) ? elements : []).map(item => {
     const tags = item?.tags || {};
@@ -52,12 +52,52 @@ function normalizeNearby(elements, location) {
       amenity
     };
   }).filter(place => {
-    if (!place.name || !FOOD_AMENITIES.has(place.amenity)) return false;
+    if (!place.name || !FOOD_AMENITIES.has(place.amenity) || !filter(place)) return false;
     const key = `${place.name.toLocaleLowerCase()}|${place.address.toLocaleLowerCase()}`;
     if (seen.has(key)) return false;
     seen.add(key);
     return true;
-  }).sort((a, b) => (a.distance ?? Infinity) - (b.distance ?? Infinity)).slice(0, 20);
+  }).sort((a, b) => (a.distance ?? Infinity) - (b.distance ?? Infinity)).slice(0, limit);
+}
+
+function hasFoodFeature(feature) {
+  const props = feature?.properties || {};
+  return String(props.osm_key || "").toLowerCase() === "amenity" && FOOD_AMENITIES.has(String(props.osm_value || "").toLowerCase());
+}
+
+function nameMatches(candidate, query) {
+  const normalize = value => String(value || "").toLocaleLowerCase().replace(/['’]/g, "").replace(/[^a-z0-9]+/g, " ").trim();
+  const name = normalize(candidate);
+  const search = normalize(query);
+  if (!name || !search) return false;
+  if (name.includes(search) || search.includes(name)) return true;
+  const words = search.split(/\s+/).filter(word => word.length > 1 && word !== "the");
+  return words.length > 0 && words.filter(word => name.includes(word)).length / words.length >= 0.7;
+}
+
+async function nearbyNameFeatures(query, location, fetcher) {
+  if (!location) return [];
+  const overpassQuery = `[out:json][timeout:15];nwr["amenity"~"^(restaurant|fast_food|cafe|bar|pub)$",i]["name"](around:30000,${location.lat},${location.lon});out center tags;`;
+  for (const [index, endpoint] of OVERPASS_URLS.entries()) {
+    const url = new URL(endpoint);
+    url.searchParams.set("data", overpassQuery);
+    try {
+      const payload = await fetchJson(fetcher, url, { headers: { Accept: "application/json" } }, index === 0 ? 7000 : 3000);
+      return normalizeNearby(payload.elements, location, { filter: place => nameMatches(place.name, query) }).map(place => ({
+        type: "Feature",
+        properties: {
+          name: place.name,
+          city: place.address.split(", ").slice(-2, -1)[0] || "",
+          street: place.address.split(", ").slice(0, 2).join(" "),
+          osm_key: "amenity",
+          osm_value: place.amenity,
+          extra: { cuisine: place.cuisine, website: place.website }
+        },
+        geometry: { type: "Point", coordinates: [place.lon, place.lat] }
+      }));
+    } catch { /* Try the public backup endpoint. */ }
+  }
+  return [];
 }
 
 async function fetchJson(fetcher, url, options, timeoutMs = 9000) {
@@ -95,8 +135,18 @@ export function createRestaurantLookupHandler({ fetcher = fetch } = {}) {
           url.searchParams.set("lon", String(location.lon));
           url.searchParams.set("location_bias_scale", "0.1");
         }
-        const payload = await fetchJson(fetcher, url, { headers: { Accept: "application/json" } });
-        return res.status(200).json({ features: Array.isArray(payload?.features) ? payload.features : [], location });
+        let features = [];
+        let photonError = null;
+        try {
+          const payload = await fetchJson(fetcher, url, { headers: { Accept: "application/json" } });
+          features = Array.isArray(payload?.features) ? payload.features : [];
+        } catch (error) { photonError = error; }
+        if (!features.some(feature => hasFoodFeature(feature) && nameMatches(feature?.properties?.name, query))) {
+          const fallback = await nearbyNameFeatures(query, location, fetcher);
+          if (fallback.length) features = [...features, ...fallback];
+        }
+        if (photonError && !features.length) throw photonError;
+        return res.status(200).json({ features, location });
       } catch (error) {
         console.error("Metro Eats restaurant name lookup failed", String(error?.message || "upstream_error").slice(0, 80));
         return res.status(502).json({ error: "Online restaurant search is temporarily unavailable." });

@@ -15,7 +15,7 @@ test("same-origin name lookup applies Vercel's approximate location as a search 
   let requested;
   const handler = createRestaurantLookupHandler({ fetcher: async url => {
     requested = new URL(url);
-    return { ok: true, json: async () => ({ features: [{ properties: { name: "Fast Eddie's" } }] }) };
+    return { ok: true, json: async () => ({ features: [{ properties: { name: "Fast Eddie's", osm_key: "amenity", osm_value: "restaurant" } }] }) };
   } });
   const res = responseRecorder();
   await handler({ method: "POST", body: { mode: "name", query: "Fast Eddie" }, headers: {
@@ -27,6 +27,28 @@ test("same-origin name lookup applies Vercel's approximate location as a search 
   assert.equal(requested.searchParams.get("location_bias_scale"), "0.1");
   assert.deepEqual(res.body.location, { lat: 38.89, lon: -90.18, city: "Alton", region: "", source: "network" });
   assert.equal(res.headers["Cache-Control"], "no-store, max-age=0");
+});
+
+test("name lookup falls back to nearby OSM places when Photon has no match", async () => {
+  const handler = createRestaurantLookupHandler({ fetcher: async url => {
+    const request = new URL(url);
+    if (request.hostname === "photon.komoot.io") return { ok: true, json: async () => ({ features: [] }) };
+    return { ok: true, json: async () => ({ elements: [
+      { type: "node", lat: 38.89, lon: -90.18, tags: { name: "Mac's Downtown", amenity: "restaurant", "addr:city": "Alton", "contact:website": "https://macsdowntown.com/" } },
+      { type: "node", lat: 38.92, lon: -90.19, tags: { name: "Roper's Regal Beagle", amenity: "restaurant", "addr:city": "Godfrey", website: "https://www.ropersregalbeagle.com/" } },
+      { type: "node", lat: 38.90, lon: -90.18, tags: { name: "Other Cafe", amenity: "cafe" } }
+    ] }) };
+  } });
+
+  for (const [query, expected] of [["Mac's Downtown", "Mac's Downtown"], ["Roper's Regal Beagle", "Roper's Regal Beagle"]]) {
+    const res = responseRecorder();
+    await handler({ method: "POST", body: { mode: "name", query }, headers: {
+      "x-vercel-ip-latitude": "38.89", "x-vercel-ip-longitude": "-90.18", "x-vercel-ip-city": "Alton"
+    } }, res);
+    assert.equal(res.statusCode, 200);
+    assert.ok(res.body.features.some(feature => feature.properties.name === expected));
+    assert.ok(!res.body.features.some(feature => feature.properties.name === "Other Cafe"));
+  }
 });
 
 test("nearby lookup falls back to approximate network location and returns closest food places", async () => {
