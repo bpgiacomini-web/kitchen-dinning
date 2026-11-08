@@ -680,10 +680,10 @@ document.addEventListener("click", async event => {
     try {
       const token = await globalThis.metroGetAccessToken?.();
       if (!token) throw new Error("Sign in again to look up a UPC.");
-      const response = await fetch("/api/pizza-lookup", {
+      const response = await fetch("/api/restaurant-lookup", {
         method: "POST", cache: "no-store",
         headers: { "Content-Type": "application/json", Accept: "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ upc })
+        body: JSON.stringify({ mode: "pizza-upc", upc })
       });
       const payload = await response.json();
       if (!response.ok) throw new Error(payload?.error || `Product lookup returned HTTP ${response.status}.`);
