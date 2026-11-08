@@ -1,0 +1,89 @@
+/**
+ * Same-origin Neon Auth proxy for the isolated Metro Eats Preview.
+ * Keeping auth requests on the app's own origin avoids Safari ITP treating
+ * Neon Auth cookies as third-party cookies.
+ */
+export const config = { api: { bodyParser: false } };
+
+function usePreviewHostCookie(cookie) {
+  // Neon Auth may scope its cookies to the upstream Auth host. The browser
+  // rejects those Domain cookies on the Preview origin, so make them host-only
+  // for the same-origin proxy while preserving every other cookie attribute.
+  return String(cookie).replace(/;\s*domain=[^;]*/i, "");
+}
+
+
+
+export default async function handler(req, res) {
+  res.setHeader("Cache-Control", "no-store, max-age=0");
+  res.setHeader("X-Content-Type-Options", "nosniff");
+
+  const upstreamBase = process.env.NEON_AUTH_BASE_URL || process.env.VITE_NEON_AUTH_URL;
+  if (!upstreamBase) return res.status(503).json({ error: "Preview authentication URL is not configured." });
+
+  const requestUrl = new URL(req.url, `https://${req.headers.host || "localhost"}`);
+  const prefix = "/api/auth/";
+  if (!requestUrl.pathname.startsWith(prefix)) return res.status(404).json({ error: "Auth route not found." });
+  const authPath = requestUrl.pathname.slice(prefix.length);
+  if (!authPath || authPath.split("/").some(part => part === "." || part === "..")) {
+    return res.status(400).json({ error: "Invalid auth route." });
+  }
+
+  const target = new URL(upstreamBase.replace(/\/+$/, "") + "/" + authPath + requestUrl.search);
+  const headers = new Headers();
+  for (const [name, value] of Object.entries(req.headers)) {
+    const lower = name.toLowerCase();
+    // Do not forward Vercel's proxy-routing headers to Neon Auth. In
+    // particular, x-forwarded-host can contain an internal/combined host
+    // value that Neon Auth rejects as an invalid hostname. fetch() supplies
+    // the correct upstream Host header for the Neon Auth origin.
+    if (value == null || [
+      "host", "connection", "content-length", "transfer-encoding",
+      "x-forwarded-host", "x-forwarded-proto", "x-forwarded-port",
+      "x-forwarded-for", "forwarded"
+    ].includes(lower)) continue;
+    headers.set(name, Array.isArray(value) ? value.join(", ") : String(value));
+  }
+
+  let body;
+  if (!["GET", "HEAD"].includes(req.method || "GET")) {
+    const chunks = [];
+    for await (const chunk of req) chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+    if (chunks.length) body = Buffer.concat(chunks);
+  }
+
+  try {
+    const upstream = await fetch(target, {
+      method: req.method,
+      headers,
+      body,
+      redirect: "manual"
+    });
+    for (const [name, value] of upstream.headers) {
+      const lower = name.toLowerCase();
+      if (["connection", "content-length", "transfer-encoding", "content-encoding", "set-cookie"].includes(lower)) continue;
+      res.setHeader(name, value);
+    }
+    const cookies = upstream.headers.getSetCookie?.();
+    if (cookies?.length) res.setHeader("Set-Cookie", cookies.map(usePreviewHostCookie));
+    else {
+      const cookie = upstream.headers.get("set-cookie");
+      if (cookie) res.setHeader("Set-Cookie", usePreviewHostCookie(cookie));
+    }
+    // Safe diagnostics: record only the route and upstream status. Never log
+    // request bodies, credentials, cookies, tokens, or the Neon host.
+    console.info("Metro Eats Preview auth proxy response", {
+      method: req.method || "GET",
+      path: authPath,
+      status: upstream.status,
+      requestId: upstream.headers.get("x-neon-ret-request-id") || null
+    });
+    res.setHeader("X-Metro-Auth-Upstream-Status", String(upstream.status));
+    res.statusCode = upstream.status;
+    const payload = Buffer.from(await upstream.arrayBuffer());
+    return res.end(payload);
+  } catch (error) {
+    console.error("Metro Eats Preview auth proxy failed", error?.name || "UnknownError");
+    return res.status(502).json({ error: "The Preview authentication service could not be reached." });
+  }
+}
