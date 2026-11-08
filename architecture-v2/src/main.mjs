@@ -68,6 +68,34 @@ function reviewScoreButtons(score, itemId = "", scoreKey = "", label = "Overall 
 function reviewScaleGuide() {
   return `<div class="reviewScaleGuide"><span>1 · Poor</span><span>5 · Average</span><span>10 · Exceptional</span></div>`;
 }
+const PIZZA_REVIEW_DIMENSIONS = [
+  { key: "taste", label: "Taste", required: true, description: "Flavor and seasoning." },
+  { key: "crust", label: "Crust", required: true, description: "Texture, bake, and structure." },
+  { key: "sauce", label: "Sauce", description: "Flavor, amount, and balance." },
+  { key: "cheese", label: "Cheese", description: "Flavor, coverage, and melt." },
+  { key: "toppings", label: "Toppings", description: "Quality, amount, and distribution." },
+  { key: "value", label: "Value", required: true, description: "Quality for the price." }
+];
+function pizzaReviewScoreButtons(score, key, label, required = false) {
+  const selected = score == null ? 0 : Math.round(Number(score));
+  return `<div class="reviewScore pizzaReviewScore" role="group" aria-label="${escapeHtml(label)} rating from 1 to 10"${required ? ' aria-required="true"' : ""}>${Array.from({ length: 10 }, (_, index) => index + 1).map(value => `<button type="button" data-action="set-pizza-score" data-pizza-score-key="${escapeHtml(key)}" aria-label="${escapeHtml(label)}: ${value} out of 10" aria-pressed="${selected === value}" class="${selected === value ? "active" : ""}">${value}</button>`).join("")}</div>`;
+}
+function updatePizzaRatingSummary() {
+  const fields = PIZZA_REVIEW_DIMENSIONS.map(({ key }) => ({ key, value: Number(root.querySelector(`[data-pizza-score-key="${key}"].active`)?.textContent || 0) }));
+  const rated = fields.filter(({ value }) => value >= 1 && value <= 10);
+  const requiredCount = fields.filter(({ key, value }) => PIZZA_REVIEW_DIMENSIONS.find(item => item.key === key)?.required && value >= 1 && value <= 10).length;
+  const average = rated.length ? (rated.reduce((sum, item) => sum + item.value, 0) / rated.length).toFixed(1) : "—";
+  const overall = root.querySelector("#pizza-overall-value");
+  const count = root.querySelector("#pizza-rating-count");
+  const progress = root.querySelector("#pizza-rating-progress");
+  if (overall) overall.textContent = average;
+  if (count) count.textContent = `${requiredCount} of 3 core ratings complete · ${rated.length} of 6 categories rated`;
+  if (progress) progress.value = requiredCount;
+  fields.forEach(({ key, value }) => {
+    const label = root.querySelector(`[data-pizza-score-label="${key}"]`);
+    if (label) label.textContent = value >= 1 && value <= 10 ? `${value}/10` : "Select 1–10";
+  });
+}
 function reviewFoodItems(review) {
   if (Array.isArray(review?.foodItems)) return review.foodItems;
   const order = String(review?.order || review?.ordered || "").trim();
@@ -494,14 +522,25 @@ function renderFrozenPizzas() {
   const scores = pizza?.scores || {};
   const pizzaRows = [...(dataset.pizzas || [])].sort((a, b) => Number(b.scores?.overall ?? -1) - Number(a.scores?.overall ?? -1) || String(a.name).localeCompare(String(b.name))).map(item => {
     const itemScores = item.scores || {};
-    const scoreLine = [["Overall",itemScores.overall],["Taste",itemScores.taste],["Crust",itemScores.crust],["Sauce",itemScores.sauce],["Cheese",itemScores.cheese],["Toppings",itemScores.toppings],["Value",itemScores.value]].filter(([,value])=>value!=null).map(([label,value])=>`${label} ${Number(value).toFixed(1)}`).join(" · ");
-    return `<article class="readOnlyItem pizzaCard"><div class="recipeCardHeader"><strong>${escapeHtml([item.brand,item.name].filter(Boolean).join(" · "))}</strong><div class="recipeCardActions"><button class="btn" type="button" data-action="edit-pizza" data-pizza-id="${escapeHtml(item.id)}">Edit</button><button class="btn danger" type="button" data-action="delete-pizza" data-pizza-id="${escapeHtml(item.id)}">Delete</button></div></div><small>${escapeHtml([item.upc ? `UPC ${item.upc}` : "", item.price == null ? "" : `$${Number(item.price).toFixed(2)}`].filter(Boolean).join(" · ") || "No barcode or price saved")}</small>${scoreLine ? `<p class="pizzaScoreLine">${escapeHtml(scoreLine)}</p>` : `<p class="hint">No ratings saved yet.</p>`}${item.notes ? `<p>${escapeHtml(item.notes)}</p>` : ""}</article>`;
+    const scoreLine = PIZZA_REVIEW_DIMENSIONS.filter(({ key }) => itemScores[key] != null).map(({ key, label }) => `${label} ${Number(itemScores[key]).toFixed(1)}`).join(" · ");
+    const reviewedAt = item.reviewedAt || item.updatedAt || item.createdAt;
+    return `<article class="readOnlyItem pizzaCard"><div class="recipeCardHeader"><strong>${escapeHtml([item.brand,item.name].filter(Boolean).join(" · "))}</strong><div class="recipeCardActions"><button class="btn" type="button" data-action="edit-pizza" data-pizza-id="${escapeHtml(item.id)}">Edit review</button><button class="btn danger" type="button" data-action="delete-pizza" data-pizza-id="${escapeHtml(item.id)}">Delete</button></div></div><div class="pizzaSavedSummary"><strong>${itemScores.overall == null ? "—" : Number(itemScores.overall).toFixed(1)}<small>/10</small></strong><span>Overall rating</span></div><small>${escapeHtml([reviewedAt ? `Reviewed ${String(reviewedAt).slice(0, 10)}` : "", item.upc ? `UPC ${item.upc}` : "", item.price == null ? "" : `$${Number(item.price).toFixed(2)}`].filter(Boolean).join(" · ") || "No purchase details saved")}</small>${scoreLine ? `<p class="pizzaScoreLine">${escapeHtml(scoreLine)}</p>` : `<p class="hint">No category ratings saved yet.</p>`}${item.wouldBuyAgain ? `<p class="pizzaSavedBuyAgain"><strong>Would buy again:</strong> ${item.wouldBuyAgain === "yes" ? "Yes" : "No"}</p>` : ""}${item.notes ? `<p>${escapeHtml(item.notes)}</p>` : ""}</article>`;
   }).join("");
-  const scoreFields = [["taste","Taste"],["crust","Crust"],["sauce","Sauce"],["cheese","Cheese"],["toppings","Toppings"],["value","Value"],["overall","Overall score"]]
-    .map(([key,label])=>`<label>${label} (0–10)<input id="pizza-${key}" type="number" min="0" max="10" step=".1" inputmode="decimal" value="${scores[key] ?? ""}"></label>`).join("");
-  root.innerHTML = `<section class="hero"><div class="heroIn"><div class="eyebrow">Your freezer • Your ratings</div><h2>My Frozen Pizzas <span class="pizzaHeadingIcon" aria-hidden="true"><svg viewBox="0 0 64 64" focusable="false"><circle cx="32" cy="32" r="25"/><circle cx="32" cy="32" r="21"/><path d="M32 11 L49 46 Q32 39 15 46 Z"/><circle cx="29" cy="25" r="2.3"/><circle cx="35" cy="32" r="2.3"/><circle cx="29" cy="36" r="2.3"/></svg></span></h2><p>Save and compare your frozen-pizza ratings in your private Metro Eats account.</p></div></section>
-  <section class="content-panel"><div class="sectionTitle"><div><div class="sectionKicker">${(dataset.pizzas || []).length} saved</div><h3>Your frozen-pizza ratings</h3></div></div><div class="pizzaCollection">${pizzaRows || `<div class="empty">No frozen pizzas saved yet. Add one below to start your rankings.</div>`}</div></section>
-  <section class="content-panel pizzaEditorPanel"><div class="sectionTitle"><div><div class="sectionKicker">${pizza ? "Edit saved pizza" : "Your next review"}</div><h3>${pizza ? "Update a Frozen Pizza" : "Add a Frozen Pizza"}</h3></div></div><p class="hint">Enter a UPC by hand if you have it. Camera scanning and automatic product lookup are not connected yet.</p><div class="pizzaEditForm"><div class="restaurantEditorGrid"><label>UPC barcode<input id="pizza-upc" inputmode="numeric" autocomplete="off" maxlength="14" value="${escapeHtml(pizza?.upc || "")}" placeholder="8–14 digits"></label><label>Brand<input id="pizza-brand" maxlength="120" required value="${escapeHtml(pizza?.brand || "")}" placeholder="e.g. DiGiorno"></label></div><label>Pizza name / variety<input id="pizza-name" maxlength="180" required value="${escapeHtml(pizza?.name || "")}" placeholder="e.g. Rising Crust Pepperoni"></label><label>Purchase price<input id="pizza-price" type="number" inputmode="decimal" min="0" step=".01" value="${pizza?.price ?? ""}" placeholder="0.00"></label><div class="pizzaScoreGrid">${scoreFields}</div><label>Review notes<textarea id="pizza-notes" rows="3" maxlength="5000" placeholder="What stood out? Would you buy it again?">${escapeHtml(pizza?.notes || "")}</textarea></label><div class="recipeEditActions"><button class="btn" type="button" data-action="cancel-pizza-edit">${pizza ? "Cancel" : "Clear"}</button><button class="btn primary" type="button" data-action="save-pizza" data-pizza-id="${escapeHtml(pizza?.id || "")}">${pizza ? "Save Changes" : "Save Pizza & Ratings"}</button></div><p class="edit-status" role="status" aria-live="polite"></p></div><p class="hint">Pizza entries are private to your account and are included in automatic restore points.</p></section>`;
+  const scoreFields = PIZZA_REVIEW_DIMENSIONS.map(({ key, label, required, description }) => {
+    const score = scores[key] == null ? null : Math.round(Number(scores[key]));
+    return `<article class="pizzaRatingField"><div class="reviewQuestionHead"><b>${label}${required ? '<span class="requiredMark" aria-label="required">*</span>' : '<span class="optionalMark">Optional</span>'}</b><span data-pizza-score-label="${key}">${score >= 1 && score <= 10 ? `${score}/10` : "Select 1–10"}</span></div><p>${description}</p>${pizzaReviewScoreButtons(score, key, label, required)}</article>`;
+  }).join("");
+  const initialRatings = PIZZA_REVIEW_DIMENSIONS.map(({ key }) => Number(scores[key])).filter(value => Number.isFinite(value) && value >= 1 && value <= 10);
+  const initialOverall = initialRatings.length ? (initialRatings.reduce((sum, value) => sum + value, 0) / initialRatings.length).toFixed(1) : "—";
+  const now = new Date();
+  const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+  const reviewedAt = pizza?.reviewedAt || pizza?.updatedAt?.slice(0, 10) || today;
+  root.innerHTML = `<section class="hero"><div class="heroIn"><div class="eyebrow">Your freezer • Your ratings</div><h2>My Frozen Pizzas <span class="pizzaHeadingIcon" aria-hidden="true"><svg viewBox="0 0 64 64" focusable="false"><circle cx="32" cy="32" r="25"/><circle cx="32" cy="32" r="21"/><path d="M32 11 L49 46 Q32 39 15 46 Z"/><circle cx="29" cy="25" r="2.3"/><circle cx="35" cy="32" r="2.3"/><circle cx="29" cy="36" r="2.3"/></svg></span></h2><p>Give each frozen pizza the same clear 1–10 rating treatment as your restaurant reviews, then compare your overall scores.</p></div></section>
+  <section class="content-panel"><div class="sectionTitle"><div><div class="sectionKicker">${(dataset.pizzas || []).length} saved</div><h3>Your frozen-pizza reviews</h3></div></div><div class="pizzaCollection">${pizzaRows || `<div class="empty">No frozen pizzas saved yet. Add one below to start your ratings.</div>`}</div></section>
+  <section class="content-panel pizzaEditorPanel"><div class="sectionTitle"><div><div class="sectionKicker">${pizza ? "Edit saved review" : "Your next review"}</div><h3>${pizza ? "Update a Frozen Pizza Review" : "Review a Frozen Pizza"}</h3></div></div><p class="hint">Rate Taste, Crust, and Value to complete a review. Add Sauce, Cheese, or Toppings when they apply. Your overall score updates from the categories you rate.</p>
+    <div class="pizzaLiveSummary"><div class="pizzaLiveScore"><span>Overall rating</span><strong><span id="pizza-overall-value">${initialOverall}</span><small>/10</small></strong></div><div class="pizzaRatingProgress"><progress id="pizza-rating-progress" max="3" value="${PIZZA_REVIEW_DIMENSIONS.filter(({ key, required }) => required && Number(scores[key]) >= 1 && Number(scores[key]) <= 10).length}"></progress><p id="pizza-rating-count">${PIZZA_REVIEW_DIMENSIONS.filter(({ key, required }) => required && Number(scores[key]) >= 1 && Number(scores[key]) <= 10).length} of 3 core ratings complete · ${initialRatings.length} of 6 categories rated</p></div></div>
+    <div class="pizzaEditForm"><div class="restaurantEditorGrid"><label>Brand<input id="pizza-brand" maxlength="120" required value="${escapeHtml(pizza?.brand || "")}" placeholder="e.g. DiGiorno"></label><label>Pizza name / variety<input id="pizza-name" maxlength="180" required value="${escapeHtml(pizza?.name || "")}" placeholder="e.g. Rising Crust Pepperoni"></label></div><div class="restaurantEditorGrid"><label>UPC barcode <span class="optionalMark">Optional</span><input id="pizza-upc" inputmode="numeric" autocomplete="off" maxlength="14" value="${escapeHtml(pizza?.upc || "")}" placeholder="8–14 digits"></label><label>Review date<input id="pizza-reviewed-at" type="date" value="${escapeHtml(reviewedAt)}" required></label></div><label>Purchase price <span class="optionalMark">Optional</span><input id="pizza-price" type="number" inputmode="decimal" min="0" step=".01" value="${pizza?.price ?? ""}" placeholder="0.00"></label>
+    <div class="reviewScaleLegend pizzaScaleLegend"><span>1 · Poor</span><span>5 · Average</span><span>10 · Exceptional</span></div><div class="pizzaScoreGrid" aria-label="Frozen pizza ratings">${scoreFields}</div><fieldset class="pizzaBuyAgain"><legend>Would you buy this pizza again? <span class="optionalMark">Optional</span></legend><label><input type="radio" name="pizza-would-buy-again" value="yes"${pizza?.wouldBuyAgain === "yes" ? " checked" : ""}> Yes</label><label><input type="radio" name="pizza-would-buy-again" value="no"${pizza?.wouldBuyAgain === "no" ? " checked" : ""}> No</label></fieldset><label>Review notes <span class="optionalMark">Optional</span><textarea id="pizza-notes" rows="3" maxlength="5000" placeholder="What stood out about the taste, texture, or value?">${escapeHtml(pizza?.notes || "")}</textarea></label><div class="recipeEditActions"><button class="btn" type="button" data-action="cancel-pizza-edit">${pizza ? "Cancel" : "Clear"}</button><button class="btn primary" type="button" data-action="save-pizza" data-pizza-id="${escapeHtml(pizza?.id || "")}">${pizza ? "Save Review" : "Save Pizza Review"}</button></div><p class="edit-status" role="status" aria-live="polite"></p></div><p class="hint">Your private pizza reviews are included in automatic restore points.</p></section>`;
 }
 function formatRecipeDuration(value) {
   const raw = String(value ?? "").trim();
@@ -682,6 +721,16 @@ document.addEventListener("click", async event => {
     return;
   }
   if (actionButton.dataset.action === "remove-review-dish") { actionButton.closest("[data-review-dish-id]")?.remove(); updateReviewFoodAverage(); return; }
+  if (actionButton.dataset.action === "set-pizza-score") {
+    const group = actionButton.closest(".pizzaReviewScore");
+    group?.querySelectorAll("button").forEach(button => {
+      const selected = button === actionButton;
+      button.classList.toggle("active", selected);
+      button.setAttribute("aria-pressed", String(selected));
+    });
+    updatePizzaRatingSummary();
+    return;
+  }
   if (actionButton.dataset.action === "set-review-score") {
     const group = actionButton.closest(".reviewScore");
     group?.querySelectorAll("button").forEach(button => { const selected = button === actionButton; button.classList.toggle("active", selected); button.setAttribute("aria-pressed", String(selected)); });
@@ -887,27 +936,29 @@ document.addEventListener("click", async event => {
     const brand = document.querySelector("#pizza-brand")?.value.trim() || "";
     const name = document.querySelector("#pizza-name")?.value.trim() || "";
     const upc = document.querySelector("#pizza-upc")?.value.trim() || "";
+    const reviewedAt = document.querySelector("#pizza-reviewed-at")?.value || "";
     const priceRaw = document.querySelector("#pizza-price")?.value ?? "";
     const notes = document.querySelector("#pizza-notes")?.value.trim() || "";
-    const scores = Object.fromEntries(["taste", "crust", "sauce", "cheese", "toppings", "value", "overall"].map(key => {
-      const raw = document.querySelector(`#pizza-${key}`)?.value ?? "";
-      return [key, raw === "" ? null : Number(raw)];
+    const wouldBuyAgain = document.querySelector('[name="pizza-would-buy-again"]:checked')?.value || "";
+    const scores = Object.fromEntries(PIZZA_REVIEW_DIMENSIONS.map(({ key }) => {
+      const active = root.querySelector(`[data-pizza-score-key="${key}"].active`);
+      return [key, active ? Number(active.textContent) : null];
     }));
-    const componentScores = ["taste", "crust", "sauce", "cheese", "toppings", "value"].map(key => scores[key]).filter(value => value != null);
+    const componentScores = PIZZA_REVIEW_DIMENSIONS.map(({ key }) => scores[key]).filter(value => value != null);
     if (!brand || !name) { if (statusLine) statusLine.textContent = "Enter both a brand and a pizza name."; return; }
     if (upc && !/^\d{8,14}$/.test(upc)) { if (statusLine) statusLine.textContent = "Enter 8 to 14 UPC digits, or leave the barcode blank."; return; }
+    const parsedReviewDate = /^\d{4}-\d{2}-\d{2}$/.test(reviewedAt) ? new Date(`${reviewedAt}T00:00:00.000Z`) : null;
+    if (!parsedReviewDate || Number.isNaN(parsedReviewDate.getTime()) || parsedReviewDate.toISOString().slice(0, 10) !== reviewedAt) { if (statusLine) statusLine.textContent = "Choose a valid review date."; return; }
     const price = priceRaw === "" ? null : Number(priceRaw);
     if (price != null && (!Number.isFinite(price) || price < 0)) { if (statusLine) statusLine.textContent = "Enter a valid nonnegative price."; return; }
-    if (Object.values(scores).some(value => value != null && (!Number.isFinite(value) || value < 0 || value > 10))) { if (statusLine) statusLine.textContent = "Every rating must be between 0 and 10."; return; }
-    if (scores.overall == null) {
-      if (!componentScores.length) { if (statusLine) statusLine.textContent = "Enter at least one category rating or an overall rating."; return; }
-      scores.overall = Math.round(componentScores.reduce((sum, value) => sum + value, 0) / componentScores.length * 10) / 10;
-    }
+    if (componentScores.some(value => !Number.isInteger(value) || value < 1 || value > 10)) { if (statusLine) statusLine.textContent = "Choose a whole-number rating from 1 to 10 for each category."; return; }
+    if (!["taste", "crust", "value"].every(key => scores[key] >= 1 && scores[key] <= 10)) { if (statusLine) statusLine.textContent = "Rate Taste, Crust, and Value to complete your review."; return; }
+    scores.overall = Math.round(componentScores.reduce((sum, value) => sum + value, 0) / componentScores.length * 10) / 10;
     const id = actionButton.dataset.pizzaId;
     const existing = id ? cloudDataset.pizzas.find(item => String(item.id) === String(id)) : null;
     if (id && !existing) { if (statusLine) statusLine.textContent = "This pizza is no longer in your account. Reload before saving."; return; }
     const now = new Date().toISOString();
-    const pizza = { ...(existing || {}), id: existing?.id || `metro-pizza-${crypto.randomUUID()}`, upc, brand, name, price, scores, notes, createdAt: existing?.createdAt || now, updatedAt: now };
+    const pizza = { ...(existing || {}), id: existing?.id || `metro-pizza-${crypto.randomUUID()}`, upc, brand, name, price, scores, notes, reviewedAt, wouldBuyAgain, ratingScale: 10, createdAt: existing?.createdAt || now, updatedAt: now };
     const pizzas = existing
       ? cloudDataset.pizzas.map(item => String(item.id) === String(id) ? pizza : item)
       : [...(cloudDataset.pizzas || []), pizza];
