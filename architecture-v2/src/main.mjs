@@ -528,7 +528,7 @@ function renderFrozenPizzas() {
   }).join("");
   const scoreFields = PIZZA_REVIEW_DIMENSIONS.map(({ key, label, required, description }) => {
     const score = scores[key] == null ? null : Math.round(Number(scores[key]));
-    return `<article class="pizzaRatingField"><div class="reviewQuestionHead"><b>${label}${required ? '<span class="requiredMark" aria-label="required">*</span>' : '<span class="optionalMark">Optional</span>'}</b><span data-pizza-score-label="${key}">${score >= 1 && score <= 10 ? `${score}/10` : "Select 1–10"}</span></div><p>${description}</p>${pizzaReviewScoreButtons(score, key, label, required)}</article>`;
+    return `<article class="pizzaRatingField"><div class="reviewQuestionHead"><b>${label}${required ? '<span class="requiredMark" aria-label="required">*</span>' : ' <span class="optionalMark">Optional</span>'}</b><span data-pizza-score-label="${key}">${score >= 1 && score <= 10 ? `${score}/10` : "Select 1–10"}</span></div><p>${description}</p>${pizzaReviewScoreButtons(score, key, label, required)}</article>`;
   }).join("");
   const initialRatings = PIZZA_REVIEW_DIMENSIONS.map(({ key }) => Number(scores[key])).filter(value => Number.isFinite(value) && value >= 1 && value <= 10);
   const initialOverall = initialRatings.length ? (initialRatings.reduce((sum, value) => sum + value, 0) / initialRatings.length).toFixed(1) : "—";
