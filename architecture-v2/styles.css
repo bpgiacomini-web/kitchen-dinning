@@ -70,6 +70,10 @@
 
 /* Food Critic visit survey: clear scales, live progress, and complete saved results. */
 #app .reviewLiveSummary{display:grid;grid-template-columns:minmax(150px,220px) minmax(0,1fr);gap:18px;align-items:center;margin:4px 0 18px;padding:16px;border:1px solid #705328;border-radius:16px;background:linear-gradient(115deg,#211a10,#111719)}
+#app .reviewRestaurantSummary{display:grid;gap:8px;padding:14px;border:1px solid #315047;border-radius:14px;background:#111a18}
+#app .reviewRestaurantSummary>strong{font-size:18px}
+#app .reviewRestaurantSummary>span,#app .reviewRestaurantSummary>a{color:var(--muted);font-size:13px;overflow-wrap:anywhere}
+#app .reviewRestaurantSummary .btn{justify-self:start}
 #app .reviewLiveScore span{display:block;color:#d0b27c;font-size:12px;font-weight:800;letter-spacing:.06em;text-transform:uppercase}
 #app .reviewLiveScore strong{display:block;margin-top:3px;color:#f0c16f;font-size:42px;line-height:1;font-variant-numeric:tabular-nums}
 #app .reviewLiveScore strong small{margin-left:4px;color:#c6b798;font-size:15px;letter-spacing:0}

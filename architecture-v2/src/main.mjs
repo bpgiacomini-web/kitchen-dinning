@@ -19,6 +19,7 @@ let activeRestaurantId = null;
 let activePizzaId = null;
 let extractedRecipe = null;
 let newRestaurantPrefill = null;
+let restaurantDraft = null;
 let restaurantLookupTimer = null;
 let restaurantLookupRequest = 0;
 let restaurantLookupLocation = null;
@@ -95,18 +96,20 @@ function renderRestaurants(items) {
       .filter(([, value]) => value != null && value !== "")
       .map(([label, value]) => `<div><dt>${label}</dt><dd>${["Website", "Menu"].includes(label) && /^https?:\/\//i.test(String(value)) ? `<a href="${escapeHtml(value)}" target="_blank" rel="noopener noreferrer">${escapeHtml(value)}</a>` : escapeHtml(value)}</dd></div>`).join("");
     const bestDishes = topReviewFoods(restaurant);
-    return `<article class="readOnlyItem restaurantCard" data-search="${escapeHtml(JSON.stringify(restaurant).toLowerCase())}"><div class="recipeCardHeader"><strong>${escapeHtml(restaurant.name)}</strong><div class="recipeCardActions"><button class="btn" type="button" data-action="edit-restaurant" data-restaurant-id="${escapeHtml(restaurant.id)}">Edit</button><button class="btn primary" type="button" data-action="add-restaurant-review" data-restaurant-id="${escapeHtml(restaurant.id)}">＋ Rate a Visit (1–10)</button><button class="btn danger" type="button" data-action="delete-restaurant" data-restaurant-id="${escapeHtml(restaurant.id)}">Delete</button></div></div><small>${escapeHtml([restaurant.cuisine, restaurant.address, rating == null ? null : `Rating ${rating.toFixed(1)}/10`, restaurant.favorite ? "Favorite" : "", `${reviews.length} ${reviews.length === 1 ? "visit" : "visits"}`].filter(Boolean).join(" · ") || "No additional details saved")}</small>${reviews.length === 0 ? `<p class="hint restaurantReviewPrompt">No visit ratings yet. Add a visit to rate your experience, service, value, and dishes from 1 to 10.</p>` : ""}${bestDishes.length ? `<p class="restaurantTopDishes"><strong>Top rated dishes:</strong> ${bestDishes.map(item => `${escapeHtml(item.name)} ${escapeHtml(item.rating)}/10`).join(" · ")}</p>` : ""}<details><summary>Restaurant details and visit history</summary><section class="restaurantDetailBlock"><h4>Restaurant information</h4><dl>${details || `<div><dt>Details</dt><dd>No additional details saved.</dd></div>`}</dl></section><section class="restaurantDetailBlock"><h4>Visit history</h4>${reviewRows || `<p class="hint">No visits or reviews yet. Add a visit to start your personal history.</p>`}</section></details></article>`;
+    return `<article class="readOnlyItem restaurantCard" data-search="${escapeHtml(JSON.stringify(restaurant).toLowerCase())}"><div class="recipeCardHeader"><strong>${escapeHtml(restaurant.name)}</strong><div class="recipeCardActions"><button class="btn" type="button" data-action="toggle-restaurant-favorite" data-restaurant-id="${escapeHtml(restaurant.id)}" aria-pressed="${restaurant.favorite ? "true" : "false"}">${restaurant.favorite ? "★ Favorite" : "☆ Add to Favorites"}</button><button class="btn" type="button" data-action="edit-restaurant" data-restaurant-id="${escapeHtml(restaurant.id)}">Edit</button><button class="btn primary" type="button" data-action="add-restaurant-review" data-restaurant-id="${escapeHtml(restaurant.id)}">＋ Rate a Visit (1–10)</button><button class="btn danger" type="button" data-action="delete-restaurant" data-restaurant-id="${escapeHtml(restaurant.id)}">Delete</button></div></div><small>${escapeHtml([restaurant.cuisine, restaurant.address, rating == null ? null : `Rating ${rating.toFixed(1)}/10`, restaurant.favorite ? "Favorite" : "", `${reviews.length} ${reviews.length === 1 ? "visit" : "visits"}`].filter(Boolean).join(" · ") || "No additional details saved")}</small>${reviews.length === 0 ? `<p class="hint restaurantReviewPrompt">No visit ratings yet. Add a visit to rate your experience, service, value, and dishes from 1 to 10.</p>` : ""}${bestDishes.length ? `<p class="restaurantTopDishes"><strong>Top rated dishes:</strong> ${bestDishes.map(item => `${escapeHtml(item.name)} ${escapeHtml(item.rating)}/10`).join(" · ")}</p>` : ""}<details><summary>Restaurant details and visit history</summary><section class="restaurantDetailBlock"><h4>Restaurant information</h4><dl>${details || `<div><dt>Details</dt><dd>No additional details saved.</dd></div>`}</dl></section><section class="restaurantDetailBlock"><h4>Visit history</h4>${reviewRows || `<p class="hint">No visits or reviews yet. Add a visit to start your personal history.</p>`}</section></details><p class="edit-status" role="status" aria-live="polite"></p></article>`;
   }).join("");
-  root.innerHTML = `<section class="hero"><div class="heroIn"><div class="eyebrow">Your dining journal</div><h2>My Restaurants</h2><p>Keep restaurant details and visit-by-visit food critic reviews together in your private Metro Eats account.</p></div></section><section class="content-panel"><div class="sectionTitle"><div><div class="sectionKicker">${items.length} saved</div><h3>Your restaurants &amp; reviews</h3></div><div class="diningActions"><button class="btn" type="button" data-action="open-rankings">★ My Rankings</button><button class="btn primary" type="button" data-action="new-restaurant">＋ Add a Restaurant</button></div></div><section class="nearbyPanel"><div><h3>Restaurants Around Me</h3><p class="hint">Find Nearby asks your browser for precise location. If unavailable, Metro Eats uses Vercel’s approximate area for this search. Location is not saved.</p></div><button class="btn" type="button" data-action="search-nearby">⌖ Find Nearby</button><p class="edit-status" id="nearby-status" role="status" aria-live="polite"></p><div class="nearbyResults" id="nearby-results"></div></section><label class="restaurantSearchLabel" for="restaurant-search">Search your restaurants</label><input id="restaurant-search" class="restaurantSearch" type="search" placeholder="Name, cuisine, address, dish, or note" autocomplete="off"><p class="hint" id="restaurant-search-count" aria-live="polite">Showing ${items.length} ${items.length === 1 ? "restaurant" : "restaurants"}.</p><div class="readOnlyList" id="restaurant-list">${rows || `<div class="empty">No restaurants saved yet. Add one to start your private dining journal.</div>`}</div><p class="hint">Restaurant search, critic scores, rated dishes, and every visit review are saved to your signed-in Preview account. Existing shared baseline records stay unchanged.</p></section>`;
+  root.innerHTML = `<section class="hero"><div class="heroIn"><div class="eyebrow">Your dining journal</div><h2>My Restaurants</h2><p>Keep restaurant details and visit-by-visit food critic reviews together in your private Metro Eats account.</p></div></section><section class="content-panel"><div class="sectionTitle"><div><div class="sectionKicker">${items.length} saved</div><h3>Your restaurants &amp; reviews</h3></div><div class="diningActions"><button class="btn" type="button" data-action="open-rankings">★ My Rankings</button><button class="btn primary" type="button" data-action="new-restaurant">＋ Add a Restaurant</button></div></div><section class="nearbyPanel"><div><h3>Restaurants Around Me</h3><p class="hint">Nearby places load automatically when you open this page. Location is used only for this search, never saved. If device location is unavailable, Metro Eats uses an approximate area.</p></div><p class="edit-status" id="nearby-status" role="status" aria-live="polite">Nearby restaurant search will start automatically.</p><div class="nearbyResults" id="nearby-results"></div></section><label class="restaurantSearchLabel" for="restaurant-search">Search your restaurants</label><input id="restaurant-search" class="restaurantSearch" type="search" placeholder="Name, cuisine, address, dish, or note" autocomplete="off"><p class="hint" id="restaurant-search-count" aria-live="polite">Showing ${items.length} ${items.length === 1 ? "restaurant" : "restaurants"}.</p><div class="readOnlyList" id="restaurant-list">${rows || `<div class="empty">No restaurants saved yet. Add one to start your private dining journal.</div>`}</div><p class="hint">Restaurant search, critic scores, rated dishes, and every visit review are saved to your signed-in Preview account. Existing shared baseline records stay unchanged.</p></section>`;
 }
 function renderRestaurantEditor(restaurantId = null) {
-  const restaurant = restaurantId ? cloudDataset.restaurants.find(item => String(item.id) === String(restaurantId)) : newRestaurantPrefill;
+  const restaurant = restaurantId ? cloudDataset.restaurants.find(item => String(item.id) === String(restaurantId)) : restaurantDraft || newRestaurantPrefill;
   if (restaurantId && !restaurant) { activeView = "dining"; render(); return; }
-  root.innerHTML = `<section class="hero"><div class="heroIn"><div class="eyebrow">Your dining journal</div><h2>${restaurantId ? "Edit Restaurant" : "Add a Restaurant"}</h2><p>Save restaurant details once, then add a separate review for each visit.</p></div></section><section class="content-panel restaurantEditorPage"><div class="restaurantEditPanel"><label>Restaurant name<input id="restaurant-name" required maxlength="180" value="${escapeHtml(restaurant?.name || "")}" placeholder="Start typing a restaurant name" autocomplete="organization"></label><div class="restaurantLookupTools"><button class="btn" type="button" data-action="enable-restaurant-location">⌖ Use my location for nearby matches</button><p class="hint">Name search prefers your precise browser location when allowed. Otherwise, Vercel uses an approximate area. Add a city to narrow the search. Search location is not saved.</p></div><div id="restaurant-lookup-status" role="status" aria-live="polite" class="restaurantLookupStatus"></div><div id="restaurant-lookup-results" class="restaurantLookupResults"></div><div class="restaurantEditorGrid"><label>Cuisine<input id="restaurant-cuisine" maxlength="120" value="${escapeHtml(restaurant?.cuisine || restaurant?.type || "")}" placeholder="e.g. Italian"></label><label>Website<input id="restaurant-website" type="url" maxlength="500" value="${escapeHtml(restaurant?.website || "")}" placeholder="https://"></label></div><label>Menu link<input id="restaurant-menu" type="url" maxlength="500" value="${escapeHtml(restaurant?.menuUrl || "")}" placeholder="https://"></label><label>Address<input id="restaurant-address" maxlength="300" value="${escapeHtml(restaurant?.address || "")}" placeholder="Street, city"></label><label>Notes<textarea id="restaurant-notes" rows="3" maxlength="5000" placeholder="Anything you want to remember">${escapeHtml(restaurant?.notes || "")}</textarea></label><label class="inlineCheck"><input id="restaurant-favorite" type="checkbox"${restaurant?.favorite ? " checked" : ""}> Favorite</label><div class="recipeEditActions"><button class="btn" type="button" data-action="cancel-restaurant-edit">Cancel</button><button class="btn primary" type="button" data-action="save-restaurant" data-restaurant-id="${escapeHtml(restaurant?.id || "")}">${restaurantId ? "Save Changes" : "Save Restaurant"}</button></div><p class="edit-status" role="status" aria-live="polite"></p></div></section>`;
+  root.innerHTML = `<section class="hero"><div class="heroIn"><div class="eyebrow">Your dining journal</div><h2>${restaurantId ? "Edit Restaurant" : "Add a Restaurant"}</h2><p>${restaurantId ? "Update the details or continue straight to a new visit review." : "Choose the restaurant, then complete its details and visit review in one flow. The record is saved when the review is finished."}</p></div></section><section class="content-panel restaurantEditorPage"><div class="restaurantEditPanel"><label>Restaurant name<input id="restaurant-name" required maxlength="180" value="${escapeHtml(restaurant?.name || "")}" placeholder="Start typing a restaurant name" autocomplete="organization"></label><div class="restaurantLookupTools"><p class="hint">Nearby matches use your device location automatically when your browser allows it. Location is never saved. Restaurant websites fill in when the map listing has one.</p></div><div id="restaurant-lookup-status" role="status" aria-live="polite" class="restaurantLookupStatus"></div><div id="restaurant-lookup-results" class="restaurantLookupResults"></div><div class="restaurantEditorGrid"><label>Cuisine<input id="restaurant-cuisine" maxlength="120" value="${escapeHtml(restaurant?.cuisine || restaurant?.type || "")}" placeholder="e.g. Italian"></label><label>Website<input id="restaurant-website" type="url" maxlength="500" value="${escapeHtml(restaurant?.website || "")}" placeholder="Filled automatically when available"></label></div><label>Menu link<input id="restaurant-menu" type="url" maxlength="500" value="${escapeHtml(restaurant?.menuUrl || "")}" placeholder="https://"></label><label>Address<input id="restaurant-address" maxlength="300" value="${escapeHtml(restaurant?.address || "")}" placeholder="Street, city"></label><label>Notes<textarea id="restaurant-notes" rows="3" maxlength="5000" placeholder="Anything you want to remember">${escapeHtml(restaurant?.notes || "")}</textarea></label><label class="inlineCheck"><input id="restaurant-favorite" type="checkbox"${restaurant?.favorite ? " checked" : ""}> Favorite</label><div class="recipeEditActions"><button class="btn" type="button" data-action="cancel-restaurant-edit">Cancel</button><button class="btn" type="button" data-action="save-restaurant" data-restaurant-id="${escapeHtml(restaurant?.id || "")}">${restaurantId ? "Save Details Only" : "Save Without Review"}</button><button class="btn primary" type="button" data-action="start-restaurant-review" data-restaurant-id="${escapeHtml(restaurant?.id || "")}">Continue to Visit Review →</button></div><p class="edit-status" role="status" aria-live="polite"></p></div></section>`;
+  if (!restaurantLookupLocation || restaurantLookupLocation.source !== "device") requestDeviceRestaurantLocation();
 }
 function renderRestaurantReviewForm(restaurantId) {
-  const restaurant = cloudDataset.restaurants.find(item => String(item.id) === String(restaurantId));
-  if (!restaurant) { activeView = "dining"; render(); return; }
+  const savedRestaurant = restaurantId ? cloudDataset.restaurants.find(item => String(item.id) === String(restaurantId)) : null;
+  const restaurant = { ...(savedRestaurant || {}), ...(restaurantDraft || {}) };
+  if (!restaurantId && !restaurantDraft || restaurantId && !savedRestaurant) { activeView = "dining"; render(); return; }
   const now = new Date();
   const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
   const categories = RESTAURANT_REVIEW_CATEGORIES.map(category => `<details class="reviewCategory"${category === "Entrées" ? " open" : ""}><summary>${category}</summary><div class="reviewCategoryBody" data-review-category="${category}"><p class="hint">Add the dishes or drinks you tried in this category.</p><div class="reviewDishList"></div><button class="btn" type="button" data-action="add-review-dish" data-category="${category}">＋ Add ${category === "Drinks" ? "a drink" : "a dish"}</button></div></details>`).join("");
@@ -114,9 +117,10 @@ function renderRestaurantReviewForm(restaurantId) {
   const coreRatings = coreQuestions.map(([key, label]) => `<div class="reviewQuestion"><div class="reviewQuestionHead"><b>${label}<span class="requiredMark" aria-label="required">*</span></b><span data-score-label="${key}">Select 1–10</span></div>${reviewScoreButtons(0, "", key, label, true)}</div>`).join("");
   const optionalRatings = RESTAURANT_REVIEW_DIMENSIONS.map(({ key, label, description }) => `<div class="reviewQuestion"><div class="reviewQuestionHead"><b>${escapeHtml(label)}</b><span data-score-label="${key}">Optional</span></div><p class="hint">${escapeHtml(description)}</p>${reviewScoreButtons(0, "", key, label)}</div>`).join("");
   root.innerHTML = `
-    <section class="hero"><div class="heroIn"><div class="eyebrow">Your dining journal · Food Critic</div><h2>Rate a Visit</h2><p>Review your visit to <strong>${escapeHtml(restaurant.name)}</strong>. Use the ten point scale, rate the dishes you tried, and keep notes for this visit.</p></div></section>
+    <section class="hero"><div class="heroIn"><div class="eyebrow">Your dining journal · Food Critic</div><h2>Rate a Visit</h2><p>Review your visit to <strong>${escapeHtml(restaurant.name)}</strong>. Your restaurant details and review are saved together when you finish.</p></div></section>
     <section class="content-panel restaurantEditorPage">
       <div class="restaurantEditPanel">
+        <section class="reviewRestaurantSummary"><strong>${escapeHtml(restaurant.name)}</strong><span>${escapeHtml([restaurant.cuisine, restaurant.address].filter(Boolean).join(" · ") || "Restaurant details added" )}</span>${restaurant.website ? `<a href="${escapeHtml(restaurant.website)}" target="_blank" rel="noopener noreferrer">${escapeHtml(restaurant.website)}</a>` : ""}<label class="inlineCheck"><input id="review-restaurant-favorite" type="checkbox"${restaurant.favorite ? " checked" : ""}> Mark as a favorite</label><button class="btn" type="button" data-action="back-to-restaurant-details">← Back to restaurant details</button></section>
         <section class="reviewLiveSummary" aria-labelledby="review-live-title">
           <div class="reviewLiveScore"><span id="review-live-title">Current Food Critic score</span><strong id="review-overall-average">—<small>/10</small></strong></div>
           <div class="reviewProgress"><progress id="review-completion-progress" max="5" value="0" aria-label="Review completion"></progress><p id="review-completion" role="status" aria-live="polite">0 of 5 required parts complete. Notes are optional.</p></div>
@@ -134,7 +138,7 @@ function renderRestaurantReviewForm(restaurantId) {
         <label>What else did you order? <span class="optionalMark">Optional</span><input id="review-order" maxlength="500" placeholder="For example, shared plates or drinks"></label>
         <label>Would you order it again? <span class="requiredMark" aria-label="required">*</span><select id="review-order-again" required><option value="">Choose Yes or No</option><option>Yes</option><option>No</option></select></label>
         <label>Visit notes <span class="optionalMark">Optional</span><textarea id="review-notes" rows="4" maxlength="5000" placeholder="What stood out about this visit?"></textarea></label>
-        <div class="recipeEditActions"><button class="btn" type="button" data-action="cancel-restaurant-edit">Cancel</button><button class="btn primary" type="button" data-action="save-restaurant-review" data-restaurant-id="${escapeHtml(restaurant.id)}">Save Visit Review</button></div>
+        <div class="recipeEditActions"><button class="btn" type="button" data-action="back-to-restaurant-details">Back to details</button><button class="btn primary" type="button" data-action="save-restaurant-review" data-restaurant-id="${escapeHtml(restaurantId || "")}">${restaurantId ? "Save Visit Review" : "Save Restaurant & Visit Review"}</button></div>
         <p class="edit-status" role="status" aria-live="polite"></p>
       </div>
     </section>`;
@@ -178,13 +182,6 @@ async function searchNearbyRestaurants() {
     search({ lat: position.coords.latitude, lon: position.coords.longitude });
   }, () => { search(null); }, { enableHighAccuracy: false, timeout: 8000, maximumAge: 300000 });
 }
-function restaurantLocationError(error) {
-  if (!navigator.geolocation) return "This browser does not provide location access here. Restaurant name search still works without it.";
-  if (error?.code === 1) return "Chrome blocked location for this site. In Chrome, open the site controls beside the address, set Location to Allow, reload, then try again. Name search works without location.";
-  if (error?.code === 2) return "Your device could not determine its location. Check that device location services are on, or continue with name search.";
-  if (error?.code === 3) return "Device location timed out. Metro Eats can still use the approximate network area for a search.";
-  return "Location is unavailable right now. You can continue with name search.";
-}
 function renderRestaurantLookupResults(results, message = "") {
   const statusLine = root.querySelector("#restaurant-lookup-status");
   const container = root.querySelector("#restaurant-lookup-results");
@@ -192,7 +189,7 @@ function renderRestaurantLookupResults(results, message = "") {
   restaurantLookupResults = results;
   container.innerHTML = "";
   if (message) { statusLine.textContent = message; return; }
-  if (!results.length) { statusLine.textContent = restaurantLookupLocation ? "No restaurant matches found nearby. Add a city or state to the search, or fill in the details manually." : "Could not determine a nearby area. Include the city and state with the restaurant name, or use the location button."; return; }
+  if (!results.length) { statusLine.textContent = restaurantLookupLocation ? "No restaurant matches found nearby. Add a city or state to the search, or fill in the details manually." : "Could not determine a nearby area. Include the city and state with the restaurant name, or fill in the details manually."; return; }
   statusLine.textContent = `Choose the right match to fill available details${restaurantLookupLocation ? "; nearby matches are listed first" : ""}.`;
   container.innerHTML = results.map((place, index) => `<button class="restaurantLookupResult" type="button" data-action="select-restaurant-lookup" data-result-index="${index}"><strong>${escapeHtml(place.name)}</strong><small>${escapeHtml([place.cuisine, place.address, place.distance == null ? "" : place.distance < 1609 ? `${Math.round(place.distance * 3.28084)} ft away` : `${(place.distance / 1609.34).toFixed(1)} mi away`].filter(Boolean).join(" · ") || "Address not listed")}</small></button>`).join("");
 }
@@ -218,6 +215,23 @@ function searchRestaurantName(query) {
       if (requestId === restaurantLookupRequest) renderRestaurantLookupResults([], "Online restaurant search is unavailable right now. You can still enter the details manually.");
     } finally { clearTimeout(timeout); }
   }, 300);
+}
+function requestDeviceRestaurantLocation() {
+  if (!navigator.geolocation) return;
+  const statusLine = root.querySelector("#restaurant-lookup-status");
+  if (statusLine && !restaurantLookupLocation) statusLine.textContent = "Finding nearby matches using your device location…";
+  navigator.geolocation.getCurrentPosition(position => {
+    restaurantLookupLocation = { lat: position.coords.latitude, lon: position.coords.longitude, source: "device" };
+    const query = root.querySelector("#restaurant-name")?.value || "";
+    if (query.trim().length >= 2) searchRestaurantName(query);
+    else if (statusLine?.isConnected) statusLine.textContent = "Nearby matching is ready. Start typing a restaurant name.";
+  }, error => {
+    if (statusLine?.isConnected && !root.querySelector("#restaurant-lookup-results")?.childElementCount) {
+      statusLine.textContent = error?.code === 1
+        ? "Device location is blocked. Name search will use an approximate area when available."
+        : "Device location is unavailable. Name search will use an approximate area when available.";
+    }
+  }, { enableHighAccuracy: false, timeout: 12000, maximumAge: 300000 });
 }
 function updateReviewFoodAverage() {
   const dishes = [...root.querySelectorAll("[data-review-dish-id]")];
@@ -552,6 +566,7 @@ document.addEventListener("click", async event => {
     event.preventDefault();
     activeView = viewButton.dataset.view;
     render();
+    if (activeView === "dining") searchNearbyRestaurants();
     // Every explicit section navigation starts at the top of the new page.
     window.scrollTo({ top: 0, left: 0, behavior: "instant" });
     root.focus({ preventScroll: true });
@@ -560,17 +575,20 @@ document.addEventListener("click", async event => {
   const actionButton = event.target.closest("[data-action]");
   if (!actionButton) return;
   if (actionButton.dataset.action === "open-rankings") { activeView = "restaurant-rankings"; render(); window.scrollTo({ top: 0, left: 0, behavior: "instant" }); return; }
-  if (actionButton.dataset.action === "search-nearby") { searchNearbyRestaurants(); return; }
-  if (actionButton.dataset.action === "enable-restaurant-location") {
-    const statusLine = root.querySelector("#restaurant-lookup-status");
-    if (!navigator.geolocation) { if (statusLine) statusLine.textContent = restaurantLocationError(); return; }
-    if (statusLine) statusLine.textContent = "Requesting your location to prioritize nearby restaurant matches…";
-    navigator.geolocation.getCurrentPosition(position => {
-      restaurantLookupLocation = { lat: position.coords.latitude, lon: position.coords.longitude };
-      const query = root.querySelector("#restaurant-name")?.value || "";
-      if (query.trim().length >= 2) searchRestaurantName(query);
-      else if (statusLine) statusLine.textContent = "Location ready. Start typing a restaurant name to find nearby matches.";
-    }, error => { if (statusLine) statusLine.textContent = restaurantLocationError(error); }, { enableHighAccuracy: false, timeout: 12000, maximumAge: 300000 });
+  if (actionButton.dataset.action === "toggle-restaurant-favorite") {
+    const id = actionButton.dataset.restaurantId;
+    const restaurant = cloudDataset.restaurants.find(item => String(item.id) === String(id));
+    if (!restaurant) return;
+    actionButton.disabled = true;
+    const updated = { ...restaurant, favorite: !restaurant.favorite, updatedAt: new Date().toISOString() };
+    try {
+      await saveCloudDataset({ ...cloudDataset, restaurants: cloudDataset.restaurants.map(item => String(item.id) === String(id) ? updated : item) });
+      render();
+    } catch (error) {
+      actionButton.disabled = false;
+      const statusLine = actionButton.closest(".restaurantCard")?.querySelector(".edit-status");
+      if (statusLine) statusLine.textContent = error?.message || "Favorite could not be saved.";
+    }
     return;
   }
   if (actionButton.dataset.action === "select-restaurant-lookup") {
@@ -578,7 +596,8 @@ document.addEventListener("click", async event => {
     if (!place) return;
     const fields = [["restaurant-name", place.name], ["restaurant-cuisine", place.cuisine], ["restaurant-address", place.address], ["restaurant-website", place.website]];
     fields.forEach(([id, value]) => { const field = root.querySelector(`#${id}`); if (field && value) field.value = value; });
-    if (place.lat != null && place.lon != null) restaurantLookupLocation = { lat: place.lat, lon: place.lon };
+    restaurantLookupRequest += 1;
+    clearTimeout(restaurantLookupTimer);
     restaurantLookupResults = [];
     root.querySelector("#restaurant-lookup-results")?.replaceChildren();
     const statusLine = root.querySelector("#restaurant-lookup-status");
@@ -623,6 +642,7 @@ document.addEventListener("click", async event => {
   }
   if (actionButton.dataset.action === "new-restaurant") {
     newRestaurantPrefill = null;
+    restaurantDraft = null;
     activeRestaurantId = null;
     activeView = "restaurant-edit";
     render();
@@ -630,6 +650,8 @@ document.addEventListener("click", async event => {
     return;
   }
   if (actionButton.dataset.action === "edit-restaurant") {
+    restaurantDraft = null;
+    newRestaurantPrefill = null;
     activeRestaurantId = actionButton.dataset.restaurantId;
     activeView = "restaurant-edit";
     render();
@@ -637,8 +659,39 @@ document.addEventListener("click", async event => {
     return;
   }
   if (actionButton.dataset.action === "add-restaurant-review") {
+    restaurantDraft = null;
     activeRestaurantId = actionButton.dataset.restaurantId;
     activeView = "restaurant-review";
+    render();
+    window.scrollTo({ top: 0, left: 0, behavior: "instant" });
+    return;
+  }
+  if (actionButton.dataset.action === "start-restaurant-review") {
+    const statusLine = actionButton.closest(".restaurantEditPanel")?.querySelector(".edit-status");
+    const id = actionButton.dataset.restaurantId;
+    const existing = id ? cloudDataset.restaurants.find(item => String(item.id) === String(id)) : null;
+    const name = root.querySelector("#restaurant-name")?.value.trim() || "";
+    const cuisine = root.querySelector("#restaurant-cuisine")?.value.trim() || "";
+    const address = root.querySelector("#restaurant-address")?.value.trim() || "";
+    const website = root.querySelector("#restaurant-website")?.value.trim() || "";
+    const menuUrl = root.querySelector("#restaurant-menu")?.value.trim() || "";
+    const notes = root.querySelector("#restaurant-notes")?.value.trim() || "";
+    const favorite = Boolean(root.querySelector("#restaurant-favorite")?.checked);
+    if (!name) { if (statusLine) statusLine.textContent = "Enter a restaurant name before continuing to the visit review."; return; }
+    for (const [label, value] of [["website", website], ["menu", menuUrl]]) if (value) {
+      try { const url = new URL(value); if (!/^https?:$/.test(url.protocol)) throw new Error(); }
+      catch { if (statusLine) statusLine.textContent = `Enter a complete http:// or https:// ${label} address.`; return; }
+    }
+    const now = new Date().toISOString();
+    restaurantDraft = { ...(existing || newRestaurantPrefill || {}), id: existing?.id, name, cuisine, address, website, menuUrl, notes, favorite, ratingScale: 10, createdAt: existing?.createdAt || now, updatedAt: now };
+    activeRestaurantId = existing?.id || null;
+    activeView = "restaurant-review";
+    render();
+    window.scrollTo({ top: 0, left: 0, behavior: "instant" });
+    return;
+  }
+  if (actionButton.dataset.action === "back-to-restaurant-details") {
+    activeView = "restaurant-edit";
     render();
     window.scrollTo({ top: 0, left: 0, behavior: "instant" });
     return;
@@ -646,6 +699,7 @@ document.addEventListener("click", async event => {
   if (actionButton.dataset.action === "cancel-restaurant-edit") {
     activeRestaurantId = null;
     newRestaurantPrefill = null;
+    restaurantDraft = null;
     activeView = "dining";
     render();
     return;
@@ -676,6 +730,8 @@ document.addEventListener("click", async event => {
     try {
       await saveCloudDataset({ ...cloudDataset, restaurants });
       activeRestaurantId = null;
+      restaurantDraft = null;
+      newRestaurantPrefill = null;
       activeView = "dining";
       render();
       window.scrollTo({ top: 0, left: 0, behavior: "instant" });
@@ -688,8 +744,9 @@ document.addEventListener("click", async event => {
   if (actionButton.dataset.action === "save-restaurant-review") {
     const statusLine = actionButton.closest(".restaurantEditPanel")?.querySelector(".edit-status");
     const id = actionButton.dataset.restaurantId;
-    const restaurant = cloudDataset.restaurants.find(item => String(item.id) === String(id));
-    if (!restaurant) { if (statusLine) statusLine.textContent = "This restaurant is no longer in your account. Reload before saving."; return; }
+    const savedRestaurant = id ? cloudDataset.restaurants.find(item => String(item.id) === String(id)) : null;
+    const restaurant = { ...(savedRestaurant || {}), ...(restaurantDraft || {}) };
+    if (!restaurant.name || id && !savedRestaurant || !id && !restaurantDraft) { if (statusLine) statusLine.textContent = "This restaurant is no longer available. Go back and review its details before saving."; return; }
     const visitedAt = document.querySelector("#review-visited-at")?.value || "";
     const score = key => Number(root.querySelector(`[data-score-key="${key}"]`)?.closest(".reviewScore")?.querySelector("button.active")?.textContent || 0);
     const experience = score("overall");
@@ -712,11 +769,16 @@ document.addEventListener("click", async event => {
     const reviewHistory = [...(Array.isArray(restaurant.reviewHistory) ? restaurant.reviewHistory : []), review];
     const previousScores = restaurantReviewRecords(restaurant).map(item => reviewRating(item, "overall") ?? reviewRating(item, "rating")).filter(value => Number.isFinite(Number(value))).map(Number);
     const allScores = [...previousScores, review.overall];
-    const updated = { ...restaurant, reviewHistory, survey: review, rating: allScores.reduce((sum, value) => sum + value, 0) / allScores.length, ratingScale: 10, updatedAt: now };
+    const updated = { ...restaurant, id: savedRestaurant?.id || `metro-restaurant-${crypto.randomUUID()}`, favorite: Boolean(root.querySelector("#review-restaurant-favorite")?.checked), reviewHistory, survey: review, rating: allScores.reduce((sum, value) => sum + value, 0) / allScores.length, ratingScale: 10, updatedAt: now };
+    const restaurants = savedRestaurant
+      ? cloudDataset.restaurants.map(item => String(item.id) === String(id) ? updated : item)
+      : [...cloudDataset.restaurants, updated];
     actionButton.disabled = true;
     try {
-      await saveCloudDataset({ ...cloudDataset, restaurants: cloudDataset.restaurants.map(item => String(item.id) === String(id) ? updated : item) });
+      await saveCloudDataset({ ...cloudDataset, restaurants });
       activeRestaurantId = null;
+      restaurantDraft = null;
+      newRestaurantPrefill = null;
       activeView = "dining";
       render();
       window.scrollTo({ top: 0, left: 0, behavior: "instant" });
