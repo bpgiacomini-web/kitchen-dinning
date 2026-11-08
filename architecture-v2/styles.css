@@ -126,6 +126,12 @@
 #app .pizzaBuyAgain input{width:18px;height:18px;margin:0;accent-color:#d6a85b}
 #app .pizzaBuyAgain{color:#cbd0d5}
 #app .pizzaBuyAgain strong{color:#f0eee8}
+#app .pizzaUpcRow{align-items:end}
+#app .pizzaUpcRow>label{min-width:0}
+#app .pizzaUpcRow>[data-action="lookup-pizza-upc"]{min-height:48px;white-space:nowrap}
+#app .pizzaUpcStatus{margin:0;min-height:0;color:#9bc8b6}
+#app .pizzaUpcHint{margin:-8px 0 0}
+@media(max-width:620px){#app .pizzaUpcRow{grid-template-columns:minmax(0,1fr) auto}#app .pizzaUpcRow>[data-action="lookup-pizza-upc"]{padding-inline:12px}}
 #app .pizzaSavedSummary{display:flex;align-items:baseline;gap:7px;margin-top:12px}
 #app .pizzaSavedSummary>strong{color:#f0c16f;font-size:32px;line-height:1;font-variant-numeric:tabular-nums}
 #app .pizzaSavedSummary>strong small{margin-left:3px;color:#c6b798;font-size:13px}

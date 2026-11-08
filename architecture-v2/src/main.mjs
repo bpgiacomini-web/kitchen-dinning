@@ -539,7 +539,7 @@ function renderFrozenPizzas() {
   <section class="content-panel"><div class="sectionTitle"><div><div class="sectionKicker">${(dataset.pizzas || []).length} saved</div><h3>Your frozen-pizza reviews</h3></div></div><div class="pizzaCollection">${pizzaRows || `<div class="empty">No frozen pizzas saved yet. Add one below to start your ratings.</div>`}</div></section>
   <section class="content-panel pizzaEditorPanel"><div class="sectionTitle"><div><div class="sectionKicker">${pizza ? "Edit saved review" : "Your next review"}</div><h3>${pizza ? "Update a Frozen Pizza Review" : "Review a Frozen Pizza"}</h3></div></div><p class="hint">Rate Taste, Crust, and Value to complete a review. Add Sauce, Cheese, or Toppings when they apply. Your overall score updates from the categories you rate.</p>
     <div class="pizzaLiveSummary"><div class="pizzaLiveScore"><span>Overall rating</span><strong><span id="pizza-overall-value">${initialOverall}</span><small>/10</small></strong></div><div class="pizzaRatingProgress"><progress id="pizza-rating-progress" max="3" value="${PIZZA_REVIEW_DIMENSIONS.filter(({ key, required }) => required && Number(scores[key]) >= 1 && Number(scores[key]) <= 10).length}"></progress><p id="pizza-rating-count">${PIZZA_REVIEW_DIMENSIONS.filter(({ key, required }) => required && Number(scores[key]) >= 1 && Number(scores[key]) <= 10).length} of 3 core ratings complete · ${initialRatings.length} of 6 categories rated</p></div></div>
-    <div class="pizzaEditForm"><div class="restaurantEditorGrid"><label>Brand<input id="pizza-brand" maxlength="120" required value="${escapeHtml(pizza?.brand || "")}" placeholder="e.g. DiGiorno"></label><label>Pizza name / variety<input id="pizza-name" maxlength="180" required value="${escapeHtml(pizza?.name || "")}" placeholder="e.g. Rising Crust Pepperoni"></label></div><div class="restaurantEditorGrid"><label>UPC barcode <span class="optionalMark">Optional</span><input id="pizza-upc" inputmode="numeric" autocomplete="off" maxlength="14" value="${escapeHtml(pizza?.upc || "")}" placeholder="8–14 digits"></label><label>Review date<input id="pizza-reviewed-at" type="date" value="${escapeHtml(reviewedAt)}" required></label></div><label>Purchase price <span class="optionalMark">Optional</span><input id="pizza-price" type="number" inputmode="decimal" min="0" step=".01" value="${pizza?.price ?? ""}" placeholder="0.00"></label>
+    <div class="pizzaEditForm"><div class="restaurantEditorGrid"><label>Brand<input id="pizza-brand" maxlength="120" required value="${escapeHtml(pizza?.brand || "")}" placeholder="e.g. DiGiorno"></label><label>Pizza name / variety<input id="pizza-name" maxlength="180" required value="${escapeHtml(pizza?.name || "")}" placeholder="e.g. Rising Crust Pepperoni"></label></div><div class="restaurantEditorGrid pizzaUpcRow"><label>UPC barcode <span class="optionalMark">Optional</span><input id="pizza-upc" inputmode="numeric" autocomplete="off" maxlength="14" value="${escapeHtml(pizza?.upc || "")}" placeholder="8–14 digits"></label><button class="btn" type="button" data-action="lookup-pizza-upc">Look up UPC</button></div><p class="edit-status pizzaUpcStatus" id="pizza-upc-status" role="status" aria-live="polite"></p><p class="hint pizzaUpcHint">Enter the UPC here on your phone, then tap Look up UPC. If no match is found, enter the brand and name manually.</p><div class="restaurantEditorGrid"><label>Review date<input id="pizza-reviewed-at" type="date" value="${escapeHtml(reviewedAt)}" required></label><label>Purchase price <span class="optionalMark">Optional</span><input id="pizza-price" type="number" inputmode="decimal" min="0" step=".01" value="${pizza?.price ?? ""}" placeholder="0.00"></label></div>
     <div class="reviewScaleLegend pizzaScaleLegend"><span>1 · Poor</span><span>5 · Average</span><span>10 · Exceptional</span></div><div class="pizzaScoreGrid" aria-label="Frozen pizza ratings">${scoreFields}</div><fieldset class="pizzaBuyAgain"><legend>Would you buy this pizza again? <span class="optionalMark">Optional</span></legend><label><input type="radio" name="pizza-would-buy-again" value="yes"${pizza?.wouldBuyAgain === "yes" ? " checked" : ""}> Yes</label><label><input type="radio" name="pizza-would-buy-again" value="no"${pizza?.wouldBuyAgain === "no" ? " checked" : ""}> No</label></fieldset><label>Review notes <span class="optionalMark">Optional</span><textarea id="pizza-notes" rows="3" maxlength="5000" placeholder="What stood out about the taste, texture, or value?">${escapeHtml(pizza?.notes || "")}</textarea></label><div class="recipeEditActions"><button class="btn" type="button" data-action="cancel-pizza-edit">${pizza ? "Cancel" : "Clear"}</button><button class="btn primary" type="button" data-action="save-pizza" data-pizza-id="${escapeHtml(pizza?.id || "")}">${pizza ? "Save Review" : "Save Pizza Review"}</button></div><p class="edit-status" role="status" aria-live="polite"></p></div><p class="hint">Your private pizza reviews are included in automatic restore points.</p></section>`;
 }
 function formatRecipeDuration(value) {
@@ -615,6 +615,12 @@ document.addEventListener("input", event => {
   if (event.target.matches("[data-dish-name], [data-dish-notes]")) updateReviewFoodAverage();
   if (event.target.matches("#review-visited-at, #review-order-again")) updateReviewSurveySummary();
 });
+document.addEventListener("keydown", event => {
+  if (event.target.id === "pizza-upc" && event.key === "Enter") {
+    event.preventDefault();
+    root.querySelector('[data-action="lookup-pizza-upc"]')?.click();
+  }
+});
 document.addEventListener("change", event => {
   if (event.target.id === "restaurant-sort") {
     restaurantSort = event.target.value;
@@ -662,6 +668,35 @@ document.addEventListener("click", async event => {
   }
   const actionButton = event.target.closest("[data-action]");
   if (!actionButton) return;
+  if (actionButton.dataset.action === "lookup-pizza-upc") {
+    const upcField = root.querySelector("#pizza-upc");
+    const brandField = root.querySelector("#pizza-brand");
+    const nameField = root.querySelector("#pizza-name");
+    const statusLine = root.querySelector("#pizza-upc-status");
+    const upc = String(upcField?.value || "").replace(/\D/g, "");
+    if (!/^\d{8,14}$/.test(upc)) { if (statusLine) statusLine.textContent = "Enter an 8 to 14 digit barcode first."; upcField?.focus(); return; }
+    actionButton.disabled = true;
+    if (statusLine) statusLine.textContent = "Looking up product…";
+    try {
+      const token = await globalThis.metroGetAccessToken?.();
+      if (!token) throw new Error("Sign in again to look up a UPC.");
+      const response = await fetch("/api/pizza-lookup", {
+        method: "POST", cache: "no-store",
+        headers: { "Content-Type": "application/json", Accept: "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ upc })
+      });
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload?.error || `Product lookup returned HTTP ${response.status}.`);
+      if (upcField?.value.replace(/\D/g, "") !== upc) return;
+      upcField.value = payload.product.upc || upc;
+      if (payload.product.brand && brandField) brandField.value = payload.product.brand;
+      if (payload.product.name && nameField) nameField.value = payload.product.name;
+      if (statusLine) statusLine.textContent = `Found in ${payload.product.source}. Check the details before saving.`;
+    } catch (error) {
+      if (statusLine) statusLine.textContent = error?.message || "Product lookup failed. Enter the brand and name manually.";
+    } finally { actionButton.disabled = false; }
+    return;
+  }
   if (actionButton.dataset.action === "open-rankings") { activeView = "restaurant-rankings"; render(); window.scrollTo({ top: 0, left: 0, behavior: "instant" }); return; }
   if (actionButton.dataset.action === "toggle-restaurant-favorite") {
     const id = actionButton.dataset.restaurantId;

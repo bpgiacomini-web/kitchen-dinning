@@ -9,7 +9,7 @@ function send(res, status, body) {
   return res.status(status).json(body);
 }
 
-async function authenticatedUser(req) {
+export async function authenticatedUser(req) {
   if (!jwksUrl || !authBaseUrl) return { error: 'Preview authentication is not configured.' };
   const header = String(req.headers.authorization || '');
   const match = header.match(/^Bearer\s+(.+)$/i);
