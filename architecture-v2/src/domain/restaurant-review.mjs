@@ -9,6 +9,26 @@ export const RESTAURANT_REVIEW_DIMENSIONS = [
   { key: "returnIntent", label: "Likelihood to Return", description: "How likely you are to visit this restaurant again." }
 ];
 
+export function reviewContentSignature(review) {
+  return JSON.stringify(Object.keys(review || {}).filter(key => !["id", "_id", "restaurantId"].includes(key)).sort().map(key => [key, review[key]]));
+}
+
+export function upsertRestaurantReview(restaurant, review, editingReview = null) {
+  const reviewHistory = [...(Array.isArray(restaurant?.reviewHistory) ? restaurant.reviewHistory : [])];
+  let survey = restaurant?.survey;
+  if (editingReview) {
+    const historyIndex = reviewHistory.findIndex(item => item === editingReview || (editingReview.id && item?.id && String(item.id) === String(editingReview.id)));
+    if (historyIndex >= 0) reviewHistory[historyIndex] = review;
+    else reviewHistory.push(review);
+    const surveyMirrorsEdited = survey && (survey === editingReview || (editingReview.id && survey.id && String(survey.id) === String(editingReview.id)) || reviewContentSignature(survey) === reviewContentSignature(editingReview));
+    if (surveyMirrorsEdited) survey = review;
+  } else {
+    reviewHistory.push(review);
+    survey = review;
+  }
+  return { ...restaurant, reviewHistory, survey };
+}
+
 /** Build the durable, Production-compatible shape for one private restaurant visit. */
 export function createRestaurantReview({ visitedAt, experience, service, value, foodItems, surveyScores = {}, order = "", orderAgain, notes = "", id, createdAt }) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(String(visitedAt || "")) || Number.isNaN(Date.parse(`${visitedAt}T00:00:00Z`)) || new Date(`${visitedAt}T00:00:00Z`).toISOString().slice(0, 10) !== visitedAt) {

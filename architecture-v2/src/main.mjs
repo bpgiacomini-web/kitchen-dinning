@@ -2,7 +2,8 @@ import { createUserDatasetClient } from "./data/user-dataset-client.mjs";
 import { normalizeDataset } from "./domain/normalize.mjs";
 import { importedRecipeCategory, recipeEditorCategories, RECIPE_CATEGORIES } from "./features/recipes/categories.mjs";
 import { parsePastedRecipeText, parseRecipeJsonLd } from "./features/recipes/import-parser.mjs";
-import { createRestaurantReview, RESTAURANT_REVIEW_DIMENSIONS } from "./domain/restaurant-review.mjs";
+import { createRestaurantReview, RESTAURANT_REVIEW_DIMENSIONS, reviewContentSignature, upsertRestaurantReview } from "./domain/restaurant-review.mjs";
+import { sortRestaurantItems } from "./domain/restaurant-sort.mjs";
 import { searchNearbyRestaurants as lookupNearbyRestaurants, searchRestaurantNames } from "./domain/restaurant-lookup.mjs";
 
 const root = document.querySelector("#app");
@@ -16,7 +17,9 @@ let cloudRecipeIds = new Set();
 let activeView = "home";
 let activeRecipeId = null;
 let activeRestaurantId = null;
+let activeReviewIndex = null;
 let activePizzaId = null;
+let restaurantSort = "recent";
 let extractedRecipe = null;
 let newRestaurantPrefill = null;
 let restaurantDraft = null;
@@ -52,7 +55,7 @@ function restaurantReviewRecords(restaurant) {
   const signatures = new Set();
   return records.filter(review => {
     if (!review || typeof review !== "object" || Array.isArray(review)) return false;
-    const signature = JSON.stringify(Object.keys(review).filter(key => !["id", "_id", "restaurantId"].includes(key)).sort().map(key => [key, review[key]]));
+    const signature = reviewContentSignature(review);
     if (signatures.has(signature)) return false;
     signatures.add(signature);
     return true;
@@ -75,11 +78,20 @@ function topReviewFoods(restaurant) {
     .filter(item => item?.name && Number(item.rating) > 0)
     .sort((a, b) => Number(b.rating) - Number(a.rating)).slice(0, 3);
 }
+function restaurantLastVisit(restaurant) {
+  const visits = restaurantReviewRecords(restaurant).map(review => Date.parse(review.visitedAt || review.reviewDate || review.createdAt || "")).filter(Number.isFinite);
+  return visits.length ? Math.max(...visits) : 0;
+}
+function restaurantAverageRating(restaurant) {
+  const scores = restaurantReviewRecords(restaurant).map(review => reviewRating(review, "overall") ?? reviewRating(review, "rating")).filter(Number.isFinite);
+  return scores.length ? scores.reduce((sum, score) => sum + score, 0) / scores.length : null;
+}
 function renderRestaurants(items) {
-  const rows = items.map(restaurant => {
+  const rows = sortRestaurantItems(items, restaurantSort, { lastVisit: restaurantLastVisit, averageRating: restaurantAverageRating }).map(restaurant => {
     const reviews = restaurantReviewRecords(restaurant);
     const rating = restaurant.rating == null ? null : (restaurant.ratingScale === 10 ? Number(restaurant.rating) : Number(restaurant.rating) <= 5 ? Number(restaurant.rating) * 2 : Number(restaurant.rating));
     const reviewRows = reviews.slice().reverse().map((review, index) => {
+      const reviewIndex = reviews.length - index - 1;
       const reviewDate = review.visitedAt || review.createdAt || review.reviewDate || "";
       const dateText = reviewDate && !Number.isNaN(new Date(reviewDate).getTime()) ? new Date(reviewDate).toLocaleDateString() : reviewDate;
       const scores = [["Overall", reviewRating(review, "overall") ?? reviewRating(review, "rating")], ["Food", reviewRating(review, "food")], ["Service", reviewRating(review, "service")], ["Value", reviewRating(review, "value")]]
@@ -91,7 +103,7 @@ function renderRestaurants(items) {
         .map(({ label, score }) => `<span>${escapeHtml(label)}: ${escapeHtml(score)}/10</span>`).join("");
       const foodItems = reviewFoodItems(review);
       const dishRows = foodItems.filter(item => item?.name).map(item => `<li><strong>${escapeHtml(item.name)}</strong>${Number(item.rating) > 0 ? ` · ${escapeHtml(item.rating)}/10` : ""}${item.notes ? `<span>${escapeHtml(item.notes)}</span>` : ""}</li>`).join("");
-      return `<article class="savedReview"><div class="savedReviewHeading"><strong>${dateText ? escapeHtml(dateText) : `Visit ${reviews.length - index}`}</strong>${scores ? `<div class="reviewScores">${scores}</div>` : ""}</div>${additionalScores ? `<div class="reviewScores reviewAdditionalScores">${additionalScores}</div>` : ""}${review.order || review.ordered ? `<p><strong>What you ordered:</strong> ${escapeHtml(review.order || review.ordered)}</p>` : ""}${dishRows ? `<div class="savedReviewDishes"><strong>Food &amp; drink ratings</strong><ul>${dishRows}</ul></div>` : ""}${review.orderAgain ? `<p><strong>Order again:</strong> ${escapeHtml(review.orderAgain)}</p>` : ""}${review.notes ? `<p class="savedReviewNotes">${escapeHtml(review.notes)}</p>` : ""}</article>`;
+      return `<article class="savedReview"><div class="savedReviewHeading"><strong>${dateText ? escapeHtml(dateText) : `Visit ${reviews.length - index}`}</strong><button class="btn" type="button" data-action="edit-restaurant-review" data-restaurant-id="${escapeHtml(restaurant.id)}" data-review-index="${reviewIndex}">Edit review</button>${scores ? `<div class="reviewScores">${scores}</div>` : ""}</div>${additionalScores ? `<div class="reviewScores reviewAdditionalScores">${additionalScores}</div>` : ""}${review.order || review.ordered ? `<p><strong>What you ordered:</strong> ${escapeHtml(review.order || review.ordered)}</p>` : ""}${dishRows ? `<div class="savedReviewDishes"><strong>Food &amp; drink ratings</strong><ul>${dishRows}</ul></div>` : ""}${review.orderAgain ? `<p><strong>Order again:</strong> ${escapeHtml(review.orderAgain)}</p>` : ""}${review.notes ? `<p class="savedReviewNotes">${escapeHtml(review.notes)}</p>` : ""}</article>`;
     }).join("");
     const details = [["Cuisine", restaurant.cuisine], ["Address", restaurant.address], ["Website", restaurant.website], ["Menu", restaurant.menuUrl], ["Notes", restaurant.notes], ["Favorite", restaurant.favorite ? "Yes" : ""]]
       .filter(([, value]) => value != null && value !== "")
@@ -99,7 +111,7 @@ function renderRestaurants(items) {
     const bestDishes = topReviewFoods(restaurant);
     return `<article class="readOnlyItem restaurantCard" data-search="${escapeHtml(JSON.stringify(restaurant).toLowerCase())}"><div class="recipeCardHeader"><strong>${escapeHtml(restaurant.name)}</strong><div class="recipeCardActions"><button class="btn" type="button" data-action="toggle-restaurant-favorite" data-restaurant-id="${escapeHtml(restaurant.id)}" aria-pressed="${restaurant.favorite ? "true" : "false"}">${restaurant.favorite ? "★ Favorite" : "☆ Add to Favorites"}</button><button class="btn" type="button" data-action="edit-restaurant" data-restaurant-id="${escapeHtml(restaurant.id)}">Edit</button><button class="btn primary" type="button" data-action="add-restaurant-review" data-restaurant-id="${escapeHtml(restaurant.id)}">＋ Rate a Visit (1–10)</button><button class="btn danger" type="button" data-action="delete-restaurant" data-restaurant-id="${escapeHtml(restaurant.id)}">Delete</button></div></div><small>${escapeHtml([restaurant.cuisine, restaurant.address, rating == null ? null : `Rating ${rating.toFixed(1)}/10`, restaurant.favorite ? "Favorite" : "", `${reviews.length} ${reviews.length === 1 ? "visit" : "visits"}`].filter(Boolean).join(" · ") || "No additional details saved")}</small>${reviews.length === 0 ? `<p class="hint restaurantReviewPrompt">No visit ratings yet. Add a visit to rate your experience, service, value, and dishes from 1 to 10.</p>` : ""}${bestDishes.length ? `<p class="restaurantTopDishes"><strong>Top rated dishes:</strong> ${bestDishes.map(item => `${escapeHtml(item.name)} ${escapeHtml(item.rating)}/10`).join(" · ")}</p>` : ""}<details><summary>Restaurant details and visit history</summary><section class="restaurantDetailBlock"><h4>Restaurant information</h4><dl>${details || `<div><dt>Details</dt><dd>No additional details saved.</dd></div>`}</dl></section><section class="restaurantDetailBlock"><h4>Visit history</h4>${reviewRows || `<p class="hint">No visits or reviews yet. Add a visit to start your personal history.</p>`}</section></details><p class="edit-status" role="status" aria-live="polite"></p></article>`;
   }).join("");
-  root.innerHTML = `<section class="hero"><div class="heroIn"><div class="eyebrow">Your dining journal</div><h2>My Restaurants</h2><p>Keep restaurant details and visit-by-visit food critic reviews together in your private Metro Eats account.</p></div></section><section class="content-panel"><div class="sectionTitle"><div><div class="sectionKicker">${items.length} saved</div><h3>Your restaurants &amp; reviews</h3></div><div class="diningActions"><button class="btn" type="button" data-action="open-rankings">★ My Rankings</button><button class="btn primary" type="button" data-action="new-restaurant">＋ Add a Restaurant</button></div></div><section class="nearbyPanel"><div><h3>Restaurants Around Me</h3><p class="hint">Nearby places load automatically when you open this page. Location is used only for this search, never saved. If device location is unavailable, Metro Eats uses an approximate area.</p></div><p class="edit-status" id="nearby-status" role="status" aria-live="polite">Nearby restaurant search will start automatically.</p><div class="nearbyResults" id="nearby-results"></div></section><label class="restaurantSearchLabel" for="restaurant-search">Search your restaurants</label><input id="restaurant-search" class="restaurantSearch" type="search" placeholder="Name, cuisine, address, dish, or note" autocomplete="off"><p class="hint" id="restaurant-search-count" aria-live="polite">Showing ${items.length} ${items.length === 1 ? "restaurant" : "restaurants"}.</p><div class="readOnlyList" id="restaurant-list">${rows || `<div class="empty">No restaurants saved yet. Add one to start your private dining journal.</div>`}</div><p class="hint">Restaurant search, critic scores, rated dishes, and every visit review are saved to your signed-in Preview account. Existing shared baseline records stay unchanged.</p></section>`;
+  root.innerHTML = `<section class="hero"><div class="heroIn"><div class="eyebrow">Your dining journal</div><h2>My Restaurants</h2><p>Keep restaurant details and visit-by-visit food critic reviews together in your private Metro Eats account.</p></div></section><section class="content-panel"><div class="sectionTitle"><div><div class="sectionKicker">${items.length} saved</div><h3>Your restaurants &amp; reviews</h3></div><div class="diningActions"><label class="restaurantSortControl" for="restaurant-sort">Sort by <select id="restaurant-sort"><option value="recent"${restaurantSort === "recent" ? " selected" : ""}>Last visited · newest first</option><option value="highest"${restaurantSort === "highest" ? " selected" : ""}>Highest rated</option><option value="lowest"${restaurantSort === "lowest" ? " selected" : ""}>Lowest rated</option><option value="name"${restaurantSort === "name" ? " selected" : ""}>Name · A to Z</option></select></label><button class="btn" type="button" data-action="open-rankings">★ My Rankings</button><button class="btn primary" type="button" data-action="new-restaurant">＋ Add a Restaurant</button></div></div><section class="nearbyPanel"><div><h3>Restaurants Around Me</h3><p class="hint">Nearby places load automatically when you open this page. Location is used only for this search, never saved. If device location is unavailable, Metro Eats uses an approximate area.</p></div><p class="edit-status" id="nearby-status" role="status" aria-live="polite">Nearby restaurant search will start automatically.</p><div class="nearbyResults" id="nearby-results"></div></section><label class="restaurantSearchLabel" for="restaurant-search">Search your restaurants</label><input id="restaurant-search" class="restaurantSearch" type="search" placeholder="Name, cuisine, address, dish, or note" autocomplete="off"><p class="hint" id="restaurant-search-count" aria-live="polite">Showing ${items.length} ${items.length === 1 ? "restaurant" : "restaurants"}.</p><div class="readOnlyList" id="restaurant-list">${rows || `<div class="empty">No restaurants saved yet. Add one to start your private dining journal.</div>`}</div><p class="hint">Restaurant search, critic scores, rated dishes, and every visit review are saved to your signed-in Preview account. Existing shared baseline records stay unchanged.</p></section>`;
   const searchLabel = root.querySelector(".restaurantSearchLabel");
   if (searchLabel) searchLabel.textContent = "Search saved restaurants or find a new one";
   root.querySelector("#restaurant-search")?.insertAdjacentHTML("afterend", '<p class="hint">Online restaurant matches will appear here too. Select one to start a restaurant record and visit review.</p><p class="edit-status" id="restaurant-search-status" role="status" aria-live="polite"></p><div id="restaurant-search-results" class="restaurantLookupResults"></div>');
@@ -113,15 +125,25 @@ function renderRestaurantEditor(restaurantId = null) {
 function renderRestaurantReviewForm(restaurantId) {
   const savedRestaurant = restaurantId ? cloudDataset.restaurants.find(item => String(item.id) === String(restaurantId)) : null;
   const restaurant = { ...(savedRestaurant || {}), ...(restaurantDraft || {}) };
+  const reviewRecords = restaurantReviewRecords(restaurant);
+  const editingReview = activeReviewIndex == null ? null : reviewRecords[activeReviewIndex] || null;
   if (!restaurantId && !restaurantDraft || restaurantId && !savedRestaurant) { activeView = "dining"; render(); return; }
+  if (activeReviewIndex != null && !editingReview) { activeReviewIndex = null; activeView = "dining"; render(); return; }
   const now = new Date();
   const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
-  const categories = RESTAURANT_REVIEW_CATEGORIES.map(category => `<details class="reviewCategory"${category === "Entrées" ? " open" : ""}><summary>${category}</summary><div class="reviewCategoryBody" data-review-category="${category}"><p class="hint">Add the dishes or drinks you tried in this category.</p><div class="reviewDishList"></div><button class="btn" type="button" data-action="add-review-dish" data-category="${category}">＋ Add ${category === "Drinks" ? "a drink" : "a dish"}</button></div></details>`).join("");
   const coreQuestions = [["overall", "Overall Experience"], ["service", "Service"], ["value", "Value"]];
-  const coreRatings = coreQuestions.map(([key, label]) => `<div class="reviewQuestion"><div class="reviewQuestionHead"><b>${label}<span class="requiredMark" aria-label="required">*</span></b><span data-score-label="${key}">Select 1–10</span></div>${reviewScoreButtons(0, "", key, label, true)}</div>`).join("");
-  const optionalRatings = RESTAURANT_REVIEW_DIMENSIONS.map(({ key, label, description }) => `<div class="reviewQuestion"><div class="reviewQuestionHead"><b>${escapeHtml(label)}</b><span data-score-label="${key}">Optional</span></div><p class="hint">${escapeHtml(description)}</p>${reviewScoreButtons(0, "", key, label)}</div>`).join("");
+  const coreRatings = coreQuestions.map(([key, label]) => { const value = reviewRating(editingReview, key) || 0; return `<div class="reviewQuestion"><div class="reviewQuestionHead"><b>${label}<span class="requiredMark" aria-label="required">*</span></b><span data-score-label="${key}">${value ? `${value}/10` : "Select 1–10"}</span></div>${reviewScoreButtons(value, "", key, label, true)}</div>`; }).join("");
+  const optionalRatings = RESTAURANT_REVIEW_DIMENSIONS.map(({ key, label, description }) => { const value = reviewSurveyScore(editingReview, key) || 0; return `<div class="reviewQuestion"><div class="reviewQuestionHead"><b>${escapeHtml(label)}</b><span data-score-label="${key}">${value ? `${value}/10` : "Optional"}</span></div><p class="hint">${escapeHtml(description)}</p>${reviewScoreButtons(value, "", key, label)}</div>`; }).join("");
+  const savedDishes = reviewFoodItems(editingReview);
+  const renderSavedDish = dish => {
+    const itemId = crypto.randomUUID();
+    const rating = reviewRating({ rating: dish.rating, ratingScale: editingReview?.ratingScale }, "rating") || 0;
+    return `<article class="reviewDish" data-review-dish-id="${itemId}" data-rating="${rating}"><div class="reviewDishHead"><label>Dish or drink<input data-dish-name maxlength="180" value="${escapeHtml(dish.name || "")}" placeholder="e.g. toasted ravioli"></label><button class="btn danger" type="button" data-action="remove-review-dish" aria-label="Remove dish">Remove</button></div><div class="reviewQuestionHead"><b>Food rating</b><span data-dish-rating-label>${rating ? `${rating}/10` : "Select 1–10"}</span></div>${reviewScoreButtons(rating, itemId, "", "Dish or drink", true)}${reviewScaleGuide()}<label>Dish notes <span class="optionalMark">Optional</span><textarea data-dish-notes rows="2" maxlength="1200" placeholder="Taste, texture, preparation, portion…">${escapeHtml(dish.notes || "")}</textarea></label></article>`;
+  };
+  const categories = RESTAURANT_REVIEW_CATEGORIES.map(category => `<details class="reviewCategory"${category === "Entrées" || savedDishes.some(dish => (dish.category || "Entrées") === category) ? " open" : ""}><summary>${category}</summary><div class="reviewCategoryBody" data-review-category="${category}"><p class="hint">Add the dishes or drinks you tried in this category.</p><div class="reviewDishList">${savedDishes.filter(dish => (dish.category || "Entrées") === category).map(renderSavedDish).join("")}</div><button class="btn" type="button" data-action="add-review-dish" data-category="${category}">＋ Add ${category === "Drinks" ? "a drink" : "a dish"}</button></div></details>`).join("");
+  const hasSavedOptionalRatings = RESTAURANT_REVIEW_DIMENSIONS.some(({ key }) => reviewSurveyScore(editingReview, key) != null);
   root.innerHTML = `
-    <section class="hero"><div class="heroIn"><div class="eyebrow">Your dining journal · Food Critic</div><h2>Rate a Visit</h2><p>Review your visit to <strong>${escapeHtml(restaurant.name)}</strong>. Your restaurant details and review are saved together when you finish.</p></div></section>
+    <section class="hero"><div class="heroIn"><div class="eyebrow">Your dining journal · Food Critic</div><h2>${editingReview ? "Edit Visit Review" : "Rate a Visit"}</h2><p>${editingReview ? `Update the saved review for ${escapeHtml(restaurant.name)}. Your current ratings, dishes, visit date, and notes have been loaded.` : `Review your visit to <strong>${escapeHtml(restaurant.name)}</strong>. Your restaurant details and review are saved together when you finish.`}</p></div></section>
     <section class="content-panel restaurantEditorPage">
       <div class="restaurantEditPanel">
         <section class="reviewRestaurantSummary"><strong>${escapeHtml(restaurant.name)}</strong><span>${escapeHtml([restaurant.cuisine, restaurant.address].filter(Boolean).join(" · ") || "Restaurant details added" )}</span>${restaurant.website ? `<a href="${escapeHtml(restaurant.website)}" target="_blank" rel="noopener noreferrer">${escapeHtml(restaurant.website)}</a>` : ""}<label class="inlineCheck"><input id="review-restaurant-favorite" type="checkbox"${restaurant.favorite ? " checked" : ""}> Mark as a favorite</label><button class="btn" type="button" data-action="back-to-restaurant-details">← Back to restaurant details</button></section>
@@ -129,7 +151,7 @@ function renderRestaurantReviewForm(restaurantId) {
           <div class="reviewLiveScore"><span id="review-live-title">Current Food Critic score</span><strong id="review-overall-average">—<small>/10</small></strong></div>
           <div class="reviewProgress"><progress id="review-completion-progress" max="5" value="0" aria-label="Review completion"></progress><p id="review-completion" role="status" aria-live="polite">0 of 5 required parts complete. Notes are optional.</p></div>
         </section>
-        <label>Visit date<input id="review-visited-at" type="date" value="${today}" required></label>
+        <label>Visit date<input id="review-visited-at" type="date" value="${escapeHtml(String(editingReview?.visitedAt || editingReview?.reviewDate || editingReview?.createdAt || today).slice(0, 10))}" required></label>
         <section class="surveyCard reviewCoreCard">
           <h3>Your 1–10 ratings</h3>
           <p class="hint">Rate each item from 1 (poor) to 10 (exceptional). Overall Experience, Service, Value, one rated dish or drink, and “Would you order it again?” are required. Food Quality is calculated from dish ratings.</p>
@@ -137,12 +159,12 @@ function renderRestaurantReviewForm(restaurantId) {
           ${coreRatings}
           <div class="reviewQuestion reviewFoodAverage"><div class="reviewQuestionHead"><b>Food Quality</b><span id="review-food-average">Calculated from dishes</span></div><p class="hint">Average of the dish and drink ratings below.</p></div>
         </section>
-        <details class="reviewOptionalRatings"><summary>More visit ratings <span>Optional · 6 categories</span></summary><p class="hint">Add extra detail when it applies to your visit. These scores are saved with this visit.</p>${reviewScaleGuide()}${optionalRatings}</details>
+        <details class="reviewOptionalRatings"${hasSavedOptionalRatings ? " open" : ""}><summary>More visit ratings <span>Optional · 6 categories</span></summary><p class="hint">Add extra detail when it applies to your visit. These scores are saved with this visit.</p>${reviewScaleGuide()}${optionalRatings}</details>
         <section class="reviewFoodSection"><h3>Food &amp; drink ratings</h3><p class="hint">Add everything you tried, then tap its score from 1 to 10. Every item you add needs a name and rating. Notes on each dish are optional.</p>${categories}</section>
-        <label>What else did you order? <span class="optionalMark">Optional</span><input id="review-order" maxlength="500" placeholder="For example, shared plates or drinks"></label>
-        <label>Would you order it again? <span class="requiredMark" aria-label="required">*</span><select id="review-order-again" required><option value="">Choose Yes or No</option><option>Yes</option><option>No</option></select></label>
-        <label>Visit notes <span class="optionalMark">Optional</span><textarea id="review-notes" rows="4" maxlength="5000" placeholder="What stood out about this visit?"></textarea></label>
-        <div class="recipeEditActions"><button class="btn" type="button" data-action="back-to-restaurant-details">Back to details</button><button class="btn primary" type="button" data-action="save-restaurant-review" data-restaurant-id="${escapeHtml(restaurantId || "")}">${restaurantId ? "Save Visit Review" : "Save Restaurant & Visit Review"}</button></div>
+        <label>What else did you order? <span class="optionalMark">Optional</span><input id="review-order" maxlength="500" value="${escapeHtml(editingReview?.order || editingReview?.ordered || "")}" placeholder="For example, shared plates or drinks"></label>
+        <label>Would you order it again? <span class="requiredMark" aria-label="required">*</span><select id="review-order-again" required><option value="">Choose Yes or No</option><option${editingReview?.orderAgain === "Yes" ? " selected" : ""}>Yes</option><option${editingReview?.orderAgain === "No" ? " selected" : ""}>No</option></select></label>
+        <label>Visit notes <span class="optionalMark">Optional</span><textarea id="review-notes" rows="4" maxlength="5000" placeholder="What stood out about this visit?">${escapeHtml(editingReview?.notes || "")}</textarea></label>
+        <div class="recipeEditActions"><button class="btn" type="button" data-action="back-to-restaurant-details">Back to details</button><button class="btn primary" type="button" data-action="save-restaurant-review" data-restaurant-id="${escapeHtml(restaurantId || "")}">${editingReview ? "Save Review Changes" : restaurantId ? "Save Visit Review" : "Save Restaurant & Visit Review"}</button></div>
         <p class="edit-status" role="status" aria-live="polite"></p>
       </div>
     </section>`;
@@ -339,7 +361,7 @@ function reviewRating(review, key) {
   const legacyScoreIndex = legacyTenQuestion
     ? { experience: 0, food: 1, menuSelection: 2, service: 3, atmosphere: 4, ambiance: 4, cleanliness: 5, value: 6, drinksBar: 7, locationAccess: 8, returnIntent: 9 }
     : { experience: 0, food: 1, service: 2, value: 3 };
-  const value = review?.[key] ?? (key === "overall" ? scores?.overall : undefined) ?? (key === "rating" ? scores?.overall : undefined) ?? (legacyScoreIndex[key] != null ? scores?.[legacyScoreIndex[key]] : undefined);
+  const value = review?.[key] ?? (key === "overall" ? scores?.overall : undefined) ?? (key === "overall" ? review?.experience ?? scores?.[legacyScoreIndex.experience] : undefined) ?? (key === "rating" || key === "overall" ? review?.rating ?? scores?.overall : undefined) ?? (legacyScoreIndex[key] != null ? scores?.[legacyScoreIndex[key]] : undefined);
   const number = Number(value);
   if (value == null || value === "" || !Number.isFinite(number)) return null;
   return review?.ratingScale === 10 || legacyTenQuestion || number > 5 ? number : number * 2;
@@ -555,6 +577,10 @@ document.addEventListener("input", event => {
   if (event.target.matches("#review-visited-at, #review-order-again")) updateReviewSurveySummary();
 });
 document.addEventListener("change", event => {
+  if (event.target.id === "restaurant-sort") {
+    restaurantSort = event.target.value;
+    render();
+  }
   if (event.target.matches("#review-visited-at, #review-order-again")) updateReviewSurveySummary();
 });
 function syncImportMode(mode = importMode) {
@@ -638,7 +664,7 @@ document.addEventListener("click", async event => {
   }
   if (actionButton.dataset.action === "use-nearby") {
     try { newRestaurantPrefill = JSON.parse(actionButton.dataset.nearby); } catch { newRestaurantPrefill = null; }
-    activeRestaurantId = null; activeView = "restaurant-edit"; render(); window.scrollTo({ top: 0, left: 0, behavior: "instant" }); return;
+    activeRestaurantId = null; activeReviewIndex = null; activeView = "restaurant-edit"; render(); window.scrollTo({ top: 0, left: 0, behavior: "instant" }); return;
   }
   if (actionButton.dataset.action === "add-review-dish") {
     const category = actionButton.dataset.category;
@@ -676,6 +702,7 @@ document.addEventListener("click", async event => {
     newRestaurantPrefill = null;
     restaurantDraft = null;
     activeRestaurantId = null;
+    activeReviewIndex = null;
     activeView = "restaurant-edit";
     render();
     window.scrollTo({ top: 0, left: 0, behavior: "instant" });
@@ -684,6 +711,7 @@ document.addEventListener("click", async event => {
   if (actionButton.dataset.action === "edit-restaurant") {
     restaurantDraft = null;
     newRestaurantPrefill = null;
+    activeReviewIndex = null;
     activeRestaurantId = actionButton.dataset.restaurantId;
     activeView = "restaurant-edit";
     render();
@@ -692,7 +720,18 @@ document.addEventListener("click", async event => {
   }
   if (actionButton.dataset.action === "add-restaurant-review") {
     restaurantDraft = null;
+    activeReviewIndex = null;
     activeRestaurantId = actionButton.dataset.restaurantId;
+    activeView = "restaurant-review";
+    render();
+    window.scrollTo({ top: 0, left: 0, behavior: "instant" });
+    return;
+  }
+  if (actionButton.dataset.action === "edit-restaurant-review") {
+    restaurantDraft = null;
+    newRestaurantPrefill = null;
+    activeRestaurantId = actionButton.dataset.restaurantId;
+    activeReviewIndex = Number(actionButton.dataset.reviewIndex);
     activeView = "restaurant-review";
     render();
     window.scrollTo({ top: 0, left: 0, behavior: "instant" });
@@ -709,6 +748,7 @@ document.addEventListener("click", async event => {
     const menuUrl = root.querySelector("#restaurant-menu")?.value.trim() || "";
     const notes = root.querySelector("#restaurant-notes")?.value.trim() || "";
     const favorite = Boolean(root.querySelector("#restaurant-favorite")?.checked);
+    activeReviewIndex = null;
     if (!name) { if (statusLine) statusLine.textContent = "Enter a restaurant name before continuing to the visit review."; return; }
     for (const [label, value] of [["website", website], ["menu", menuUrl]]) if (value) {
       try { const url = new URL(value); if (!/^https?:$/.test(url.protocol)) throw new Error(); }
@@ -730,6 +770,7 @@ document.addEventListener("click", async event => {
   }
   if (actionButton.dataset.action === "cancel-restaurant-edit") {
     activeRestaurantId = null;
+    activeReviewIndex = null;
     newRestaurantPrefill = null;
     restaurantDraft = null;
     activeView = "dining";
@@ -778,6 +819,7 @@ document.addEventListener("click", async event => {
     const id = actionButton.dataset.restaurantId;
     const savedRestaurant = id ? cloudDataset.restaurants.find(item => String(item.id) === String(id)) : null;
     const restaurant = { ...(savedRestaurant || {}), ...(restaurantDraft || {}) };
+    const editingReview = activeReviewIndex == null ? null : restaurantReviewRecords(restaurant)[activeReviewIndex] || null;
     if (!restaurant.name || id && !savedRestaurant || !id && !restaurantDraft) { if (statusLine) statusLine.textContent = "This restaurant is no longer available. Go back and review its details before saving."; return; }
     const visitedAt = document.querySelector("#review-visited-at")?.value || "";
     const score = key => Number(root.querySelector(`[data-score-key="${key}"]`)?.closest(".reviewScore")?.querySelector("button.active")?.textContent || 0);
@@ -796,12 +838,14 @@ document.addEventListener("click", async event => {
     const notes = document.querySelector("#review-notes")?.value.trim() || "";
     const now = new Date().toISOString();
     let review;
-    try { review = createRestaurantReview({ id: `metro-review-${crypto.randomUUID()}`, visitedAt, createdAt: now, experience, service, value, foodItems: dishes, surveyScores, order, orderAgain, notes }); }
+    try {
+      const savedReview = createRestaurantReview({ id: editingReview?.id || editingReview?._id || `metro-review-${crypto.randomUUID()}`, createdAt: editingReview?.createdAt || now, visitedAt, experience, service, value, foodItems: dishes, surveyScores, order, orderAgain, notes });
+      review = { ...(editingReview || {}), ...savedReview, updatedAt: now };
+    }
     catch (error) { if (statusLine) statusLine.textContent = error?.message || "Review values are incomplete or invalid."; return; }
-    const reviewHistory = [...(Array.isArray(restaurant.reviewHistory) ? restaurant.reviewHistory : []), review];
-    const previousScores = restaurantReviewRecords(restaurant).map(item => reviewRating(item, "overall") ?? reviewRating(item, "rating")).filter(value => Number.isFinite(Number(value))).map(Number);
-    const allScores = [...previousScores, review.overall];
-    const updated = { ...restaurant, id: savedRestaurant?.id || `metro-restaurant-${crypto.randomUUID()}`, favorite: Boolean(root.querySelector("#review-restaurant-favorite")?.checked), reviewHistory, survey: review, rating: allScores.reduce((sum, value) => sum + value, 0) / allScores.length, ratingScale: 10, updatedAt: now };
+    const reviewState = upsertRestaurantReview(restaurant, review, editingReview);
+    const allScores = restaurantReviewRecords(reviewState).map(item => reviewRating(item, "overall") ?? reviewRating(item, "rating")).filter(Number.isFinite);
+    const updated = { ...reviewState, id: savedRestaurant?.id || `metro-restaurant-${crypto.randomUUID()}`, favorite: Boolean(root.querySelector("#review-restaurant-favorite")?.checked), rating: allScores.length ? allScores.reduce((sum, value) => sum + value, 0) / allScores.length : null, ratingScale: 10, updatedAt: now };
     const restaurants = savedRestaurant
       ? cloudDataset.restaurants.map(item => String(item.id) === String(id) ? updated : item)
       : [...cloudDataset.restaurants, updated];
@@ -809,6 +853,7 @@ document.addEventListener("click", async event => {
     try {
       await saveCloudDataset({ ...cloudDataset, restaurants });
       activeRestaurantId = null;
+      activeReviewIndex = null;
       restaurantDraft = null;
       newRestaurantPrefill = null;
       activeView = "dining";
