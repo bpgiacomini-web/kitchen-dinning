@@ -158,43 +158,6 @@ export function createRestaurantLookupHandler({ fetcher = fetch, authenticate = 
 
     const body = req.body && typeof req.body === "object" ? req.body : {};
     const mode = body.mode;
-    if (mode === "google-place-search" || mode === "google-place-details") {
-      const identity = await authenticate(req);
-      if (identity.error) return res.status(identity.status || 503).json({ error: identity.error });
-      const apiKey = process.env.GOOGLE_PLACES_API_KEY;
-      if (!apiKey) return res.status(503).json({ error: "Google Maps scores are not configured for this Preview yet." });
-      try {
-        const allowance = await limitRequests({ scope: "google-place-lookup", accountId: identity.userId, limit: 20, windowSeconds: 60 });
-        if (!allowance.allowed) return sendRateLimitResponse(res, allowance.retryAfterSeconds);
-      } catch (error) {
-        console.error("Metro Eats Google Places rate limit unavailable", String(error?.message || "rate_limit_error").slice(0, 80));
-        return res.status(503).json({ error: "Google Maps score lookup is temporarily unavailable." });
-      }
-      const headers = { "Content-Type": "application/json", "X-Goog-Api-Key": apiKey };
-      try {
-        if (mode === "google-place-search") {
-          const query = typeof body.query === "string" ? body.query.trim() : "";
-          if (query.length < 3 || query.length > 300) return res.status(400).json({ error: "Restaurant name and address are required." });
-          const payload = await fetchJson(fetcher, "https://places.googleapis.com/v1/places:searchText", {
-            method: "POST", headers: { ...headers, "X-Goog-FieldMask": "places.id,places.displayName,places.formattedAddress,places.googleMapsUri" },
-            body: JSON.stringify({ textQuery: query, maxResultCount: 5 })
-          }, 7000);
-          return res.status(200).json({ places: (payload.places || []).map(place => ({
-            id: String(place.id || ""), name: String(place.displayName?.text || ""), address: String(place.formattedAddress || ""), mapsUrl: String(place.googleMapsUri || "")
-          })).filter(place => place.id && place.name) });
-        }
-        const placeId = typeof body.placeId === "string" ? body.placeId.trim() : "";
-        if (!/^[A-Za-z0-9_-]{10,200}$/.test(placeId)) return res.status(400).json({ error: "A valid Google Place ID is required." });
-        const payload = await fetchJson(fetcher, `https://places.googleapis.com/v1/places/${encodeURIComponent(placeId)}`, {
-          headers: { ...headers, "X-Goog-FieldMask": "id,displayName,formattedAddress,rating,userRatingCount,googleMapsUri" }
-        }, 7000);
-        if (!Number.isFinite(Number(payload.rating))) return res.status(404).json({ error: "Google does not currently show a rating for this place." });
-        return res.status(200).json({ rating: Number(payload.rating), ratingCount: Number(payload.userRatingCount) || 0, mapsUrl: String(payload.googleMapsUri || "") });
-      } catch (error) {
-        console.error("Metro Eats Google Places lookup failed", String(error?.message || "upstream_error").slice(0, 80));
-        return res.status(502).json({ error: "Google Maps score lookup failed. Please try again later." });
-      }
-    }
     if (mode === "pizza-upc") {
       const identity = await authenticate(req);
       if (identity.error) return res.status(identity.status || 503).json({ error: identity.error });
