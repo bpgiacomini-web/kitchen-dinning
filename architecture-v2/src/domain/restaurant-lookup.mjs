@@ -1,7 +1,7 @@
 const FOOD_AMENITIES = new Set(["restaurant", "fast_food", "cafe", "bar", "pub"]);
 const KNOWN_LOCAL_WEBSITES = [
   { name: "fast eddies bon air", aliases: ["fast eddies", "fast eddies bon air"], website: "https://fasteddiesbonair.com/", address: "1530 E 4th Street, Alton, IL 62002" },
-  { name: "ropers regal beagle", aliases: ["regal beagle", "ropers regal beagle"], website: "https://www.ropersregalbeagle.com/", address: "3043 Godfrey Road, Godfrey, IL 62035" },
+  { name: "ropers regal beagle", aliases: ["regal beagle", "ropers regal beagle"], website: "https://www.ropersregalbeagle.com/", address: "3043 Godfrey Road, Godfrey, IL 62035", lat: 38.9313514, lon: -90.1909723 },
   { name: "macs downtown", aliases: ["macs downtown"], website: "https://macsdowntown.com/", address: "315 Belle Street, Alton, IL 62002" }
 ];
 
@@ -81,12 +81,36 @@ export async function searchRestaurantNames(query, { location = null, fetcher = 
   const lookupLocation = payload?.location || location;
   const results = normalizeRestaurantLookup(payload?.features, lookupLocation);
   const matchingNames = results.filter(place => nameMatchStrength(place.name, name) >= 1);
-  const nearby = lookupLocation ? matchingNames.filter(place => place.distance != null && place.distance <= 200_000) : matchingNames;
-  // When the user's location is known, do not present distant same-name places
-  // as local choices. If location is unavailable, retain exact-name geocoder results.
-  const candidates = lookupLocation ? nearby : matchingNames;
+  const knownMatches = KNOWN_LOCAL_WEBSITES.filter(known => Number.isFinite(known.lat) && Number.isFinite(known.lon) && known.aliases.some(alias => nameMatchStrength(alias, name) >= 2));
+  for (const known of knownMatches) {
+    const knownPoint = { lat: known.lat, lon: known.lon };
+    const existing = matchingNames.find(place => place.lat != null && place.lon != null && distanceMeters(knownPoint, place) <= 1_000);
+    if (existing) {
+      existing.knownLocal = true;
+      existing.address = known.address;
+      existing.website = known.website;
+      continue;
+    }
+    matchingNames.push({
+      name: known.name === "ropers regal beagle" ? "Roper's Regal Beagle" : known.name,
+      cuisine: "",
+      address: known.address,
+      website: known.website,
+      lat: known.lat,
+      lon: known.lon,
+      distance: distanceMeters(lookupLocation, knownPoint),
+      source: "Metro Eats local listing",
+      knownLocal: true
+    });
+  }
+  // Keep the curated Godfrey listing available when IP-based location is inaccurate;
+  // its address and distance make clear where the restaurant is.
+  const candidates = lookupLocation
+    ? matchingNames.filter(place => (place.distance != null && place.distance <= 200_000) || place.knownLocal)
+    : matchingNames;
   const rank = restaurant => nameMatchStrength(restaurant.name, name);
   const places = candidates.sort((a, b) => {
+    if (lookupLocation?.source !== "device" && a.knownLocal !== b.knownLocal) return a.knownLocal ? -1 : 1;
     if (lookupLocation) return (a.distance ?? Infinity) - (b.distance ?? Infinity) || rank(b) - rank(a);
     return rank(b) - rank(a);
   }).slice(0, 8);

@@ -70,12 +70,25 @@ test("name search prioritizes the closest result over an exact but farther dupli
   assert.equal(places[0].name, "Fast Eddie's Bon Air");
 });
 
-test("name search hides distant exact-name results when location is known", async () => {
+test("name search prioritizes Godfrey over a nearby same-name result when network location is inaccurate", async () => {
   const { places } = await searchRestaurantNames("Regal Beagle", { fetcher: async () => ({ ok: true, json: async () => ({
-    location: { lat: 34.05, lon: -118.24, city: "Los Angeles", source: "network" },
-    features: [feature("Ropers Regal Beagle", { coordinates: [-90.19, 38.93] }), feature("The Regal", { coordinates: [-118.2, 34.05] })]
+    location: { lat: 40, lon: -82.5, city: "Ohio", source: "network" },
+    features: [feature("Ropers Regal Beagle", { coordinates: [-90.1909723, 38.9313514], website: "" }), feature("Ropers Regal Beagle", { coordinates: [-82.5, 40], city: "Ohio", street: "Main Street" }), feature("The Regal", { coordinates: [-118.2, 34.05] })]
   }) }) });
-  assert.equal(places.length, 0);
+  assert.equal(places.length, 2);
+  assert.equal(places[0].name, "Ropers Regal Beagle");
+  assert.equal(places[0].address, "3043 Godfrey Road, Godfrey, IL 62035");
+  assert.equal(places[0].website, "https://www.ropersregalbeagle.com/");
+});
+
+test("name search returns the Godfrey Regal Beagle first near its real address", async () => {
+  const { places } = await searchRestaurantNames("Regal Beagle", { location: { lat: 38.93, lon: -90.19, source: "device" }, fetcher: async () => ({ ok: true, json: async () => ({
+    location: { lat: 38.93, lon: -90.19, source: "device" },
+    features: [feature("Ropers Regal Beagle", { coordinates: [-90.1909723, 38.9313514], website: "" }), feature("Ropers Regal Beagle", { coordinates: [-112.07, 33.45] })]
+  }) }) });
+  assert.equal(places[0].name, "Ropers Regal Beagle");
+  assert.ok(places[0].distance < 1_000);
+  assert.equal(places[0].address, "3043 Godfrey Road, Godfrey, IL 62035");
 });
 
 test("nearby lookup uses the same-origin API and reports the resolved location", async () => {
