@@ -15,7 +15,7 @@ test("same-origin name lookup applies Vercel's approximate location as a search 
   let requested;
   const handler = createRestaurantLookupHandler({ fetcher: async url => {
     requested = new URL(url);
-    return { ok: true, json: async () => ({ features: [{ properties: { name: "Fast Eddie's", osm_key: "amenity", osm_value: "restaurant" } }] }) };
+    return { ok: true, json: async () => ({ features: [{ properties: { name: "Fast Eddie's", osm_key: "amenity", osm_value: "restaurant" }, geometry: { coordinates: [-90.18, 38.89] } }] }) };
   } });
   const res = responseRecorder();
   await handler({ method: "POST", body: { mode: "name", query: "Fast Eddie" }, headers: {
@@ -49,6 +49,27 @@ test("name lookup falls back to nearby OSM places when Photon has no match", asy
     assert.ok(res.body.features.some(feature => feature.properties.name === expected));
     assert.ok(!res.body.features.some(feature => feature.properties.name === "Other Cafe"));
   }
+});
+
+test("name lookup uses the nearby fallback when Photon only finds a distant duplicate", async () => {
+  const handler = createRestaurantLookupHandler({ fetcher: async url => {
+    const request = new URL(url);
+    if (request.hostname === "photon.komoot.io") return { ok: true, json: async () => ({ features: [{
+      type: "Feature",
+      properties: { name: "Mac's Downtown", osm_key: "amenity", osm_value: "restaurant" },
+      geometry: { type: "Point", coordinates: [-117.4, 47.7] }
+    }] }) };
+    return { ok: true, json: async () => ({ elements: [
+      { type: "node", lat: 38.89, lon: -90.18, tags: { name: "Mac's Downtown", amenity: "restaurant", "addr:city": "Alton" } }
+    ] }) };
+  } });
+  const res = responseRecorder();
+  await handler({ method: "POST", body: { mode: "name", query: "Mac's Downtown" }, headers: {
+    "x-vercel-ip-latitude": "38.89", "x-vercel-ip-longitude": "-90.18", "x-vercel-ip-city": "Alton"
+  } }, res);
+  assert.equal(res.statusCode, 200);
+  assert.equal(res.body.features.length, 2);
+  assert.deepEqual(res.body.features[1].geometry.coordinates, [-90.18, 38.89]);
 });
 
 test("nearby lookup falls back to approximate network location and returns closest food places", async () => {

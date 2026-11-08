@@ -65,6 +65,17 @@ function hasFoodFeature(feature) {
   return String(props.osm_key || "").toLowerCase() === "amenity" && FOOD_AMENITIES.has(String(props.osm_value || "").toLowerCase());
 }
 
+function hasNearbyNameMatch(features, query, location) {
+  return features.some(feature => {
+    if (!hasFoodFeature(feature) || !nameMatches(feature?.properties?.name, query)) return false;
+    if (!location) return true;
+    const [lon, lat] = feature.geometry?.coordinates || [];
+    const point = { lat: Number(lat), lon: Number(lon) };
+    const distance = distanceMeters(location, point.lat, point.lon);
+    return distance == null || distance <= 30000;
+  });
+}
+
 function nameMatches(candidate, query) {
   const normalize = value => String(value || "").toLocaleLowerCase().replace(/['’]/g, "").replace(/[^a-z0-9]+/g, " ").trim();
   const name = normalize(candidate);
@@ -141,7 +152,7 @@ export function createRestaurantLookupHandler({ fetcher = fetch } = {}) {
           const payload = await fetchJson(fetcher, url, { headers: { Accept: "application/json" } });
           features = Array.isArray(payload?.features) ? payload.features : [];
         } catch (error) { photonError = error; }
-        if (!features.some(feature => hasFoodFeature(feature) && nameMatches(feature?.properties?.name, query))) {
+        if (!hasNearbyNameMatch(features, query, location)) {
           const fallback = await nearbyNameFeatures(query, location, fetcher);
           if (fallback.length) features = [...features, ...fallback];
         }
