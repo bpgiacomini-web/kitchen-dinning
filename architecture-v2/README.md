@@ -9,7 +9,7 @@ This is the preview implementation, separate from the root app and Production. I
 - Ingredients and directions are stored as ordered text arrays. Recipe photos and offline synchronization are out of scope.
 - Recipe cards can be printed or saved as PDF. An explicit share action creates a read-only link; only the token hash is stored. The owner can revoke the link. Shared pages are marked `noindex`.
 - The app keeps up to 10 restore points per account, captured before a dataset write. Restore points include recipes, restaurant reviews, and pizza ratings.
-- Restaurant records support create, edit, delete, and separate visit-by-visit reviews. Frozen pizzas support UPC product lookup through Open Food Facts, manual entry, prices, category ratings, and notes. Product matches depend on Open Food Facts coverage; camera scanning is not included, but UPC entry and lookup work in mobile Safari.
+- Restaurant records support create, edit, delete, and separate visit-by-visit reviews. Frozen pizzas support UPC product lookup through Open Food Facts, camera barcode scanning, manual entry, prices, category ratings, and notes. Product matches depend on Open Food Facts coverage. Camera scanning uses the device camera only after the user taps Scan barcode; it needs HTTPS and browser camera permission (including iPhone Safari). If scanning or lookup is unavailable, users can enter the UPC and product details manually. Camera frames are not stored or uploaded.
 - Existing recipe data is deliberately not migrated. The preview migration carries restaurant/review records forward from the legacy per-user preview table when that table exists.
 
 ## Persistence and deployment

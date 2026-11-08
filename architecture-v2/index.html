@@ -39,7 +39,7 @@
   <link rel="apple-touch-icon" href="../icon-180.png">
   <title>Metro Eats — Architecture Preview</title>
   <link rel="stylesheet" href="./base.css?v=1">
-  <link rel="stylesheet" href="./styles.css?v=19">
+  <link rel="stylesheet" href="./styles.css?v=20">
   <link rel="stylesheet" href="./pizza-theme.css?v=4">
 </head>
 <body>
@@ -86,7 +86,8 @@
     <button type="button" data-close>Close</button>
     <p id="metroAccountStatus" role="status" aria-live="polite"></p>
   </section>
-  <script type="module" src="./src/main.mjs?v=20"></script>
+  <script src="./vendor/zxing-browser-0.2.1.min.js?v=1"></script>
+  <script type="module" src="./src/main.mjs?v=21"></script>
   <script>
     const panel = document.getElementById('metroAuthPanel');
     const loading = document.getElementById('metroAuthLoading');

@@ -5,6 +5,7 @@ import { parsePastedRecipeText, parseRecipeJsonLd } from "./features/recipes/imp
 import { createRestaurantReview, RESTAURANT_REVIEW_DIMENSIONS, reviewContentSignature, upsertRestaurantReview } from "./domain/restaurant-review.mjs";
 import { sortRestaurantItems } from "./domain/restaurant-sort.mjs";
 import { searchNearbyRestaurants as lookupNearbyRestaurants, searchRestaurantNames } from "./domain/restaurant-lookup.mjs";
+import { normalizeScannedUpc } from "./domain/pizza-barcode.mjs";
 
 const root = document.querySelector("#app");
 const status = document.querySelector("#previewNotice");
@@ -19,6 +20,8 @@ let activeRecipeId = null;
 let activeRestaurantId = null;
 let activeReviewIndex = null;
 let activePizzaId = null;
+let pizzaScannerControls = null;
+let pizzaScannerGeneration = 0;
 let restaurantSort = "recent";
 let extractedRecipe = null;
 let newRestaurantPrefill = null;
@@ -95,6 +98,72 @@ function updatePizzaRatingSummary() {
     const label = root.querySelector(`[data-pizza-score-label="${key}"]`);
     if (label) label.textContent = value >= 1 && value <= 10 ? `${value}/10` : "Select 1–10";
   });
+}
+function stopPizzaScanner() {
+  pizzaScannerGeneration += 1;
+  try { pizzaScannerControls?.stop(); } catch { /* The camera may already be closed. */ }
+  pizzaScannerControls = null;
+  const video = root.querySelector("#pizza-scanner-video");
+  if (video) {
+    video.pause();
+    for (const track of video.srcObject?.getTracks?.() || []) track.stop();
+    video.srcObject = null;
+  }
+  const scanner = root.querySelector("#pizza-scanner");
+  if (scanner) scanner.hidden = true;
+}
+async function startPizzaScanner() {
+  const statusLine = root.querySelector("#pizza-upc-status");
+  const scanner = root.querySelector("#pizza-scanner");
+  const video = root.querySelector("#pizza-scanner-video");
+  if (!window.isSecureContext || !navigator.mediaDevices?.getUserMedia) {
+    if (statusLine) statusLine.textContent = "Camera scanning needs a secure HTTPS connection and a supported browser. You can enter the UPC manually.";
+    return;
+  }
+  const BrowserMultiFormatReader = globalThis.ZXingBrowser?.BrowserMultiFormatReader;
+  if (!BrowserMultiFormatReader) {
+    if (statusLine) statusLine.textContent = "The barcode scanner could not load. You can enter the UPC manually.";
+    return;
+  }
+  if (!scanner || !video) return;
+  const generation = ++pizzaScannerGeneration;
+  scanner.hidden = false;
+  if (statusLine) statusLine.textContent = "Allow camera access in your browser, then center the barcode in the frame.";
+  try {
+    const reader = new BrowserMultiFormatReader();
+    const controls = await reader.decodeFromConstraints(
+      { audio: false, video: { facingMode: { ideal: "environment" } } },
+      video,
+      result => {
+        if (generation !== pizzaScannerGeneration || !result) return;
+        const upc = normalizeScannedUpc(result.getText());
+        if (!upc) return;
+        const upcField = root.querySelector("#pizza-upc");
+        if (!upcField) { stopPizzaScanner(); return; }
+        upcField.value = upc;
+        if (statusLine) statusLine.textContent = "Barcode scanned. Looking up the product…";
+        stopPizzaScanner();
+        root.querySelector('[data-action="lookup-pizza-upc"]')?.click();
+      }
+    );
+    if (generation !== pizzaScannerGeneration || !video.isConnected) {
+      controls.stop();
+      return;
+    }
+    pizzaScannerControls = controls;
+    if (statusLine) statusLine.textContent = "Point your camera at the pizza barcode and hold it steady.";
+  } catch (error) {
+    if (generation !== pizzaScannerGeneration) return;
+    stopPizzaScanner();
+    const message = error?.name === "NotAllowedError"
+      ? "Camera access was not allowed. Allow camera access for this site in your browser settings, then try again."
+      : error?.name === "NotFoundError"
+        ? "No camera was found on this device. You can enter the UPC manually."
+        : error?.name === "NotReadableError"
+          ? "The camera is busy in another app. Close it and try again."
+          : "The camera could not start. Check browser permissions and try again.";
+    if (statusLine) statusLine.textContent = message;
+  }
 }
 function reviewFoodItems(review) {
   if (Array.isArray(review?.foodItems)) return review.foodItems;
@@ -539,7 +608,7 @@ function renderFrozenPizzas() {
   <section class="content-panel"><div class="sectionTitle"><div><div class="sectionKicker">${(dataset.pizzas || []).length} saved</div><h3>Your frozen-pizza reviews</h3></div></div><div class="pizzaCollection">${pizzaRows || `<div class="empty">No frozen pizzas saved yet. Add one below to start your ratings.</div>`}</div></section>
   <section class="content-panel pizzaEditorPanel"><div class="sectionTitle"><div><div class="sectionKicker">${pizza ? "Edit saved review" : "Your next review"}</div><h3>${pizza ? "Update a Frozen Pizza Review" : "Review a Frozen Pizza"}</h3></div></div><p class="hint">Rate Taste, Crust, and Value to complete a review. Add Sauce, Cheese, or Toppings when they apply. Your overall score updates from the categories you rate.</p>
     <div class="pizzaLiveSummary"><div class="pizzaLiveScore"><span>Overall rating</span><strong><span id="pizza-overall-value">${initialOverall}</span><small>/10</small></strong></div><div class="pizzaRatingProgress"><progress id="pizza-rating-progress" max="3" value="${PIZZA_REVIEW_DIMENSIONS.filter(({ key, required }) => required && Number(scores[key]) >= 1 && Number(scores[key]) <= 10).length}"></progress><p id="pizza-rating-count">${PIZZA_REVIEW_DIMENSIONS.filter(({ key, required }) => required && Number(scores[key]) >= 1 && Number(scores[key]) <= 10).length} of 3 core ratings complete · ${initialRatings.length} of 6 categories rated</p></div></div>
-    <div class="pizzaEditForm"><div class="restaurantEditorGrid"><label>Brand<input id="pizza-brand" maxlength="120" required value="${escapeHtml(pizza?.brand || "")}" placeholder="e.g. DiGiorno"></label><label>Pizza name / variety<input id="pizza-name" maxlength="180" required value="${escapeHtml(pizza?.name || "")}" placeholder="e.g. Rising Crust Pepperoni"></label></div><div class="restaurantEditorGrid pizzaUpcRow"><label>UPC barcode <span class="optionalMark">Optional</span><input id="pizza-upc" inputmode="numeric" autocomplete="off" maxlength="14" value="${escapeHtml(pizza?.upc || "")}" placeholder="8–14 digits"></label><button class="btn" type="button" data-action="lookup-pizza-upc">Look up UPC</button></div><p class="edit-status pizzaUpcStatus" id="pizza-upc-status" role="status" aria-live="polite"></p><p class="hint pizzaUpcHint">Enter the UPC here on your phone, then tap Look up UPC. If no match is found, enter the brand and name manually.</p><div class="restaurantEditorGrid"><label>Review date<input id="pizza-reviewed-at" type="date" value="${escapeHtml(reviewedAt)}" required></label><label>Purchase price <span class="optionalMark">Optional</span><input id="pizza-price" type="number" inputmode="decimal" min="0" step=".01" value="${pizza?.price ?? ""}" placeholder="0.00"></label></div>
+    <div class="pizzaEditForm"><div class="restaurantEditorGrid"><label>Brand<input id="pizza-brand" maxlength="120" required value="${escapeHtml(pizza?.brand || "")}" placeholder="e.g. DiGiorno"></label><label>Pizza name / variety<input id="pizza-name" maxlength="180" required value="${escapeHtml(pizza?.name || "")}" placeholder="e.g. Rising Crust Pepperoni"></label></div><div class="restaurantEditorGrid pizzaUpcRow"><label>UPC barcode <span class="optionalMark">Optional</span><input id="pizza-upc" inputmode="numeric" autocomplete="off" maxlength="14" value="${escapeHtml(pizza?.upc || "")}" placeholder="8–14 digits"></label><div class="pizzaUpcActions"><button class="btn" type="button" data-action="scan-pizza-upc">Scan barcode</button><button class="btn" type="button" data-action="lookup-pizza-upc">Look up UPC</button></div></div><section class="pizzaScanner" id="pizza-scanner" aria-label="Pizza barcode scanner" hidden><div class="pizzaScannerHeader"><strong>Scan the pizza barcode</strong><button class="btn" type="button" data-action="close-pizza-scanner">Close camera</button></div><div class="pizzaScannerViewport"><video id="pizza-scanner-video" autoplay muted playsinline aria-label="Live camera preview for barcode scanning"></video><span class="pizzaScannerGuide" aria-hidden="true"></span></div><p>Hold the barcode inside the frame. Scanning stops as soon as a code is read.</p></section><p class="edit-status pizzaUpcStatus" id="pizza-upc-status" role="status" aria-live="polite"></p><p class="hint pizzaUpcHint">On a phone, tap Scan barcode and allow camera access. You can also enter the UPC manually. If no product match is found, enter the brand and name yourself.</p><div class="restaurantEditorGrid"><label>Review date<input id="pizza-reviewed-at" type="date" value="${escapeHtml(reviewedAt)}" required></label><label>Purchase price <span class="optionalMark">Optional</span><input id="pizza-price" type="number" inputmode="decimal" min="0" step=".01" value="${pizza?.price ?? ""}" placeholder="0.00"></label></div>
     <div class="reviewScaleLegend pizzaScaleLegend"><span>1 · Poor</span><span>5 · Average</span><span>10 · Exceptional</span></div><div class="pizzaScoreGrid" aria-label="Frozen pizza ratings">${scoreFields}</div><fieldset class="pizzaBuyAgain"><legend>Would you buy this pizza again? <span class="optionalMark">Optional</span></legend><label><input type="radio" name="pizza-would-buy-again" value="yes"${pizza?.wouldBuyAgain === "yes" ? " checked" : ""}> Yes</label><label><input type="radio" name="pizza-would-buy-again" value="no"${pizza?.wouldBuyAgain === "no" ? " checked" : ""}> No</label></fieldset><label>Review notes <span class="optionalMark">Optional</span><textarea id="pizza-notes" rows="3" maxlength="5000" placeholder="What stood out about the taste, texture, or value?">${escapeHtml(pizza?.notes || "")}</textarea></label><div class="recipeEditActions"><button class="btn" type="button" data-action="cancel-pizza-edit">${pizza ? "Cancel" : "Clear"}</button><button class="btn primary" type="button" data-action="save-pizza" data-pizza-id="${escapeHtml(pizza?.id || "")}">${pizza ? "Save Review" : "Save Pizza Review"}</button></div><p class="edit-status" role="status" aria-live="polite"></p></div><p class="hint">Your private pizza reviews are included in automatic restore points.</p></section>`;
 }
 function formatRecipeDuration(value) {
@@ -577,6 +646,7 @@ function renderImportPreview(recipe) {
   preview.innerHTML = `<article class="parsedRecipe"><p class="sectionKicker">Review before saving</p><div class="field"><label for="review-recipe-title">Recipe title</label><input id="review-recipe-title" maxlength="180" value="${escapeHtml(recipe.title)}"></div><div class="field"><label for="review-recipe-category">Recipe category</label><select id="review-recipe-category">${RECIPE_CATEGORIES.map(category => `<option value="${escapeHtml(category)}"${category === "Other" ? " selected" : ""}>${escapeHtml(category)}</option>`).join("")}</select></div>${metadata.length ? `<dl>${metadata.map(([label, value]) => `<div><dt>${label}</dt><dd>${escapeHtml(value)}</dd></div>`).join("")}</dl>` : ""}${recipe.source ? `<p class="note"><a class="recipeSourceLink" href="${escapeHtml(recipe.source)}" target="_blank" rel="noopener noreferrer">Recipe link ↗</a></p>` : ""}<div class="field"><label for="review-recipe-ingredients">Ingredients (one per line)</label><textarea id="review-recipe-ingredients" rows="8" maxlength="30000">${escapeHtml(ingredients.join("\n"))}</textarea></div><div class="field"><label for="review-recipe-directions">Directions (one step per line)</label><textarea id="review-recipe-directions" rows="8" maxlength="30000">${escapeHtml(directions.join("\n"))}</textarea></div><div class="actions"><button class="btn primary" type="button" data-action="save-recipe">Save to My Recipes</button></div><p id="recipe-save-status" class="importFeedback" role="status" aria-live="polite"></p></article>`;
 }
 function render() {
+  stopPizzaScanner();
   document.querySelector(".app > .top")?.classList.toggle("homeStickyHeader", activeView === "home");
   root.classList.add("section", "active");
   root.classList.remove("recipeSection", "diningSection", "pizzaSection");
@@ -668,6 +738,16 @@ document.addEventListener("click", async event => {
   }
   const actionButton = event.target.closest("[data-action]");
   if (!actionButton) return;
+  if (actionButton.dataset.action === "scan-pizza-upc") {
+    void startPizzaScanner();
+    return;
+  }
+  if (actionButton.dataset.action === "close-pizza-scanner") {
+    stopPizzaScanner();
+    const statusLine = root.querySelector("#pizza-upc-status");
+    if (statusLine) statusLine.textContent = "Camera closed. You can enter the UPC manually.";
+    return;
+  }
   if (actionButton.dataset.action === "lookup-pizza-upc") {
     const upcField = root.querySelector("#pizza-upc");
     const brandField = root.querySelector("#pizza-brand");
