@@ -174,7 +174,15 @@
 #app .nearbyPanel h3{margin:0 0 4px}
 #app .nearbyPanel p{margin:4px 0}
 #app .nearbyPanel .edit-status,#app .nearbyResults{grid-column:1/-1}
+#app .nearbyDisclosure{grid-column:1/-1;min-width:0;padding-top:8px;border-top:1px solid #315047}
+#app .nearbyDisclosure[hidden]{display:none!important}
+#app .nearbyDisclosure summary{display:flex;align-items:center;gap:9px;min-height:42px;cursor:pointer;color:#e2eee8;font-weight:800;list-style:none}
+#app .nearbyDisclosure summary::-webkit-details-marker{display:none}
+#app .nearbyDisclosure summary::before{content:"▸";color:#94c4b2;font-size:18px;line-height:1}
+#app .nearbyDisclosure[open] summary::before{content:"▾"}
+#app .nearbyDisclosure summary:focus-visible{outline:2px solid #94c4b2;outline-offset:3px;border-radius:4px}
 #app .nearbyResults{display:grid;gap:8px}
+#app .nearbyDisclosure .nearbyResults{margin-top:8px}
 #app .nearbyPlace{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px;align-items:center;padding:11px 12px;border:1px solid #35463f;border-radius:12px;background:#0e1413}
 #app .nearbyPlace strong{display:block;overflow-wrap:anywhere}
 #app .nearbyPlace small{display:block;margin-top:4px;color:var(--muted);line-height:1.4}
