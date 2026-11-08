@@ -3,10 +3,11 @@ import { consumeAccountRateLimit, sendRateLimitResponse } from './_lib/rate-limi
 
 const FOOD_AMENITIES = new Set(["restaurant", "fast_food", "cafe", "bar", "pub"]);
 const PHOTON_URL = "https://photon.komoot.io/api/";
+const PHOTON_REVERSE_URL = "https://photon.komoot.io/reverse";
 const OPEN_FOOD_FACTS_URL = "https://world.openfoodfacts.org/api/v2/product/";
 const OVERPASS_URLS = [
-  "https://overpass-api.de/api/interpreter",
-  "https://overpass.kumi.systems/api/interpreter"
+  "https://overpass.private.coffee/api/interpreter",
+  "https://overpass-api.de/api/interpreter"
 ];
 
 function finiteCoordinate(value, min, max) {
@@ -62,6 +63,27 @@ function normalizeNearby(elements, location, { filter = () => true, limit = 20 }
     seen.add(key);
     return true;
   }).sort((a, b) => (a.distance ?? Infinity) - (b.distance ?? Infinity)).slice(0, limit);
+}
+
+function normalizePhotonNearby(features, location) {
+  const elements = (Array.isArray(features) ? features : []).map(feature => {
+    const props = feature?.properties || {};
+    const [lon, lat] = feature?.geometry?.coordinates || [];
+    return {
+      lat, lon,
+      tags: {
+        name: props.name,
+        amenity: props.osm_key === "amenity" ? props.osm_value : "",
+        cuisine: props.cuisine || props.extra?.cuisine || "",
+        website: props.website || props.extra?.website || "",
+        "addr:housenumber": props.housenumber,
+        "addr:street": props.street,
+        "addr:city": props.city,
+        "addr:state": props.state
+      }
+    };
+  });
+  return normalizeNearby(elements, location);
 }
 
 function hasFoodFeature(feature) {
@@ -202,12 +224,30 @@ export function createRestaurantLookupHandler({ fetcher = fetch, authenticate = 
     if (mode === "nearby") {
       if (!location) return res.status(422).json({ error: "Device and network location are unavailable. Allow location access or enter the restaurant details manually." });
       const query = `[out:json][timeout:15];nwr["amenity"~"^(restaurant|fast_food|cafe|bar|pub)$",i]["name"](around:8047,${location.lat},${location.lon});out center tags;`;
+      const photonUrl = new URL(PHOTON_REVERSE_URL);
+      photonUrl.searchParams.set("lat", String(location.lat));
+      photonUrl.searchParams.set("lon", String(location.lon));
+      photonUrl.searchParams.set("radius", "8.05");
+      photonUrl.searchParams.set("limit", "50");
+      photonUrl.searchParams.set("lang", "en");
+      for (const amenity of FOOD_AMENITIES) photonUrl.searchParams.append("osm_tag", `amenity:${amenity}`);
+      try {
+        const nearby = await fetchJson(fetcher, photonUrl, {
+          headers: { Accept: "application/json", "User-Agent": "MetroEats/1.0 (nearby restaurant lookup)" }
+        }, 4000);
+        if (!Array.isArray(nearby?.features)) throw new Error("invalid_photon_response");
+        return res.status(200).json({ places: normalizePhotonNearby(nearby.features, location), location });
+      } catch (error) {
+        console.error("Metro Eats Photon nearby lookup failed", String(error?.message || "upstream_error").slice(0, 80));
+      }
       let payload = null;
       for (const [index, endpoint] of OVERPASS_URLS.entries()) {
         const url = new URL(endpoint);
         url.searchParams.set("data", query);
         try {
-          payload = await fetchJson(fetcher, url, { headers: { Accept: "application/json" } }, index === 0 ? 7000 : 2000);
+          payload = await fetchJson(fetcher, url, {
+            headers: { Accept: "application/json", "User-Agent": "MetroEats/1.0 (nearby restaurant lookup)" }
+          }, 1600);
           break;
         } catch { /* Try the public backup endpoint. */ }
       }
