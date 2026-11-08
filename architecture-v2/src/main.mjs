@@ -195,9 +195,13 @@ function renderRestaurantLookupResults(results, message = "", target = {}) {
   restaurantLookupResults = results;
   container.innerHTML = "";
   if (message) { statusLine.textContent = message; return; }
-  if (!results.length) { statusLine.textContent = "No matches found. Try adding the city or state, or enter the restaurant manually."; return; }
-  const allFar = restaurantLookupLocation && results.every(place => place.distance != null && place.distance > 200_000);
-  statusLine.textContent = allFar ? "No close match found. Showing exact-name matches farther away; check the city before selecting." : `Choose a match to fill available details${restaurantLookupLocation ? "; closest places appear first" : ""}.`;
+  if (!results.length) {
+    statusLine.textContent = restaurantLookupLocation
+      ? `No matching restaurant found near ${restaurantLookupLocation.city || "your location"}. Add a city or state to search another area, or enter the restaurant manually.`
+      : "No matches found. Try adding the city or state, or enter the restaurant manually.";
+    return;
+  }
+  statusLine.textContent = `Choose a match to fill available details${restaurantLookupLocation ? "; closest places appear first" : ""}.`;
   container.innerHTML = results.map((place, index) => `<button class="restaurantLookupResult" type="button" data-action="select-restaurant-lookup" data-result-index="${index}"><strong>${escapeHtml(place.name)}</strong><small>${escapeHtml([place.cuisine, place.address, place.distance == null ? "" : place.distance < 1609 ? `${Math.round(place.distance * 3.28084)} ft away` : `${(place.distance / 1609.34).toFixed(1)} mi away`].filter(Boolean).join(" · ") || "Address not listed")}</small></button>`).join("");
 }
 function searchRestaurantName(query, target = {}) {

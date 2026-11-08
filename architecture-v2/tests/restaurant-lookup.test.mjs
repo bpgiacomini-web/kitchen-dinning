@@ -70,13 +70,12 @@ test("name search prioritizes the closest result over an exact but farther dupli
   assert.equal(places[0].name, "Fast Eddie's Bon Air");
 });
 
-test("name search shows a strong exact-name result outside the local range when no nearby match exists", async () => {
+test("name search hides distant exact-name results when location is known", async () => {
   const { places } = await searchRestaurantNames("Regal Beagle", { fetcher: async () => ({ ok: true, json: async () => ({
     location: { lat: 34.05, lon: -118.24, city: "Los Angeles", source: "network" },
     features: [feature("Ropers Regal Beagle", { coordinates: [-90.19, 38.93] }), feature("The Regal", { coordinates: [-118.2, 34.05] })]
   }) }) });
-  assert.equal(places.length, 1);
-  assert.equal(places[0].name, "Ropers Regal Beagle");
+  assert.equal(places.length, 0);
 });
 
 test("nearby lookup uses the same-origin API and reports the resolved location", async () => {

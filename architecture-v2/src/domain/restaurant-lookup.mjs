@@ -81,10 +81,10 @@ export async function searchRestaurantNames(query, { location = null, fetcher = 
   const lookupLocation = payload?.location || location;
   const results = normalizeRestaurantLookup(payload?.features, lookupLocation);
   const matchingNames = results.filter(place => nameMatchStrength(place.name, name) >= 1);
-  const nearby = lookupLocation ? matchingNames.filter(place => place.distance == null || place.distance <= 200_000) : matchingNames;
-  // Keep nearby matches first. If there are none, retain only strong name matches
-  // from the global geocoder so a correct result is not hidden by a bad IP location.
-  const candidates = nearby.length ? nearby : matchingNames;
+  const nearby = lookupLocation ? matchingNames.filter(place => place.distance != null && place.distance <= 200_000) : matchingNames;
+  // When the user's location is known, do not present distant same-name places
+  // as local choices. If location is unavailable, retain exact-name geocoder results.
+  const candidates = lookupLocation ? nearby : matchingNames;
   const rank = restaurant => nameMatchStrength(restaurant.name, name);
   const places = candidates.sort((a, b) => {
     if (lookupLocation) return (a.distance ?? Infinity) - (b.distance ?? Infinity) || rank(b) - rank(a);
