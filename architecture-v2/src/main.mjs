@@ -50,12 +50,6 @@ async function saveCloudDataset(nextDataset) {
 function escapeHtml(value) {
   return String(value ?? "").replace(/[&<>"']/g, char => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[char]);
 }
-function safeGoogleMapsUrl(value) {
-  try {
-    const url = new URL(String(value || ""));
-    return url.protocol === "https:" && (url.hostname === "google.com" || url.hostname.endsWith(".google.com")) ? escapeHtml(url.href) : "https://www.google.com/maps";
-  } catch { return "https://www.google.com/maps"; }
-}
 function setStatus(label, kind = "") {
   status.textContent = label;
   status.className = `status ${kind}`.trim();
@@ -817,8 +811,7 @@ document.addEventListener("click", async event => {
         return;
       }
       const payload = await requestGoogle({ mode: "google-place-details", placeId: restaurant.googlePlaceId });
-      const mapsUrl = safeGoogleMapsUrl(payload.mapsUrl);
-      output.innerHTML = `<a class="googleRatingScore" href="${mapsUrl}" target="_blank" rel="noopener noreferrer"><strong>Google Maps</strong> · ★ ${Number(payload.rating).toFixed(1)} <span>(${Number(payload.ratingCount).toLocaleString()} ratings)</span></a>`;
+      output.innerHTML = `<span class="googleRatingScore"><strong>Google Maps</strong> · ★ ${Number(payload.rating).toFixed(1)} <span>(${Number(payload.ratingCount).toLocaleString()} ratings)</span></span>`;
     } catch (error) {
       output.textContent = error?.message || "Google Maps score could not be loaded.";
     } finally { actionButton.disabled = false; }
@@ -839,7 +832,7 @@ document.addEventListener("click", async event => {
       render();
       const card = [...root.querySelectorAll(".restaurantCard")].find(item => item.querySelector('[data-action="google-rating"]')?.dataset.restaurantId === String(id));
       const output = card?.querySelector(".googleRatingResult");
-      if (output) output.innerHTML = `<a class="googleRatingScore" href="${safeGoogleMapsUrl(payload.mapsUrl)}" target="_blank" rel="noopener noreferrer"><strong>Google Maps</strong> · ★ ${Number(payload.rating).toFixed(1)} <span>(${Number(payload.ratingCount).toLocaleString()} ratings)</span></a>`;
+      if (output) output.innerHTML = `<span class="googleRatingScore"><strong>Google Maps</strong> · ★ ${Number(payload.rating).toFixed(1)} <span>(${Number(payload.ratingCount).toLocaleString()} ratings)</span></span>`;
       googlePlaceCandidates.delete(String(id));
     } catch (error) {
       if (activeView === "dining") render(); else actionButton.disabled = false;

@@ -675,9 +675,8 @@
 #app .googleRatingPanel{display:grid;gap:7px;margin:12px 0;padding:10px 12px;border:1px solid #315047;border-radius:12px;background:#101816}
 #app .googleRatingPanel>.btn{justify-self:start;margin:0;min-height:38px}
 #app .googleRatingResult{display:grid;gap:6px;color:var(--muted,#aab2bc);font-size:14px}
-#app .googleRatingScore{display:inline-flex;flex-wrap:wrap;gap:5px;align-items:center;color:var(--text,#f4f0e7);text-decoration:none}
+#app .googleRatingScore{display:inline-flex;flex-wrap:wrap;gap:5px;align-items:center;color:var(--text,#f4f0e7)}
 #app .googleRatingScore strong{color:#94c4b2}
-#app .googleRatingScore:hover{text-decoration:underline}
 #app .googlePlaceChoice{display:grid;gap:3px;width:100%;margin:0;text-align:left}
 #app .googlePlaceChoice small{color:var(--muted,#aab2bc);white-space:normal}
 @media(max-width:620px){#app .pizzaUpcRow{grid-template-columns:1fr}#app .pizzaUpcActions{display:grid;grid-template-columns:1fr 1fr}#app .pizzaUpcActions .btn{padding-inline:10px;font-size:14px}}
