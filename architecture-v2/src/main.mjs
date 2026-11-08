@@ -23,6 +23,7 @@ let restaurantDraft = null;
 let restaurantLookupTimer = null;
 let restaurantLookupRequest = 0;
 let restaurantLookupLocation = null;
+let restaurantLookupLocationRequested = false;
 let restaurantLookupResults = [];
 function mergeVisibleDataset() {
   cloudRecipeIds = new Set(cloudDataset.recipes.map(item => String(item.id)));
@@ -99,6 +100,9 @@ function renderRestaurants(items) {
     return `<article class="readOnlyItem restaurantCard" data-search="${escapeHtml(JSON.stringify(restaurant).toLowerCase())}"><div class="recipeCardHeader"><strong>${escapeHtml(restaurant.name)}</strong><div class="recipeCardActions"><button class="btn" type="button" data-action="toggle-restaurant-favorite" data-restaurant-id="${escapeHtml(restaurant.id)}" aria-pressed="${restaurant.favorite ? "true" : "false"}">${restaurant.favorite ? "★ Favorite" : "☆ Add to Favorites"}</button><button class="btn" type="button" data-action="edit-restaurant" data-restaurant-id="${escapeHtml(restaurant.id)}">Edit</button><button class="btn primary" type="button" data-action="add-restaurant-review" data-restaurant-id="${escapeHtml(restaurant.id)}">＋ Rate a Visit (1–10)</button><button class="btn danger" type="button" data-action="delete-restaurant" data-restaurant-id="${escapeHtml(restaurant.id)}">Delete</button></div></div><small>${escapeHtml([restaurant.cuisine, restaurant.address, rating == null ? null : `Rating ${rating.toFixed(1)}/10`, restaurant.favorite ? "Favorite" : "", `${reviews.length} ${reviews.length === 1 ? "visit" : "visits"}`].filter(Boolean).join(" · ") || "No additional details saved")}</small>${reviews.length === 0 ? `<p class="hint restaurantReviewPrompt">No visit ratings yet. Add a visit to rate your experience, service, value, and dishes from 1 to 10.</p>` : ""}${bestDishes.length ? `<p class="restaurantTopDishes"><strong>Top rated dishes:</strong> ${bestDishes.map(item => `${escapeHtml(item.name)} ${escapeHtml(item.rating)}/10`).join(" · ")}</p>` : ""}<details><summary>Restaurant details and visit history</summary><section class="restaurantDetailBlock"><h4>Restaurant information</h4><dl>${details || `<div><dt>Details</dt><dd>No additional details saved.</dd></div>`}</dl></section><section class="restaurantDetailBlock"><h4>Visit history</h4>${reviewRows || `<p class="hint">No visits or reviews yet. Add a visit to start your personal history.</p>`}</section></details><p class="edit-status" role="status" aria-live="polite"></p></article>`;
   }).join("");
   root.innerHTML = `<section class="hero"><div class="heroIn"><div class="eyebrow">Your dining journal</div><h2>My Restaurants</h2><p>Keep restaurant details and visit-by-visit food critic reviews together in your private Metro Eats account.</p></div></section><section class="content-panel"><div class="sectionTitle"><div><div class="sectionKicker">${items.length} saved</div><h3>Your restaurants &amp; reviews</h3></div><div class="diningActions"><button class="btn" type="button" data-action="open-rankings">★ My Rankings</button><button class="btn primary" type="button" data-action="new-restaurant">＋ Add a Restaurant</button></div></div><section class="nearbyPanel"><div><h3>Restaurants Around Me</h3><p class="hint">Nearby places load automatically when you open this page. Location is used only for this search, never saved. If device location is unavailable, Metro Eats uses an approximate area.</p></div><p class="edit-status" id="nearby-status" role="status" aria-live="polite">Nearby restaurant search will start automatically.</p><div class="nearbyResults" id="nearby-results"></div></section><label class="restaurantSearchLabel" for="restaurant-search">Search your restaurants</label><input id="restaurant-search" class="restaurantSearch" type="search" placeholder="Name, cuisine, address, dish, or note" autocomplete="off"><p class="hint" id="restaurant-search-count" aria-live="polite">Showing ${items.length} ${items.length === 1 ? "restaurant" : "restaurants"}.</p><div class="readOnlyList" id="restaurant-list">${rows || `<div class="empty">No restaurants saved yet. Add one to start your private dining journal.</div>`}</div><p class="hint">Restaurant search, critic scores, rated dishes, and every visit review are saved to your signed-in Preview account. Existing shared baseline records stay unchanged.</p></section>`;
+  const searchLabel = root.querySelector(".restaurantSearchLabel");
+  if (searchLabel) searchLabel.textContent = "Search saved restaurants or find a new one";
+  root.querySelector("#restaurant-search")?.insertAdjacentHTML("afterend", '<p class="hint">Online restaurant matches will appear here too. Select one to start a restaurant record and visit review.</p><p class="edit-status" id="restaurant-search-status" role="status" aria-live="polite"></p><div id="restaurant-search-results" class="restaurantLookupResults"></div>');
 }
 function renderRestaurantEditor(restaurantId = null) {
   const restaurant = restaurantId ? cloudDataset.restaurants.find(item => String(item.id) === String(restaurantId)) : restaurantDraft || newRestaurantPrefill;
@@ -182,22 +186,28 @@ async function searchNearbyRestaurants() {
     search({ lat: position.coords.latitude, lon: position.coords.longitude });
   }, () => { search(null); }, { enableHighAccuracy: false, timeout: 8000, maximumAge: 300000 });
 }
-function renderRestaurantLookupResults(results, message = "") {
-  const statusLine = root.querySelector("#restaurant-lookup-status");
-  const container = root.querySelector("#restaurant-lookup-results");
+function renderRestaurantLookupResults(results, message = "", target = {}) {
+  const statusId = target.statusId || "restaurant-lookup-status";
+  const resultsId = target.resultsId || "restaurant-lookup-results";
+  const statusLine = root.querySelector(`#${statusId}`);
+  const container = root.querySelector(`#${resultsId}`);
   if (!container || !statusLine) return;
   restaurantLookupResults = results;
   container.innerHTML = "";
   if (message) { statusLine.textContent = message; return; }
-  if (!results.length) { statusLine.textContent = restaurantLookupLocation ? "No restaurant matches found nearby. Add a city or state to the search, or fill in the details manually." : "Could not determine a nearby area. Include the city and state with the restaurant name, or fill in the details manually."; return; }
-  statusLine.textContent = `Choose the right match to fill available details${restaurantLookupLocation ? "; nearby matches are listed first" : ""}.`;
+  if (!results.length) { statusLine.textContent = "No matches found. Try adding the city or state, or enter the restaurant manually."; return; }
+  const allFar = restaurantLookupLocation && results.every(place => place.distance != null && place.distance > 200_000);
+  statusLine.textContent = allFar ? "No close match found. Showing exact-name matches farther away; check the city before selecting." : `Choose a match to fill available details${restaurantLookupLocation ? "; closest places appear first" : ""}.`;
   container.innerHTML = results.map((place, index) => `<button class="restaurantLookupResult" type="button" data-action="select-restaurant-lookup" data-result-index="${index}"><strong>${escapeHtml(place.name)}</strong><small>${escapeHtml([place.cuisine, place.address, place.distance == null ? "" : place.distance < 1609 ? `${Math.round(place.distance * 3.28084)} ft away` : `${(place.distance / 1609.34).toFixed(1)} mi away`].filter(Boolean).join(" · ") || "Address not listed")}</small></button>`).join("");
 }
-function searchRestaurantName(query) {
+function searchRestaurantName(query, target = {}) {
   clearTimeout(restaurantLookupTimer);
   const value = query.trim();
-  const statusLine = root.querySelector("#restaurant-lookup-status");
-  if (value.length < 2) { restaurantLookupRequest += 1; restaurantLookupResults = []; root.querySelector("#restaurant-lookup-results")?.replaceChildren(); if (statusLine) statusLine.textContent = ""; return; }
+  const statusId = target.statusId || "restaurant-lookup-status";
+  const resultsId = target.resultsId || "restaurant-lookup-results";
+  const statusLine = root.querySelector(`#${statusId}`);
+  if (value.length < 2) { restaurantLookupRequest += 1; restaurantLookupResults = []; root.querySelector(`#${resultsId}`)?.replaceChildren(); if (statusLine) statusLine.textContent = ""; return; }
+  if (!restaurantLookupLocation && !restaurantLookupLocationRequested) requestDeviceRestaurantLocation();
   statusLine && (statusLine.textContent = "Searching restaurant names on OpenStreetMap…");
   const requestId = ++restaurantLookupRequest;
   restaurantLookupTimer = setTimeout(async () => {
@@ -207,23 +217,29 @@ function searchRestaurantName(query) {
       const { places, location } = await searchRestaurantNames(value, { location: restaurantLookupLocation, signal: controller.signal });
       if (requestId === restaurantLookupRequest) {
         restaurantLookupLocation = location || restaurantLookupLocation;
-        renderRestaurantLookupResults(places);
-        const currentStatus = root.querySelector("#restaurant-lookup-status");
-        if (currentStatus && location?.source === "network" && places.length) currentStatus.textContent = `Choose a match near the approximate area${location.city ? ` (${location.city})` : ""}. Precise device location is more accurate.`;
+        renderRestaurantLookupResults(places, "", { statusId, resultsId });
       }
     } catch {
-      if (requestId === restaurantLookupRequest) renderRestaurantLookupResults([], "Online restaurant search is unavailable right now. You can still enter the details manually.");
+      if (requestId === restaurantLookupRequest) renderRestaurantLookupResults([], "Online restaurant search is unavailable right now. You can still enter the details manually.", { statusId, resultsId });
     } finally { clearTimeout(timeout); }
   }, 300);
 }
 function requestDeviceRestaurantLocation() {
-  if (!navigator.geolocation) return;
-  const statusLine = root.querySelector("#restaurant-lookup-status");
+  if (!navigator.geolocation || restaurantLookupLocationRequested) return;
+  restaurantLookupLocationRequested = true;
+  const activeTarget = () => activeView === "restaurant-edit"
+    ? { inputId: "restaurant-name", statusId: "restaurant-lookup-status", resultsId: "restaurant-lookup-results" }
+    : activeView === "dining"
+      ? { inputId: "restaurant-search", statusId: "restaurant-search-status", resultsId: "restaurant-search-results" }
+      : { inputId: "home-restaurant-search", statusId: "home-restaurant-search-status", resultsId: "home-restaurant-search-results" };
+  const target = activeTarget();
+  const statusLine = root.querySelector(`#${target.statusId}`);
   if (statusLine && !restaurantLookupLocation) statusLine.textContent = "Finding nearby matches using your device location…";
   navigator.geolocation.getCurrentPosition(position => {
     restaurantLookupLocation = { lat: position.coords.latitude, lon: position.coords.longitude, source: "device" };
-    const query = root.querySelector("#restaurant-name")?.value || "";
-    if (query.trim().length >= 2) searchRestaurantName(query);
+    const current = activeTarget();
+    const query = root.querySelector(`#${current.inputId}`)?.value || "";
+    if (query.trim().length >= 2) searchRestaurantName(query, current);
     else if (statusLine?.isConnected) statusLine.textContent = "Nearby matching is ready. Start typing a restaurant name.";
   }, error => {
     if (statusLine?.isConnected && !root.querySelector("#restaurant-lookup-results")?.childElementCount) {
@@ -269,6 +285,7 @@ function updateReviewSurveySummary() {
 }
 function renderHome() {
   root.innerHTML = `<section class="hero"><div class="heroIn"><div class="eyebrow">St. Louis • Metro East</div><h2>Metro Eats<br><span class="fl">⚜</span> Recipes & Dining</h2><p>Your personal recipe book and restaurant journal — built around the food you actually love.</p><div class="homeFeatureButtons"><button class="homeFeatureButton recipeButton" data-view="recipes"><span class="homeFeatureIcon">✦</span><span><strong>My Recipes</strong><small>Your Kitchen</small></span><span class="homeFeatureArrow">→</span></button><button class="homeFeatureButton diningButton" data-view="dining"><span class="homeFeatureIcon" aria-hidden="true">⚜</span><span><strong>My Restaurants</strong><small>Your Restaurants & Reviews</small></span><span class="homeFeatureArrow">→</span></button><button class="homeFeatureButton pizzaButton" data-view="pizzas"><span class="homeFeatureIcon pizzaIcon" aria-hidden="true"></span><span><strong>My Frozen Pizzas</strong><small>Rate and compare</small></span><span class="homeFeatureArrow">→</span></button></div></div></section><section class="localNewsPanel" aria-labelledby="local-news-title"><div class="panel-heading"><div><p class="eyebrow">St. Louis • Metro East</p><h2 id="local-news-title">Local Food News</h2></div><span class="status">Food & restaurants</span></div><p class="newsIntro">Restaurant openings, local food stories, dining news, and Sauce Magazine highlights.</p><div id="local-food-news" class="localNewsList" aria-live="polite"><p class="hint">Loading local food stories…</p></div><p class="hint" id="local-news-updated"></p></section><div class="homeColumns"><article class="featureCard"><div><div class="sectionKicker">Your Collection</div><h3>Saved with care</h3><p>Your recipes, restaurant visits, and frozen-pizza ratings stay with your account.</p></div><div class="actions"><button class="btn primary" data-view="recipes">Open My Recipes →</button><button class="btn" data-view="dining">Open My Restaurants →</button><button class="btn" data-view="pizzas">Open My Frozen Pizzas →</button></div></article><article class="featureCard accent"><div><div class="sectionKicker">Safety First</div><h3>Existing data stays safe.</h3><p>Shared baseline records stay read-only. Your signed-in Preview account saves its own recipes, reviews, and pizza ratings.</p></div><span class="status">Private account</span></article></div>`;
+  root.querySelector(".hero")?.insertAdjacentHTML("afterend", '<section class="content-panel homeRestaurantFinder"><div class="sectionTitle"><div><div class="sectionKicker">Restaurant search</div><h3>Find a place and start a review</h3></div></div><label for="home-restaurant-search">Restaurant name</label><input id="home-restaurant-search" class="restaurantSearch" type="search" placeholder="Start typing a restaurant name" autocomplete="off"><p class="hint">Search nearby places first. Select a match to fill in its details and continue to a visit review.</p><p class="edit-status" id="home-restaurant-search-status" role="status" aria-live="polite"></p><div id="home-restaurant-search-results" class="restaurantLookupResults"></div></section>');
 }
 async function loadLocalFoodNews() {
   const list = document.querySelector("#local-food-news");
@@ -520,6 +537,7 @@ function render() {
 let importMode = "text";
 document.addEventListener("input", event => {
   if (event.target.id === "restaurant-name" && activeView === "restaurant-edit") searchRestaurantName(event.target.value);
+  if (event.target.id === "home-restaurant-search") searchRestaurantName(event.target.value, { statusId: "home-restaurant-search-status", resultsId: "home-restaurant-search-results" });
   if (event.target.id === "restaurant-search") {
     const query = event.target.value.trim().toLocaleLowerCase();
     const cards = [...root.querySelectorAll(".restaurantCard[data-search]")];
@@ -527,6 +545,7 @@ document.addEventListener("input", event => {
     cards.forEach(card => { const matches = card.dataset.search.includes(query); card.hidden = !matches; if (matches) visible += 1; });
     const count = root.querySelector("#restaurant-search-count");
     if (count) count.textContent = query ? `Showing ${visible} of ${cards.length} ${cards.length === 1 ? "restaurant" : "restaurants"}.` : `Showing ${visible} ${visible === 1 ? "restaurant" : "restaurants"}.`;
+    searchRestaurantName(event.target.value, { statusId: "restaurant-search-status", resultsId: "restaurant-search-results" });
   }
   if (event.target.matches("[data-dish-name], [data-dish-notes]")) updateReviewFoodAverage();
   if (event.target.matches("#review-visited-at, #review-order-again")) updateReviewSurveySummary();
@@ -594,6 +613,15 @@ document.addEventListener("click", async event => {
   if (actionButton.dataset.action === "select-restaurant-lookup") {
     const place = restaurantLookupResults[Number(actionButton.dataset.resultIndex)];
     if (!place) return;
+    if (activeView !== "restaurant-edit" || !root.querySelector("#restaurant-name")) {
+      newRestaurantPrefill = { name: place.name, cuisine: place.cuisine, address: place.address, website: place.website };
+      restaurantDraft = null;
+      activeRestaurantId = null;
+      activeView = "restaurant-edit";
+      render();
+      window.scrollTo({ top: 0, left: 0, behavior: "instant" });
+      return;
+    }
     const fields = [["restaurant-name", place.name], ["restaurant-cuisine", place.cuisine], ["restaurant-address", place.address], ["restaurant-website", place.website]];
     fields.forEach(([id, value]) => { const field = root.querySelector(`#${id}`); if (field && value) field.value = value; });
     restaurantLookupRequest += 1;

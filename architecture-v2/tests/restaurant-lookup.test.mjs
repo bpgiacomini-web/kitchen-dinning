@@ -18,6 +18,15 @@ test("restaurant lookup normalizes food places and excludes non-food matches", (
   assert.equal(places[0].distance, 0);
 });
 
+test("known Metro East restaurant matches fill official websites when the map listing omits them", () => {
+  const places = normalizeRestaurantLookup([
+    feature("Fast Eddie's Bon Air", { amenity: "bar", website: "" }),
+    feature("Ropers Regal Beagle", { website: "" })
+  ], { lat: 38.89, lon: -90.18 });
+  assert.equal(places[0].website, "https://fasteddiesbonair.com/");
+  assert.equal(places[1].website, "https://www.ropersregalbeagle.com/");
+});
+
 test("restaurant name lookup queries OpenStreetMap and sorts exact matches first", async () => {
   let requested;
   const fetcher = async (url, options) => {
@@ -36,9 +45,10 @@ test("restaurant name lookup queries OpenStreetMap and sorts exact matches first
   assert.equal(places.length, 2);
 });
 
-test("restaurant name lookup works without location and reports service failures", async () => {
+test("restaurant name lookup returns matches without location and reports service failures", async () => {
   const { places } = await searchRestaurantNames("Main Street", { fetcher: async () => ({ ok: true, json: async () => ({ location: null, features: [feature("Main Street Diner")] }) }) });
-  assert.equal(places.length, 0);
+  assert.equal(places.length, 1);
+  assert.equal(places[0].name, "Main Street Diner");
   await assert.rejects(searchRestaurantNames("Main Street", { fetcher: async () => ({ ok: false, status: 503 }) }), /HTTP 503/);
 });
 
@@ -50,6 +60,23 @@ test("name search drops distant results that would mislead local selection", asy
   assert.equal(places.length, 1);
   assert.equal(places[0].name, "Fast Eddie's");
   assert.equal(places[0].distance, 0);
+});
+
+test("name search prioritizes the closest result over an exact but farther duplicate", async () => {
+  const { places } = await searchRestaurantNames("Fast Eddie's", { fetcher: async () => ({ ok: true, json: async () => ({
+    location: { lat: 38.89, lon: -90.18, city: "Alton", source: "network" },
+    features: [feature("Fast Eddie's", { coordinates: [-90.28, 38.89] }), feature("Fast Eddie's Bon Air", { coordinates: [-90.16, 38.89] })]
+  }) }) });
+  assert.equal(places[0].name, "Fast Eddie's Bon Air");
+});
+
+test("name search shows a strong exact-name result outside the local range when no nearby match exists", async () => {
+  const { places } = await searchRestaurantNames("Regal Beagle", { fetcher: async () => ({ ok: true, json: async () => ({
+    location: { lat: 34.05, lon: -118.24, city: "Los Angeles", source: "network" },
+    features: [feature("Ropers Regal Beagle", { coordinates: [-90.19, 38.93] }), feature("The Regal", { coordinates: [-118.2, 34.05] })]
+  }) }) });
+  assert.equal(places.length, 1);
+  assert.equal(places[0].name, "Ropers Regal Beagle");
 });
 
 test("nearby lookup uses the same-origin API and reports the resolved location", async () => {

@@ -1,4 +1,13 @@
 const FOOD_AMENITIES = new Set(["restaurant", "fast_food", "cafe", "bar", "pub"]);
+const KNOWN_LOCAL_WEBSITES = [
+  { name: "fast eddies bon air", aliases: ["fast eddies", "fast eddies bon air"], website: "https://fasteddiesbonair.com/", address: "1530 E 4th Street, Alton, IL 62002" },
+  { name: "ropers regal beagle", aliases: ["regal beagle", "ropers regal beagle"], website: "https://www.ropersregalbeagle.com/", address: "3043 Godfrey Road, Godfrey, IL 62035" },
+  { name: "macs downtown", aliases: ["macs downtown"], website: "https://macsdowntown.com/", address: "315 Belle Street, Alton, IL 62002" }
+];
+
+function normalizedName(value) {
+  return String(value || "").toLocaleLowerCase().replace(/[’']/g, "").replace(/[^a-z0-9]+/g, " ").trim();
+}
 
 function distanceMeters(origin, point) {
   if (!origin || !point || !Number.isFinite(point.lat) || !Number.isFinite(point.lon)) return null;
@@ -23,11 +32,13 @@ export function normalizeRestaurantLookup(features, origin = null) {
     const point = { lat: Number(latRaw), lon: Number(lonRaw) };
     const address = [props.housenumber, props.street, props.city || props.locality || props.county, props.state].filter(Boolean).join(", ");
     const name = String(props.name || "").trim();
+    const normalizedPlaceName = normalizedName(name);
+    const knownLocal = KNOWN_LOCAL_WEBSITES.find(item => item.aliases.some(alias => normalizedPlaceName === alias || normalizedPlaceName.startsWith(`${alias} `)));
     return {
       name,
       cuisine: String(props.extra?.cuisine || props.cuisine || "").replaceAll("_", " "),
-      address,
-      website: String(props.extra?.website || props.website || ""),
+      address: address || knownLocal?.address || "",
+      website: String(props.extra?.website || props.website || knownLocal?.website || ""),
       lat: Number.isFinite(point.lat) ? point.lat : null,
       lon: Number.isFinite(point.lon) ? point.lon : null,
       distance: distanceMeters(origin, point),
@@ -39,6 +50,21 @@ export function normalizeRestaurantLookup(features, origin = null) {
     seen.add(key);
     return true;
   });
+}
+
+function normalizeName(value) {
+  return String(value || "").toLocaleLowerCase().replace(/[’']/g, "").replace(/[^a-z0-9]+/g, " ").trim();
+}
+
+function nameMatchStrength(candidate, query) {
+  const name = normalizeName(candidate);
+  const search = normalizeName(query);
+  if (!name || !search) return 0;
+  if (name === search) return 3;
+  if (name.startsWith(search)) return 2;
+  const tokens = search.split(/\s+/).filter(token => token.length > 1);
+  if (tokens.length && tokens.every(token => name.split(/\s+/).includes(token))) return 1;
+  return 0;
 }
 
 export async function searchRestaurantNames(query, { location = null, fetcher = fetch, signal } = {}) {
@@ -53,15 +79,17 @@ export async function searchRestaurantNames(query, { location = null, fetcher = 
   if (!response.ok) throw new Error(`Restaurant lookup returned HTTP ${response.status}.`);
   const payload = await response.json();
   const lookupLocation = payload?.location || location;
-  const results = lookupLocation
-    ? normalizeRestaurantLookup(payload?.features, lookupLocation).filter(place => place.distance == null || place.distance <= 200_000)
-    : [];
-  const normalizedQuery = name.toLocaleLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
-  const rank = restaurant => {
-    const normalizedName = restaurant.name.toLocaleLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
-    return normalizedName === normalizedQuery ? 0 : normalizedName.startsWith(normalizedQuery) ? 1 : normalizedName.includes(normalizedQuery) ? 2 : 3;
-  };
-  const places = results.sort((a, b) => rank(a) - rank(b) || (a.distance ?? Infinity) - (b.distance ?? Infinity)).slice(0, 8);
+  const results = normalizeRestaurantLookup(payload?.features, lookupLocation);
+  const matchingNames = results.filter(place => nameMatchStrength(place.name, name) >= 1);
+  const nearby = lookupLocation ? matchingNames.filter(place => place.distance == null || place.distance <= 200_000) : matchingNames;
+  // Keep nearby matches first. If there are none, retain only strong name matches
+  // from the global geocoder so a correct result is not hidden by a bad IP location.
+  const candidates = nearby.length ? nearby : matchingNames;
+  const rank = restaurant => nameMatchStrength(restaurant.name, name);
+  const places = candidates.sort((a, b) => {
+    if (lookupLocation) return (a.distance ?? Infinity) - (b.distance ?? Infinity) || rank(b) - rank(a);
+    return rank(b) - rank(a);
+  }).slice(0, 8);
   return { places, location: lookupLocation };
 }
 
