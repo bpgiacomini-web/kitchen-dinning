@@ -31,6 +31,7 @@ let restaurantLookupRequest = 0;
 let restaurantLookupLocation = null;
 let restaurantLookupLocationRequested = false;
 let restaurantLookupResults = [];
+const googlePlaceCandidates = new Map();
 function mergeVisibleDataset() {
   cloudRecipeIds = new Set(cloudDataset.recipes.map(item => String(item.id)));
   dataset = { ...cloudDataset };
@@ -48,6 +49,12 @@ async function saveCloudDataset(nextDataset) {
 
 function escapeHtml(value) {
   return String(value ?? "").replace(/[&<>"']/g, char => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[char]);
+}
+function safeGoogleMapsUrl(value) {
+  try {
+    const url = new URL(String(value || ""));
+    return url.protocol === "https:" && (url.hostname === "google.com" || url.hostname.endsWith(".google.com")) ? escapeHtml(url.href) : "https://www.google.com/maps";
+  } catch { return "https://www.google.com/maps"; }
 }
 function setStatus(label, kind = "") {
   status.textContent = label;
@@ -206,7 +213,7 @@ function renderRestaurants(items) {
       .filter(([, value]) => value != null && value !== "")
       .map(([label, value]) => `<div><dt>${label}</dt><dd>${["Website", "Menu"].includes(label) && /^https?:\/\//i.test(String(value)) ? `<a href="${escapeHtml(value)}" target="_blank" rel="noopener noreferrer">${escapeHtml(value)}</a>` : escapeHtml(value)}</dd></div>`).join("");
     const bestDishes = topReviewFoods(restaurant);
-    return `<article class="readOnlyItem restaurantCard" data-search="${escapeHtml(JSON.stringify(restaurant).toLowerCase())}"><div class="recipeCardHeader"><strong>${escapeHtml(restaurant.name)}</strong><div class="recipeCardActions"><button class="btn" type="button" data-action="toggle-restaurant-favorite" data-restaurant-id="${escapeHtml(restaurant.id)}" aria-pressed="${restaurant.favorite ? "true" : "false"}">${restaurant.favorite ? "★ Favorite" : "☆ Add to Favorites"}</button><button class="btn" type="button" data-action="edit-restaurant" data-restaurant-id="${escapeHtml(restaurant.id)}">Edit</button><button class="btn primary" type="button" data-action="add-restaurant-review" data-restaurant-id="${escapeHtml(restaurant.id)}">＋ Rate a Visit (1–10)</button><button class="btn danger" type="button" data-action="delete-restaurant" data-restaurant-id="${escapeHtml(restaurant.id)}">Delete</button></div></div><small>${escapeHtml([restaurant.cuisine, restaurant.address, rating == null ? null : `Rating ${rating.toFixed(1)}/10`, restaurant.favorite ? "Favorite" : "", `${reviews.length} ${reviews.length === 1 ? "visit" : "visits"}`].filter(Boolean).join(" · ") || "No additional details saved")}</small>${reviews.length === 0 ? `<p class="hint restaurantReviewPrompt">No visit ratings yet. Add a visit to rate your experience, service, value, and dishes from 1 to 10.</p>` : ""}${bestDishes.length ? `<p class="restaurantTopDishes"><strong>Top rated dishes:</strong> ${bestDishes.map(item => `${escapeHtml(item.name)} ${escapeHtml(item.rating)}/10`).join(" · ")}</p>` : ""}<details><summary>Restaurant details and visit history</summary><section class="restaurantDetailBlock"><h4>Restaurant information</h4><dl>${details || `<div><dt>Details</dt><dd>No additional details saved.</dd></div>`}</dl></section><section class="restaurantDetailBlock"><h4>Visit history</h4>${reviewRows || `<p class="hint">No visits or reviews yet. Add a visit to start your personal history.</p>`}</section></details><p class="edit-status" role="status" aria-live="polite"></p></article>`;
+    return `<article class="readOnlyItem restaurantCard" data-search="${escapeHtml(JSON.stringify(restaurant).toLowerCase())}"><div class="recipeCardHeader"><strong>${escapeHtml(restaurant.name)}</strong><div class="recipeCardActions"><button class="btn" type="button" data-action="toggle-restaurant-favorite" data-restaurant-id="${escapeHtml(restaurant.id)}" aria-pressed="${restaurant.favorite ? "true" : "false"}">${restaurant.favorite ? "★ Favorite" : "☆ Add to Favorites"}</button><button class="btn" type="button" data-action="edit-restaurant" data-restaurant-id="${escapeHtml(restaurant.id)}">Edit</button><button class="btn primary" type="button" data-action="add-restaurant-review" data-restaurant-id="${escapeHtml(restaurant.id)}">＋ Rate a Visit (1–10)</button><button class="btn danger" type="button" data-action="delete-restaurant" data-restaurant-id="${escapeHtml(restaurant.id)}">Delete</button></div></div><small>${escapeHtml([restaurant.cuisine, restaurant.address, rating == null ? null : `Rating ${rating.toFixed(1)}/10`, restaurant.favorite ? "Favorite" : "", `${reviews.length} ${reviews.length === 1 ? "visit" : "visits"}`].filter(Boolean).join(" · ") || "No additional details saved")}</small>${reviews.length === 0 ? `<p class="hint restaurantReviewPrompt">No visit ratings yet. Add a visit to rate your experience, service, value, and dishes from 1 to 10.</p>` : ""}${bestDishes.length ? `<p class="restaurantTopDishes"><strong>Top rated dishes:</strong> ${bestDishes.map(item => `${escapeHtml(item.name)} ${escapeHtml(item.rating)}/10`).join(" · ")}</p>` : ""}<div class="googleRatingPanel"><button class="btn" type="button" data-action="google-rating" data-restaurant-id="${escapeHtml(restaurant.id)}">↗ Check Google Maps score</button><div class="googleRatingResult" role="status" aria-live="polite"></div></div><details><summary>Restaurant details and visit history</summary><section class="restaurantDetailBlock"><h4>Restaurant information</h4><dl>${details || `<div><dt>Details</dt><dd>No additional details saved.</dd></div>`}</dl></section><section class="restaurantDetailBlock"><h4>Visit history</h4>${reviewRows || `<p class="hint">No visits or reviews yet. Add a visit to start your personal history.</p>`}</section></details><p class="edit-status" role="status" aria-live="polite"></p></article>`;
   }).join("");
   root.innerHTML = `<section class="hero"><div class="heroIn"><div class="eyebrow">Your dining journal</div><h2>My Restaurants</h2><p>Keep restaurant details and visit-by-visit food critic reviews together in your private Metro Eats account.</p></div></section><section class="content-panel"><div class="sectionTitle"><div><div class="sectionKicker">${items.length} saved</div><h3>Your restaurants &amp; reviews</h3></div><div class="diningActions"><label class="restaurantSortControl" for="restaurant-sort">Sort by <select id="restaurant-sort"><option value="recent"${restaurantSort === "recent" ? " selected" : ""}>Last visited · newest first</option><option value="highest"${restaurantSort === "highest" ? " selected" : ""}>Highest rated</option><option value="lowest"${restaurantSort === "lowest" ? " selected" : ""}>Lowest rated</option><option value="name"${restaurantSort === "name" ? " selected" : ""}>Name · A to Z</option></select></label><button class="btn" type="button" data-action="open-rankings">★ My Rankings</button><button class="btn primary" type="button" data-action="new-restaurant">＋ Add a Restaurant</button></div></div><section class="nearbyPanel"><div><h3>Restaurants Around Me</h3><p class="hint">Nearby places load automatically when you open this page. Location is used only for this search, never saved. If device location is unavailable, Metro Eats uses an approximate area.</p></div><p class="edit-status" id="nearby-status" role="status" aria-live="polite">Nearby restaurant search will start automatically.</p><details class="nearbyDisclosure" id="nearby-disclosure" open hidden><summary id="nearby-summary">Nearby restaurants</summary><div class="nearbyResults" id="nearby-results"></div></details></section><label class="restaurantSearchLabel" for="restaurant-search">Search your restaurants</label><input id="restaurant-search" class="restaurantSearch" type="search" placeholder="Name, cuisine, address, dish, or note" autocomplete="off"><p class="hint" id="restaurant-search-count" aria-live="polite">Showing ${items.length} ${items.length === 1 ? "restaurant" : "restaurants"}.</p><div class="readOnlyList" id="restaurant-list">${rows || `<div class="empty">No restaurants saved yet. Add one to start your private dining journal.</div>`}</div><p class="hint">Restaurant search, critic scores, rated dishes, and every visit review are saved to your signed-in Preview account. Existing shared baseline records stay unchanged.</p></section>`;
   const searchLabel = root.querySelector(".restaurantSearchLabel");
@@ -781,6 +788,65 @@ document.addEventListener("click", async event => {
     } catch (error) {
       if (statusLine) statusLine.textContent = error?.message || "Product lookup failed. Enter the brand and name manually.";
     } finally { actionButton.disabled = false; }
+    return;
+  }
+  if (actionButton.dataset.action === "google-rating") {
+    const id = actionButton.dataset.restaurantId;
+    const restaurant = cloudDataset.restaurants.find(item => String(item.id) === String(id));
+    const panel = actionButton.closest(".googleRatingPanel");
+    const output = panel?.querySelector(".googleRatingResult");
+    if (!restaurant || !output) return;
+    actionButton.disabled = true;
+    output.textContent = restaurant.googlePlaceId ? "Checking the current Google Maps score…" : "Finding the matching Google Maps listing…";
+    try {
+      const token = await globalThis.metroGetAccessToken?.();
+      if (!token) throw new Error("Sign in again to check a Google Maps score.");
+      const requestGoogle = async body => {
+        const response = await fetch("/api/restaurant-lookup", { method: "POST", cache: "no-store", headers: { "Content-Type": "application/json", Accept: "application/json", Authorization: `Bearer ${token}` }, body: JSON.stringify(body) });
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(payload.error || `Google Maps lookup returned HTTP ${response.status}.`);
+        return payload;
+      };
+      if (!restaurant.googlePlaceId) {
+        const query = [restaurant.name, restaurant.address].filter(Boolean).join(", ");
+        const payload = await requestGoogle({ mode: "google-place-search", query });
+        const places = Array.isArray(payload.places) ? payload.places : [];
+        if (!places.length) throw new Error("No matching Google Maps listing was found.");
+        googlePlaceCandidates.set(String(id), places);
+        output.innerHTML = `<p class="hint">Choose the correct location. Google Maps score and ratings are separate from your personal review.</p>${places.map((place, index) => `<button class="btn googlePlaceChoice" type="button" data-action="select-google-place" data-restaurant-id="${escapeHtml(id)}" data-place-index="${index}"><strong>${escapeHtml(place.name)}</strong><small>${escapeHtml(place.address || "Address not listed")}</small></button>`).join("")}`;
+        return;
+      }
+      const payload = await requestGoogle({ mode: "google-place-details", placeId: restaurant.googlePlaceId });
+      const mapsUrl = safeGoogleMapsUrl(payload.mapsUrl);
+      output.innerHTML = `<a class="googleRatingScore" href="${mapsUrl}" target="_blank" rel="noopener noreferrer"><strong>Google Maps</strong> · ★ ${Number(payload.rating).toFixed(1)} <span>(${Number(payload.ratingCount).toLocaleString()} ratings)</span></a>`;
+    } catch (error) {
+      output.textContent = error?.message || "Google Maps score could not be loaded.";
+    } finally { actionButton.disabled = false; }
+    return;
+  }
+  if (actionButton.dataset.action === "select-google-place") {
+    const id = actionButton.dataset.restaurantId;
+    const restaurant = cloudDataset.restaurants.find(item => String(item.id) === String(id));
+    const place = googlePlaceCandidates.get(String(id))?.[Number(actionButton.dataset.placeIndex)];
+    if (!restaurant || !place?.id) return;
+    actionButton.disabled = true;
+    try {
+      await saveCloudDataset({ ...cloudDataset, restaurants: cloudDataset.restaurants.map(item => String(item.id) === String(id) ? { ...item, googlePlaceId: place.id, updatedAt: new Date().toISOString() } : item) });
+      const token = await globalThis.metroGetAccessToken?.();
+      const response = await fetch("/api/restaurant-lookup", { method: "POST", cache: "no-store", headers: { "Content-Type": "application/json", Accept: "application/json", Authorization: `Bearer ${token}` }, body: JSON.stringify({ mode: "google-place-details", placeId: place.id }) });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(payload.error || `Google Maps lookup returned HTTP ${response.status}.`);
+      render();
+      const card = [...root.querySelectorAll(".restaurantCard")].find(item => item.querySelector('[data-action="google-rating"]')?.dataset.restaurantId === String(id));
+      const output = card?.querySelector(".googleRatingResult");
+      if (output) output.innerHTML = `<a class="googleRatingScore" href="${safeGoogleMapsUrl(payload.mapsUrl)}" target="_blank" rel="noopener noreferrer"><strong>Google Maps</strong> · ★ ${Number(payload.rating).toFixed(1)} <span>(${Number(payload.ratingCount).toLocaleString()} ratings)</span></a>`;
+      googlePlaceCandidates.delete(String(id));
+    } catch (error) {
+      if (activeView === "dining") render(); else actionButton.disabled = false;
+      const card = [...root.querySelectorAll(".restaurantCard")].find(item => item.querySelector('[data-action="google-rating"]')?.dataset.restaurantId === String(id));
+      const output = card?.querySelector(".googleRatingResult");
+      if (output) output.textContent = error?.message || "Could not save this Google Maps listing.";
+    }
     return;
   }
   if (actionButton.dataset.action === "open-rankings") { activeView = "restaurant-rankings"; render(); window.scrollTo({ top: 0, left: 0, behavior: "instant" }); return; }
