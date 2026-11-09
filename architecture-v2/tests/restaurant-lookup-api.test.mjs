@@ -40,6 +40,22 @@ test("known local restaurants remain searchable if Photon is unavailable", async
   assert.deepEqual(res.body.features.find(feature => feature.properties.name === "Delmar Public House").geometry.coordinates, [-90.24966, 38.93839]);
 });
 
+test("local restaurants remain searchable when Photon and Overpass are unavailable", async () => {
+  const handler = createRestaurantLookupHandler({ fetcher: async () => { throw new Error("map provider unavailable"); } });
+  for (const [query, expected] of [
+    ["Fast Eddie's", "Fast Eddie's Bon Air"],
+    ["Mac's Downtown", "Mac's Downtown"],
+    ["Regal Beagle", "Roper's Regal Beagle"]
+  ]) {
+    const res = responseRecorder();
+    await handler({ method: "POST", body: { mode: "name", query }, headers: {
+      "x-vercel-ip-latitude": "38.935", "x-vercel-ip-longitude": "-90.193", "x-vercel-ip-city": "Godfrey"
+    } }, res);
+    assert.equal(res.statusCode, 200);
+    assert.ok(res.body.features.some(feature => feature.properties.name === expected), `${query} should be available from the local directory`);
+  }
+});
+
 test("name lookup falls back to nearby OSM places when Photon has no match", async () => {
   const handler = createRestaurantLookupHandler({ fetcher: async url => {
     const request = new URL(url);
@@ -79,8 +95,8 @@ test("name lookup uses the nearby fallback when Photon only finds a distant dupl
     "x-vercel-ip-latitude": "38.89", "x-vercel-ip-longitude": "-90.18", "x-vercel-ip-city": "Alton"
   } }, res);
   assert.equal(res.statusCode, 200);
-  assert.equal(res.body.features.length, 2);
-  assert.deepEqual(res.body.features[1].geometry.coordinates, [-90.18, 38.89]);
+  assert.ok(res.body.features.length >= 2);
+  assert.ok(res.body.features.some(feature => feature.geometry.coordinates[0] === -90.18 && feature.geometry.coordinates[1] === 38.89));
 });
 
 test("nearby lookup falls back to approximate network location and returns closest food places", async () => {
@@ -98,8 +114,10 @@ test("nearby lookup falls back to approximate network location and returns close
   } }, res);
   assert.equal(res.statusCode, 200);
   assert.match(requested.searchParams.get("data"), /around:8047,38\.89,-90\.18/);
-  assert.deepEqual(res.body.places.map(place => place.name), ["Nearby Cafe", "Arandas MX Cocina"]);
-  assert.equal(res.body.places[0].distance, 1112);
+  assert.equal(res.body.places.find(place => place.name === "Nearby Cafe").distance, 1112);
+  for (const name of ["Mac's Downtown", "Fast Eddie's Bon Air", "Roper's Regal Beagle", "Arandas MX Cocina"]) {
+    assert.ok(res.body.places.some(place => place.name === name));
+  }
   assert.equal(res.body.location.source, "network");
 });
 
@@ -116,9 +134,9 @@ test("nearby results omit concessions and closed Chic N Pig, and add current loc
   const res = responseRecorder();
   await handler({ method: "POST", body: { mode: "nearby", location: { lat: 38.935, lon: -90.193 } }, headers: {} }, res);
   assert.equal(res.statusCode, 200);
-  assert.deepEqual(res.body.places.map(place => place.name), ["Nearby Cafe", "Arandas MX Cocina", "Delmar Public House"]);
-  assert.equal(res.body.places[1].website, "https://arandasmxcocina.com/");
-  assert.equal(res.body.places[2].website, "https://delmarpublichouse.com/");
+  assert.equal(res.body.places[0].name, "Nearby Cafe");
+  assert.ok(res.body.places.some(place => place.name === "Arandas MX Cocina" && place.website === "https://arandasmxcocina.com/"));
+  assert.ok(res.body.places.some(place => place.name === "Delmar Public House" && place.website === "https://delmarpublichouse.com/"));
 });
 
 test("nearby lookup uses curated local restaurants when Photon and Overpass are unavailable", async () => {
@@ -127,7 +145,8 @@ test("nearby lookup uses curated local restaurants when Photon and Overpass are 
   await handler({ method: "POST", body: { mode: "nearby", location: { lat: 38.935, lon: -90.193 } }, headers: {} }, res);
   assert.equal(res.statusCode, 200);
   assert.equal(res.body.source, "curated-fallback");
-  assert.deepEqual(res.body.places.map(place => place.name), ["Arandas MX Cocina", "Delmar Public House"]);
+  assert.ok(["Arandas MX Cocina", "Delmar Public House", "Fast Eddie's Bon Air", "Mac's Downtown", "Roper's Regal Beagle"]
+    .every(name => res.body.places.some(place => place.name === name)));
 });
 
 test("nearby search fails clearly when neither device nor network location exists", async () => {

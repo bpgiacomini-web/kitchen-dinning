@@ -1,12 +1,7 @@
 import { isExcludedRestaurantName, LOCAL_RESTAURANT_OVERRIDES } from "./local-restaurant-overrides.mjs";
 
 const FOOD_AMENITIES = new Set(["restaurant", "fast_food", "cafe", "bar", "pub"]);
-const KNOWN_LOCAL_WEBSITES = [
-  { name: "fast eddies bon air", aliases: ["fast eddies", "fast eddies bon air"], website: "https://fasteddiesbonair.com/", address: "1530 E 4th Street, Alton, IL 62002" },
-  { name: "ropers regal beagle", aliases: ["regal beagle", "ropers regal beagle"], website: "https://www.ropersregalbeagle.com/", address: "3043 Godfrey Road, Godfrey, IL 62035", lat: 38.9313514, lon: -90.1909723 },
-  { name: "macs downtown", aliases: ["macs downtown"], website: "https://macsdowntown.com/", address: "315 Belle Street, Alton, IL 62002" },
-  ...LOCAL_RESTAURANT_OVERRIDES.map(place => ({ ...place, displayName: place.name }))
-];
+const KNOWN_LOCAL_WEBSITES = LOCAL_RESTAURANT_OVERRIDES.map(place => ({ ...place, displayName: place.name }));
 
 function normalizedName(value) {
   return String(value || "").toLocaleLowerCase().replace(/[’']/g, "").replace(/[^a-z0-9]+/g, " ").trim();
@@ -47,7 +42,7 @@ export function normalizeRestaurantLookup(features, origin = null) {
     const normalizedPlaceName = normalizedName(name);
     const knownLocal = KNOWN_LOCAL_WEBSITES.find(item => item.aliases.some(alias => normalizedPlaceName === alias || normalizedPlaceName.startsWith(`${alias} `)));
     const curatedCoordinatesMatch = knownLocal && (knownLocal.lat == null || knownLocal.lon == null
-      || distanceMeters({ lat: knownLocal.lat, lon: knownLocal.lon }, point) <= 1_000);
+      || distanceMeters({ lat: knownLocal.lat, lon: knownLocal.lon }, point) <= 2_000);
     const matchedLocal = curatedCoordinatesMatch ? knownLocal : null;
     return {
       name,
@@ -100,7 +95,7 @@ export async function searchRestaurantNames(query, { location = null, fetcher = 
   const knownMatches = KNOWN_LOCAL_WEBSITES.filter(known => Number.isFinite(known.lat) && Number.isFinite(known.lon) && known.aliases.some(alias => nameMatchStrength(alias, name) >= 2));
   for (const known of knownMatches) {
     const knownPoint = { lat: known.lat, lon: known.lon };
-    const existing = matchingNames.find(place => place.lat != null && place.lon != null && distanceMeters(knownPoint, place) <= 1_000);
+    const existing = matchingNames.find(place => place.lat != null && place.lon != null && distanceMeters(knownPoint, place) <= 2_000);
     if (existing) {
       existing.knownLocal = true;
       existing.address = known.address;

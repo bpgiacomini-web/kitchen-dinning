@@ -1,6 +1,8 @@
 import { authenticatedUser } from './user-data.js';
 import { consumeAccountRateLimit, sendRateLimitResponse } from './_lib/rate-limit.js';
-import { isExcludedRestaurantName, LOCAL_RESTAURANT_OVERRIDES } from '../architecture-v2/src/domain/local-restaurant-overrides.mjs';
+import localRestaurantData from './_lib/local-restaurant-overrides.cjs';
+
+const { isExcludedRestaurantName, LOCAL_RESTAURANT_OVERRIDES } = localRestaurantData;
 
 const FOOD_AMENITIES = new Set(["restaurant", "fast_food", "cafe", "bar", "pub"]);
 const PHOTON_URL = "https://photon.komoot.io/api/";
