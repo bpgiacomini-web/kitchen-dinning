@@ -71,6 +71,7 @@ const RESTAURANT_CUISINES = ["American", "BBQ", "Bakery & Cafe", "Chinese", "Fre
 function canonicalCuisine(value) {
   const raw = String(value || "").trim();
   const normalized = raw.toLocaleLowerCase().replace(/[_-]+/g, " ").replace(/\s+/g, " ");
+  if (["restaurant", "fast food", "bar", "pub"].includes(normalized)) return "";
   const aliases = {
     "american": ["american", "burger", "burgers", "steak", "steakhouse"],
     "bbq": ["bbq", "barbecue", "barbeque"],
@@ -215,6 +216,13 @@ function restaurantLastVisit(restaurant) {
   const visits = restaurantReviewRecords(restaurant).map(review => Date.parse(review.visitedAt || review.reviewDate || review.createdAt || "")).filter(Number.isFinite);
   return visits.length ? Math.max(...visits) : 0;
 }
+function restaurantReviewDateText(review) {
+  const raw = String(review?.visitedAt || review?.reviewDate || review?.createdAt || "");
+  if (!raw) return "";
+  const datePart = raw.match(/^\d{4}-\d{2}-\d{2}/)?.[0];
+  const parsed = datePart ? new Date(`${datePart}T00:00:00`) : new Date(raw);
+  return Number.isNaN(parsed.getTime()) ? raw : parsed.toLocaleDateString();
+}
 function restaurantAverageRating(restaurant) {
   const scores = restaurantReviewRecords(restaurant).map(review => reviewRating(review, "overall") ?? reviewRating(review, "rating")).filter(Number.isFinite);
   return scores.length ? scores.reduce((sum, score) => sum + score, 0) / scores.length : null;
@@ -225,8 +233,7 @@ function renderRestaurants(items) {
     const rating = restaurant.rating == null ? null : (restaurant.ratingScale === 10 ? Number(restaurant.rating) : Number(restaurant.rating) <= 5 ? Number(restaurant.rating) * 2 : Number(restaurant.rating));
     const reviewRows = reviews.slice().reverse().map((review, index) => {
       const reviewIndex = reviews.length - index - 1;
-      const reviewDate = review.visitedAt || review.createdAt || review.reviewDate || "";
-      const dateText = reviewDate && !Number.isNaN(new Date(reviewDate).getTime()) ? new Date(reviewDate).toLocaleDateString() : reviewDate;
+      const dateText = restaurantReviewDateText(review);
       const scores = [["Overall", reviewRating(review, "overall") ?? reviewRating(review, "rating")], ["Food", reviewRating(review, "food")], ["Service", reviewRating(review, "service")], ["Value", reviewRating(review, "value")]]
         .filter(([, value]) => value != null && value !== "")
         .map(([label, value]) => `<span>${label}: ${escapeHtml(value)}/10</span>`).join("");
@@ -266,7 +273,7 @@ function renderRestaurantReviewForm(restaurantId) {
   const now = new Date();
   const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
   const coreQuestions = [["overall", "Overall Experience"], ["service", "Service"], ["value", "Value"]];
-  const coreRatings = coreQuestions.map(([key, label]) => { const value = reviewRating(editingReview, key) || 0; return `<div class="reviewQuestion"><div class="reviewQuestionHead"><b>${label}<span class="requiredMark" aria-label="required">*</span></b><span data-score-label="${key}">${value ? `${value}/10` : "Select 1–10"}</span></div>${reviewScoreButtons(value, "", key, label, true)}</div>`; }).join("");
+  const coreRatings = coreQuestions.map(([key, label]) => { const value = (key === "overall" ? reviewRating(editingReview, "experience") ?? reviewRating(editingReview, "overall") : reviewRating(editingReview, key)) || 0; return `<div class="reviewQuestion"><div class="reviewQuestionHead"><b>${label}<span class="requiredMark" aria-label="required">*</span></b><span data-score-label="${key}">${value ? `${value}/10` : "Select 1–10"}</span></div>${reviewScoreButtons(value, "", key, label, true)}</div>`; }).join("");
   const optionalRatings = RESTAURANT_REVIEW_DIMENSIONS.map(({ key, label, description }) => { const value = reviewSurveyScore(editingReview, key) || 0; return `<div class="reviewQuestion"><div class="reviewQuestionHead"><b>${escapeHtml(label)}</b><span data-score-label="${key}">${value ? `${value}/10` : "Optional"}</span></div><p class="hint">${escapeHtml(description)}</p>${reviewScoreButtons(value, "", key, label)}</div>`; }).join("");
   const savedDishes = reviewFoodItems(editingReview);
   const renderSavedDish = dish => {
@@ -277,7 +284,7 @@ function renderRestaurantReviewForm(restaurantId) {
   const categories = RESTAURANT_REVIEW_CATEGORIES.map(category => `<details class="reviewCategory"${category === "Entrées" || savedDishes.some(dish => (dish.category || "Entrées") === category) ? " open" : ""}><summary>${category}</summary><div class="reviewCategoryBody" data-review-category="${category}"><p class="hint">Add the dishes or drinks you tried in this category.</p><div class="reviewDishList">${savedDishes.filter(dish => (dish.category || "Entrées") === category).map(renderSavedDish).join("")}</div><button class="btn" type="button" data-action="add-review-dish" data-category="${category}">＋ Add ${category === "Drinks" ? "a drink" : "a dish"}</button></div></details>`).join("");
   const hasSavedOptionalRatings = RESTAURANT_REVIEW_DIMENSIONS.some(({ key }) => reviewSurveyScore(editingReview, key) != null);
   root.innerHTML = `
-    <section class="hero"><div class="heroIn"><div class="eyebrow">Your dining journal · Food Critic</div><h2>${editingReview ? "Edit Visit Review" : "Rate a Visit"}</h2><p>${editingReview ? `Update the saved review for ${escapeHtml(restaurant.name)}. Your current ratings, dishes, visit date, and notes have been loaded.` : `Review your visit to <strong>${escapeHtml(restaurant.name)}</strong>. Your restaurant details and review are saved together when you finish.`}</p></div></section>
+    <section class="hero"><div class="heroIn"><div class="eyebrow">Your dining journal · Food Critic</div><h2>${editingReview ? "Edit Visit Review" : "Rate a Visit"}</h2><p>${editingReview ? `Update the saved review for ${escapeHtml(restaurant.name)}. Your current ratings, dishes, and notes have been loaded.` : `Review your visit to <strong>${escapeHtml(restaurant.name)}</strong>. Your restaurant details and review are saved together when you finish.`}</p></div></section>
     <section class="content-panel restaurantEditorPage">
       <div class="restaurantEditPanel">
         <section class="reviewRestaurantSummary"><strong>${escapeHtml(restaurant.name)}</strong><span>${escapeHtml([restaurant.cuisine, restaurant.address].filter(Boolean).join(" · ") || "Restaurant details added" )}</span>${restaurant.website ? `<a href="${escapeHtml(restaurant.website)}" target="_blank" rel="noopener noreferrer">${escapeHtml(restaurant.website)}</a>` : ""}<label class="inlineCheck"><input id="review-restaurant-favorite" type="checkbox"${restaurant.favorite ? " checked" : ""}> Mark as a favorite</label><button class="btn" type="button" data-action="back-to-restaurant-details">← Back to restaurant details</button></section>
@@ -285,7 +292,7 @@ function renderRestaurantReviewForm(restaurantId) {
           <div class="reviewLiveScore"><span id="review-live-title">Current Food Critic score</span><strong id="review-overall-average">—<small>/10</small></strong></div>
           <div class="reviewProgress"><progress id="review-completion-progress" max="5" value="0" aria-label="Review completion"></progress><p id="review-completion" role="status" aria-live="polite">0 of 5 required parts complete. Notes are optional.</p></div>
         </section>
-        ${editingReview ? `<p class="reviewDateReadOnly"><span>Visit date</span><strong>${escapeHtml(new Date(`${String(editingReview.visitedAt || editingReview.reviewDate || editingReview.createdAt || today).slice(0, 10)}T00:00:00`).toLocaleDateString())}</strong></p>` : `<label>Visit date<input id="review-visited-at" type="date" value="${escapeHtml(today)}" required></label>`}
+        ${editingReview ? `<p class="reviewDateReadOnly"><span>Visit date</span><strong>${escapeHtml(restaurantReviewDateText(editingReview))}</strong></p>` : `<label>Visit date<input id="review-visited-at" type="date" value="${escapeHtml(today)}" required></label>`}
         <section class="surveyCard reviewCoreCard">
           <h3>Your 1–10 ratings</h3>
           <p class="hint">Rate each item from 1 (poor) to 10 (exceptional). Overall Experience, Service, Value, one rated dish or drink, and “Would you order it again?” are required. Food Quality is calculated from dish ratings.</p>
@@ -915,7 +922,7 @@ document.addEventListener("click", async event => {
     }
     const fields = [["restaurant-name", place.name], ["restaurant-address", place.address], ["restaurant-website", place.website]];
     fields.forEach(([id, value]) => { const field = root.querySelector(`#${id}`); if (field && value) field.value = value; });
-    setCuisineFields(place.cuisine);
+    if (place.cuisine) setCuisineFields(place.cuisine);
     restaurantLookupRequest += 1;
     clearTimeout(restaurantLookupTimer);
     restaurantLookupResults = [];
