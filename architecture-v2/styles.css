@@ -260,12 +260,26 @@
 #app .localNewsPanel{margin:22px 0 26px;padding:20px;border:1px solid #4a3b24;border-radius:22px;background:linear-gradient(145deg,#211a10,#111519);box-shadow:var(--shadow)}
 #app .localNewsPanel .panel-heading h2{margin:4px 0;font-size:clamp(24px,5vw,32px)}
 #app .newsIntro{color:var(--muted);line-height:1.5}
+#app .heroTagline{font-size:clamp(15px,3.5vw,17px);line-height:1.45;color:#c9ced3;max-width:590px}
+#app .homeAppsDisclosure{margin-top:20px;border:1px solid #3d493f;border-radius:18px;background:linear-gradient(135deg,#121a18,#111519);overflow:hidden}
+#app .homeAppsDisclosure>summary{list-style:none;display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:56px;padding:14px 16px;color:#e9efe9;font-weight:800;cursor:pointer}
+#app .homeAppsDisclosure>summary::-webkit-details-marker{display:none}
+#app .homeAppsDisclosure>summary::after{content:"+";display:grid;place-items:center;width:28px;height:28px;border-radius:50%;border:1px solid #52625a;color:#a8cfba;font-size:20px;line-height:1}
+#app .homeAppsDisclosure[open]>summary::after{content:"−"}
+#app .homeAppsDisclosure>summary:focus-visible{outline:2px solid #8fc1af;outline-offset:-3px;border-radius:18px}
+#app .homeAppsCount{margin-left:auto;color:#a6b4ac;font-size:12px;font-weight:650;letter-spacing:.04em}
+#app .homeAppsDisclosure .homeFeatureButtons{margin:0;padding:0 14px 14px}
+#app .liveNewsBadge{display:inline-flex;align-items:center;gap:8px;margin:8px 0;padding:8px 11px;border:1px solid #326250;border-radius:999px;background:#10211b;color:#aee0c3;font-size:11px;font-weight:850;letter-spacing:.09em;white-space:nowrap}
+#app .liveNewsDot{width:8px;height:8px;border-radius:50%;background:#5fd394;box-shadow:0 0 0 0 #5fd39480;animation:localNewsPulse 1.8s infinite}
+@keyframes localNewsPulse{70%{box-shadow:0 0 0 7px #5fd39400}100%{box-shadow:0 0 0 0 #5fd39400}}
+#app #local-news-updated{margin-top:12px}
 #app .localNewsList{display:grid;gap:0;margin-top:12px}
 #app .localNewsItem{padding:15px 0;border-top:1px solid #3b3327}
 #app .localNewsItem a{color:var(--text);font-size:17px;font-weight:750;line-height:1.4;text-decoration:none}
 #app .localNewsItem a:hover{text-decoration:underline;color:#e0b563}
 #app .localNewsItem .newsMeta{margin-bottom:6px;color:#d6a85b;font-size:12px;font-weight:750;letter-spacing:.035em}
 @media(max-width:520px){#app .localNewsPanel{padding:16px}#app .localNewsItem a{font-size:16px}}
+@media(prefers-reduced-motion:reduce){#app .liveNewsDot{animation:none}}
 
 
 /* Recipe card details: readable ingredients and clean, singly numbered directions. */
