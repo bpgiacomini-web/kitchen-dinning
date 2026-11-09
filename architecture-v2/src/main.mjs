@@ -7,6 +7,7 @@ import { restaurantDishSuggestions } from "./domain/restaurant-dish-suggestions.
 import { restaurantNavigationOptions } from "./domain/restaurant-directions.mjs";
 import { sortRestaurantItems } from "./domain/restaurant-sort.mjs";
 import { searchNearbyRestaurants as lookupNearbyRestaurants, searchRestaurantNames } from "./domain/restaurant-lookup.mjs";
+import { LOCAL_RESTAURANT_OVERRIDES } from "./domain/local-restaurant-overrides.mjs";
 import { summarizeRestaurantInsights } from "./domain/restaurant-insights.mjs";
 import { normalizeScannedUpc } from "./domain/pizza-barcode.mjs";
 
@@ -354,15 +355,24 @@ function renderRestaurantLookupResults(results, message = "", target = {}) {
   if (!container || !statusLine) return;
   restaurantLookupResults = results;
   container.innerHTML = "";
-  if (message) { statusLine.textContent = message; return; }
+  if (message) { statusLine.textContent = message; if (!results.length) return; }
   if (!results.length) {
     statusLine.textContent = restaurantLookupLocation
       ? `No matching restaurant found near ${restaurantLookupLocation.city || "your location"}. Add a city or state to search another area, or enter the restaurant manually.`
       : "No matches found. Try adding the city or state, or enter the restaurant manually.";
     return;
   }
-  statusLine.textContent = `Choose a match to fill available details${restaurantLookupLocation ? "; closest places appear first" : ""}.`;
+  statusLine.textContent = message || `Choose a match to fill available details${restaurantLookupLocation ? "; closest places appear first" : ""}.`;
   container.innerHTML = results.map((place, index) => `<button class="restaurantLookupResult" type="button" data-action="select-restaurant-lookup" data-result-index="${index}"><strong>${escapeHtml(place.name)}</strong><small>${escapeHtml([place.cuisine, place.address, place.distance == null ? "" : place.distance < 1609 ? `${Math.round(place.distance * 3.28084)} ft away` : `${(place.distance / 1609.34).toFixed(1)} mi away`].filter(Boolean).join(" · ") || "Address not listed")}</small></button>`).join("");
+}
+function localRestaurantNameMatches(query) {
+  const normalize = value => String(value || "").toLocaleLowerCase().replace(/[’']/g, "").replace(/[^a-z0-9]+/g, " ").trim();
+  const search = normalize(query);
+  if (search.length < 2) return [];
+  return LOCAL_RESTAURANT_OVERRIDES.filter(place => [place.name, ...place.aliases].some(alias => {
+    const candidate = normalize(alias);
+    return candidate === search || candidate.startsWith(`${search} `) || candidate.includes(` ${search}`);
+  })).map(place => ({ ...place, distance: null, source: "Metro Eats local listing", knownLocal: true }));
 }
 function searchRestaurantName(query, target = {}) {
   clearTimeout(restaurantLookupTimer);
@@ -384,7 +394,11 @@ function searchRestaurantName(query, target = {}) {
         renderRestaurantLookupResults(places, "", { statusId, resultsId });
       }
     } catch {
-      if (requestId === restaurantLookupRequest) renderRestaurantLookupResults([], "Online restaurant search is unavailable right now. You can still enter the details manually.", { statusId, resultsId });
+      if (requestId === restaurantLookupRequest) {
+        const localMatches = localRestaurantNameMatches(value);
+        if (localMatches.length) renderRestaurantLookupResults(localMatches, "Showing a verified Metro East listing while online search is unavailable.", { statusId, resultsId });
+        else renderRestaurantLookupResults([], "Online restaurant search is unavailable right now. You can still enter the details manually.", { statusId, resultsId });
+      }
     } finally { clearTimeout(timeout); }
   }, 300);
 }
