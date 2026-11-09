@@ -23,6 +23,7 @@ let activePizzaId = null;
 let pizzaScannerControls = null;
 let pizzaScannerGeneration = 0;
 let restaurantSort = "recent";
+let recipeSort = "recent";
 let extractedRecipe = null;
 let newRestaurantPrefill = null;
 let restaurantDraft = null;
@@ -414,20 +415,23 @@ function updateReviewSurveySummary() {
     : `${completed} of 5 required parts complete. Finish the ratings and choices below; notes are optional.`;
 }
 function renderHome() {
-  root.innerHTML = `<section class="hero"><div class="heroIn"><div class="eyebrow">St. Louis • Metro East</div><h2>Metro Eats<br><span class="fl">⚜</span> Recipes & Dining</h2><p class="heroTagline">Good eats. Keeper recipes, local spots, and pizza rankings.</p><details class="homeAppsDisclosure"><summary><span>My Metro Eats Journal</span><span class="homeAppsCount">3 pages</span><span class="homeJournalPen" aria-hidden="true">✎</span></summary><div class="homeFeatureButtons"><button class="homeFeatureButton recipeButton" data-view="recipes"><span class="homeFeatureIcon">✦</span><span><strong>My Recipes</strong><small>Your go-to recipes</small></span><span class="homeFeatureArrow">→</span></button><button class="homeFeatureButton diningButton" data-view="dining"><span class="homeFeatureIcon" aria-hidden="true">⚜</span><span><strong>My Restaurants</strong><small>Local spots, your way</small></span><span class="homeFeatureArrow">→</span></button><button class="homeFeatureButton pizzaButton" data-view="pizzas"><span class="homeFeatureIcon pizzaIcon" aria-hidden="true"></span><span><strong>My Frozen Pizzas</strong><small>Rank your freezer faves</small></span><span class="homeFeatureArrow">→</span></button></div></details></div></section><section class="localNewsPanel" aria-labelledby="local-news-title"><div class="panel-heading"><div><p class="eyebrow">St. Louis • Metro East</p><h2 id="local-news-title">Local Food News</h2></div><span class="liveNewsBadge"><span class="liveNewsDot" aria-hidden="true"></span>LIVE · LOCAL FEED</span></div><p class="newsIntro">Fresh openings, good bites, and food stories from across the bi-state.</p><div id="local-food-news" class="localNewsList" aria-live="polite"><p class="hint">Loading local food stories…</p></div><p class="hint" id="local-news-updated"></p></section><div class="homeColumns"><article class="featureCard"><div><div class="sectionKicker">Your Collection</div><h3>Saved with care</h3><p>Your recipes, restaurant visits, and frozen-pizza ratings stay with your account.</p></div><div class="actions"><button class="btn primary" data-view="recipes">Open My Recipes →</button><button class="btn" data-view="dining">Open My Restaurants →</button><button class="btn" data-view="pizzas">Open My Frozen Pizzas →</button></div></article><article class="featureCard accent"><div><div class="sectionKicker">Safety First</div><h3>Existing data stays safe.</h3><p>Shared baseline records stay read-only. Your signed-in Preview account saves its own recipes, reviews, and pizza ratings.</p></div><span class="status">Private account</span></article></div>`;
+  root.innerHTML = `<section class="hero"><div class="heroIn"><div class="eyebrow">St. Louis • Metro East</div><h2>Metro Eats<br><span class="fl">⚜</span> Recipes & Dining</h2><p class="heroTagline">Good eats. Keeper recipes, local spots, and pizza rankings.</p><details class="homeAppsDisclosure"><summary><span>My Metro Eats Journal</span><span class="homeJournalPen" aria-hidden="true">✎</span></summary><div class="homeFeatureButtons"><button class="homeFeatureButton recipeButton" data-view="recipes"><span class="homeFeatureIcon">✦</span><span><strong>My Recipes</strong><small>Your go-to recipes</small></span><span class="homeFeatureArrow">→</span></button><button class="homeFeatureButton diningButton" data-view="dining"><span class="homeFeatureIcon" aria-hidden="true">⚜</span><span><strong>My Restaurants</strong><small>Local spots, your way</small></span><span class="homeFeatureArrow">→</span></button><button class="homeFeatureButton pizzaButton" data-view="pizzas"><span class="homeFeatureIcon pizzaIcon" aria-hidden="true"></span><span><strong>My Frozen Pizzas</strong><small>Rank your freezer faves</small></span><span class="homeFeatureArrow">→</span></button></div></details></div></section><section class="localNewsPanel" aria-labelledby="local-news-title"><div class="panel-heading"><div><p class="eyebrow">St. Louis • Metro East</p><h2 id="local-news-title">Local Food News</h2></div><div class="newsHeadingActions"><span class="liveNewsBadge"><span class="liveNewsDot" aria-hidden="true"></span>LIVE · LOCAL FEED</span><button class="btn newsRefreshButton" type="button" id="refresh-local-news">↻ Refresh</button></div></div><p class="newsIntro">Fresh openings, good bites, and food stories from across the bi-state.</p><div id="local-food-news" class="localNewsList" aria-live="polite"><p class="hint">Loading local food stories…</p></div><p class="hint" id="local-news-updated"></p></section><p class="homePrivacyNote">Your recipes, reviews, and ratings are private to your account.</p>`;
   const homeTitle = root.querySelector(".hero h2");
   if (homeTitle) {
     homeTitle.className = "homeTitle";
     homeTitle.innerHTML = '<span class="homeTitleFleur" aria-hidden="true">⚜</span><span class="homeTitleWords">Metro Eats<br>Recipes & Dining</span>';
   }
   root.querySelector(".localNewsPanel")?.insertAdjacentHTML("afterend", '<section class="content-panel homeRestaurantFinder"><section class="nearbyPanel"><div><div class="sectionKicker">Local dining</div><h3>Restaurants Around Me</h3><p class="hint">Nearby spots load automatically. Location is used for this search and never saved.</p></div><p class="edit-status" id="nearby-status" role="status" aria-live="polite">Nearby restaurant search will start automatically.</p><details class="nearbyDisclosure" id="nearby-disclosure" open hidden><summary id="nearby-summary">Nearby restaurants</summary><div class="nearbyResults" id="nearby-results"></div></details><div class="homeNameSearch"><label for="home-restaurant-search">Looking for somewhere specific?</label><input id="home-restaurant-search" class="restaurantSearch" type="search" placeholder="Search restaurant names" autocomplete="off"><p class="hint">Search by name if it is not in the nearby list.</p><p class="edit-status" id="home-restaurant-search-status" role="status" aria-live="polite"></p><div id="home-restaurant-search-results" class="restaurantLookupResults"></div></div></section></section>');
+  root.querySelector("#refresh-local-news")?.addEventListener("click", () => { void loadLocalFoodNews(); });
 }
 async function loadLocalFoodNews() {
   const list = document.querySelector("#local-food-news");
   const updated = document.querySelector("#local-news-updated");
   if (!list) return;
   try {
-    const response = await fetch("../news.json", { headers: { Accept: "application/json" }, cache: "no-cache" });
+    const refreshButton = document.querySelector("#refresh-local-news");
+    if (refreshButton) { refreshButton.disabled = true; refreshButton.textContent = "↻ Updating…"; }
+    const response = await fetch("../news.json", { headers: { Accept: "application/json" }, cache: "no-store" });
     if (!response.ok) throw new Error("News feed unavailable");
     const payload = await response.json();
     const items = Array.isArray(payload.items) ? payload.items.filter(item => {
@@ -435,9 +439,20 @@ async function loadLocalFoodNews() {
       try { const u = new URL(item.url); return u.protocol === "https:" || u.protocol === "http:"; } catch { return false; }
     }).slice(0, 8) : [];
     if (!items.length) { list.innerHTML = '<p class="empty">No local food stories are available right now. Please check back soon.</p>'; return; }
-    list.innerHTML = items.map(item => '<article class="localNewsItem"><div class="newsMeta">' + escapeHtml(item.source || "Local food news") + (item.date ? " · " + escapeHtml(item.date) : "") + '</div><a href="' + escapeHtml(item.url) + '" target="_blank" rel="noopener noreferrer">' + escapeHtml(item.title) + '</a></article>').join("");
+    list.innerHTML = items.map(item => {
+      let image = "";
+      const imageUrl = item.image || item.imageUrl || item.thumbnail;
+      if (typeof imageUrl === "string") {
+        try {
+          const parsedImage = new URL(imageUrl, location.origin);
+          if (["https:", "http:"].includes(parsedImage.protocol)) image = '<img class="newsThumbnail" src="' + escapeHtml(parsedImage.href) + '" alt="" loading="lazy" referrerpolicy="no-referrer">';
+        } catch { /* Ignore invalid optional image URLs. */ }
+      }
+      return '<article class="localNewsItem"><div class="newsItemBody">' + image + '<div class="newsItemText"><div class="newsMeta">' + escapeHtml(item.source || "Local food news") + (item.date ? " · " + escapeHtml(item.date) : "") + '</div><a href="' + escapeHtml(item.url) + '" target="_blank" rel="noopener noreferrer">' + escapeHtml(item.title) + '</a></div></div></article>';
+    }).join("");
     if (updated && payload.updated) { const date = new Date(payload.updated); if (!Number.isNaN(date.getTime())) updated.textContent = "Stories refreshed " + date.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" }) + "."; }
   } catch { list.innerHTML = '<p class="empty">Local food news could not be loaded. Your recipes and restaurant data are unaffected.</p>'; }
+  finally { const refreshButton = document.querySelector("#refresh-local-news"); if (refreshButton) { refreshButton.disabled = false; refreshButton.textContent = "↻ Refresh"; } }
 }
 function renderImportPanel() {
   return `<section class="importPanel" aria-labelledby="import-title">
@@ -482,7 +497,13 @@ function reviewSurveyScore(review, key) {
 function renderList(title, eyebrow, items, kind) {
   if (kind === "dining") { renderRestaurants(items); return; }
   const isRecipe = kind === "recipes";
-  const visibleItems = isRecipe ? items.filter(item => !/^PREVIEW TEST\b/i.test(String(item.title || ""))) : items;
+  const visibleItems = isRecipe ? items.filter(item => !/^PREVIEW TEST\b/i.test(String(item.title || ""))).sort((a, b) => {
+    const titleOrder = String(a.title || "").localeCompare(String(b.title || ""), undefined, { sensitivity: "base" });
+    if (recipeSort === "title") return titleOrder;
+    const aDate = Date.parse(a.updatedAt || a.createdAt || "") || 0;
+    const bDate = Date.parse(b.updatedAt || b.createdAt || "") || 0;
+    return recipeSort === "oldest" ? (aDate || Number.MAX_SAFE_INTEGER) - (bDate || Number.MAX_SAFE_INTEGER) || titleOrder : bDate - aDate || titleOrder;
+  }) : items;
   const rows = visibleItems.map(item => {
     const ingredients = Array.isArray(item.ingredients) ? item.ingredients : [];
     const directions = Array.isArray(item.directions) ? item.directions : [];
@@ -527,19 +548,20 @@ function renderList(title, eyebrow, items, kind) {
     const reviewSummary = item.reviewCount ? `${item.reviewCount} saved review${item.reviewCount === 1 ? "" : "s"}` : "";
     const restaurantRating = item.rating == null ? null : (Number(item.rating) <= 5 ? Number(item.rating) * 2 : Number(item.rating));
     const restaurantDetails = !isRecipe ? `<details><summary>View restaurant details</summary><section class="restaurantDetailBlock"><h4>Restaurant information</h4><dl>${[["Address",item.address],["Cuisine",item.cuisine],["Rating",restaurantRating == null ? "" : `${restaurantRating.toFixed(1)}/10`],["Favorite",item.favorite ? "Yes" : ""],["Notes",item.notes],["Website",item.website],["Last updated",item.updatedAt ? formatDateTime(item.updatedAt) : ""]].filter(([,value])=>value!==""&&value!=null).map(([label,value])=>`<div><dt>${label}</dt><dd>${label === "Website" && /^https?:\/\//i.test(String(value)) ? `<a href="${escapeHtml(value)}" target="_blank" rel="noopener noreferrer">${escapeHtml(value)}</a>` : displayValue(value)}</dd></div>`).join("")}</dl></section>${reviewRecords.length ? reviewFields : `<p class="hint">No saved review details were found for this restaurant.</p>`}${restaurantPhotos.length ? `<section class="restaurantDetailBlock"><h4>Photos</h4><ul>${restaurantPhotos.map(photo=>`<li>${displayValue(photo)}</li>`).join("")}</ul></section>` : ""}</details>` : "";
-    return `<article class="readOnlyItem" data-category="${escapeHtml(item.category || "")}">${isRecipe ? `<div class="recipeCardHeader"><strong>${escapeHtml(item.title)}</strong>${cloudRecipeIds.has(String(item.id)) ? `<div class="recipeCardActions"><button class="btn recipeEditButton" type="button" data-action="open-recipe-edit" data-recipe-id="${escapeHtml(item.id)}">Edit</button><button class="btn" type="button" data-action="print-recipe" data-recipe-id="${escapeHtml(item.id)}">Print / PDF</button><button class="btn" type="button" data-action="share-recipe" data-recipe-id="${escapeHtml(item.id)}">Create share link</button><button class="btn" type="button" data-action="revoke-share" data-recipe-id="${escapeHtml(item.id)}">Revoke link</button></div>` : ""}</div>` : `<strong>${escapeHtml(item.name)}</strong>`}<small>${escapeHtml(isRecipe ? [item.category, item.subcategory, ingredients.length ? `${ingredients.length} ingredients` : "", ...timeParts].filter(Boolean).join(" · ") : [item.cuisine, item.address, restaurantRating != null ? `Rating ${restaurantRating.toFixed(1)}/10` : "", item.favorite ? "Favorite" : "", reviewSummary].filter(Boolean).join(" · ") || "No additional details saved")}</small>${isRecipe && (item.createdAt || item.updatedAt) ? `<p class="recipeSavedDate">Saved ${escapeHtml(formatDateTime(item.updatedAt || item.createdAt))}</p>` : ""}${isRecipe && (ingredients.length || directions.length) ? `<details><summary>View recipe</summary>${ingredients.length ? `<section class="recipeDetailBlock"><h4>Ingredients</h4><ul>${ingredients.map(ingredient => `<li>${escapeHtml(ingredient)}</li>`).join("")}</ul></section>` : `<p class="hint">No ingredients were found for this recipe.</p>`}${directions.length ? `<section class="recipeDetailBlock"><h4>Directions</h4><ol>${directions.map(step => `<li>${escapeHtml(cleanStep(step))}</li>`).join("")}</ol></section>` : ""}</details>` : restaurantDetails}</article>`;
+    return `<article class="readOnlyItem" data-category="${escapeHtml(item.category || "")}">${isRecipe ? `<div class="recipeCardHeader"><strong>${escapeHtml(item.title)}</strong>${cloudRecipeIds.has(String(item.id)) ? `<div class="recipeCardActions"><button class="btn recipeEditButton" type="button" data-action="open-recipe-edit" data-recipe-id="${escapeHtml(item.id)}">Edit</button><details class="recipeMoreMenu"><summary class="btn">More</summary><div class="recipeMoreOptions"><button class="btn" type="button" data-action="print-recipe" data-recipe-id="${escapeHtml(item.id)}">Print / PDF</button><button class="btn" type="button" data-action="share-recipe" data-recipe-id="${escapeHtml(item.id)}">Create share link</button><button class="btn" type="button" data-action="revoke-share" data-recipe-id="${escapeHtml(item.id)}">Revoke link</button></div></details></div>` : ""}</div>` : `<strong>${escapeHtml(item.name)}</strong>`}<small>${escapeHtml(isRecipe ? [item.category, item.subcategory, ingredients.length ? `${ingredients.length} ingredients` : "", ...timeParts].filter(Boolean).join(" · ") : [item.cuisine, item.address, restaurantRating != null ? `Rating ${restaurantRating.toFixed(1)}/10` : "", item.favorite ? "Favorite" : "", reviewSummary].filter(Boolean).join(" · ") || "No additional details saved")}</small>${isRecipe && (item.createdAt || item.updatedAt) ? `<p class="recipeSavedDate">Saved ${escapeHtml(formatDateTime(item.updatedAt || item.createdAt))}</p>` : ""}${isRecipe && (ingredients.length || directions.length) ? `<details><summary>View recipe</summary>${ingredients.length ? `<section class="recipeDetailBlock"><h4>Ingredients</h4><ul>${ingredients.map(ingredient => `<li>${escapeHtml(ingredient)}</li>`).join("")}</ul></section>` : `<p class="hint">No ingredients were found for this recipe.</p>`}${directions.length ? `<section class="recipeDetailBlock"><h4>Directions</h4><ol>${directions.map(step => `<li>${escapeHtml(cleanStep(step))}</li>`).join("")}</ol></section>` : ""}</details>` : restaurantDetails}</article>`;
   }).join("");
   if (isRecipe) {
     const categories = RECIPE_CATEGORIES;
     root.innerHTML = `<section class="hero"><div class="heroIn"><div class="eyebrow">Your kitchen</div><h2>My Recipes</h2><p>Good food. Great stories. Recipes worth keeping.</p></div></section>
       <section class="content-panel recipeCollectionPanel">
         <div class="sectionTitle"><div><div class="sectionKicker">Your collection</div><h3>Saved recipes</h3></div><button class="btn primary" type="button" data-view="add-recipe">＋ Add a Recipe</button></div>
-        <div class="recipeBrowseTools"><div class="field"><label for="recipe-search">Search your recipes</label><input id="recipe-search" type="search" placeholder="Search by name, ingredient, or direction"></div><div class="field"><label for="recipe-category">Category</label><select id="recipe-category"><option value="">All categories</option>${categories.map(category=>`<option value="${escapeHtml(category)}">${escapeHtml(category)}</option>`).join("")}</select></div></div>
+        <div class="recipeBrowseTools"><div class="field"><label for="recipe-search">Search your recipes</label><input id="recipe-search" type="search" placeholder="Search by name, ingredient, or direction"></div><div class="field"><label for="recipe-category">Category</label><select id="recipe-category"><option value="">All categories</option>${categories.map(category=>`<option value="${escapeHtml(category)}">${escapeHtml(category)}</option>`).join("")}</select></div><div class="field"><label for="recipe-sort">Sort by</label><select id="recipe-sort"><option value="recent"${recipeSort === "recent" ? " selected" : ""}>Newest first</option><option value="oldest"${recipeSort === "oldest" ? " selected" : ""}>Oldest first</option><option value="title"${recipeSort === "title" ? " selected" : ""}>Name · A to Z</option></select></div></div>
         <div id="recipe-collection-list" class="readOnlyList">${rows ? rows : `<div class="empty">No recipes were found in the data source this preview can read.</div>`}</div>
         <p class="hint">Recipes saved to your account are stored in secure Preview cloud storage and can sync across devices. Shared baseline records and Production data are not changed.</p>
       </section>`;
     const search = document.querySelector("#recipe-search");
     const category = document.querySelector("#recipe-category");
+    const sort = document.querySelector("#recipe-sort");
     const applyFilter = () => {
       const query = (search?.value || "").trim().toLocaleLowerCase();
       const selected = category?.value || "";
@@ -564,6 +586,17 @@ function renderList(title, eyebrow, items, kind) {
     };
     search?.addEventListener("input", applyFilter);
     category?.addEventListener("change", applyFilter);
+    sort?.addEventListener("change", () => {
+      const currentQuery = search?.value || "";
+      const currentCategory = category?.value || "";
+      recipeSort = sort.value;
+      render();
+      const nextSearch = document.querySelector("#recipe-search");
+      const nextCategory = document.querySelector("#recipe-category");
+      nextSearch.value = currentQuery;
+      nextCategory.value = currentCategory;
+      nextSearch.dispatchEvent(new Event("input", { bubbles: true }));
+    });
     return;
   }
   root.innerHTML = `<section class="hero"><div class="heroIn"><div class="eyebrow">${eyebrow}</div><h2>${title}</h2><p>A read-only view of your current saved ${kind}.</p></div></section><section class="content-panel"><div class="sectionTitle"><div><div class="sectionKicker">${items.length} saved</div><h3>${title}</h3></div><span class="status">${kind === "recipes" ? "Cloud account" : "Read only"}</span></div>${rows ? `<div class="readOnlyList">${rows}</div>` : `<div class="empty">No ${kind} were found in the data source this preview can read.</div>`}<p class="hint">Shared baseline records are read-only. Recipe changes are available only for records saved to your signed-in Preview cloud account.</p></section>`;
