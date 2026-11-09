@@ -635,6 +635,9 @@
 #app .hero{margin-bottom:18px}
 #app .heroIn{padding-top:clamp(22px,4.8vw,40px);padding-bottom:clamp(22px,4.8vw,40px)}
 #app .hero h2{margin-top:9px;margin-bottom:10px}
+#app .homeTitle{display:flex;align-items:flex-start;gap:.16em}
+#app .homeTitleFleur{flex:0 0 auto;margin-top:.2em;color:#d6b46c;font-size:.46em;line-height:1}
+#app .homeTitleWords{min-width:0}
 #app .hero p{margin-top:0;margin-bottom:0;line-height:1.45}
 #app .content-panel{margin-top:14px;padding-top:15px;padding-bottom:15px}
 #app .sectionTitle{margin-top:22px;margin-bottom:12px}
