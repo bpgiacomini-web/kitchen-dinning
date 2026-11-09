@@ -179,6 +179,8 @@
 #app .insightEmpty{margin:0;color:var(--muted)}
 #app .reviewDateReadOnly{display:flex;align-items:baseline;gap:10px;margin:0;padding:8px 0;color:var(--muted)}
 #app .reviewDateReadOnly strong{color:var(--text)}
+#app .reviewVisitDate{display:block;width:min(100%,260px)}
+#app .reviewVisitDate input{display:block;box-sizing:border-box;width:100%;max-width:260px}
 #app .reviewFoodSection{padding:18px;border:1px solid #315047;border-radius:18px;background:linear-gradient(145deg,#13231f,#101719)}
 #app .reviewFoodSection h3,#app .surveyCard h3{margin:0 0 8px}
 #app .reviewCategory{margin:10px 0;border:1px solid #315047;border-radius:14px;background:#101816;overflow:hidden}
@@ -219,6 +221,12 @@
 #app .nearbyPlace small{display:block;margin-top:4px;color:var(--muted);line-height:1.4}
 #app .nearbyPlaceActions{display:flex;align-items:center;justify-content:flex-end;gap:8px;flex-wrap:wrap}
 #app .nearbyDirectionsButton{display:inline-flex;align-items:center;justify-content:center;text-decoration:none}
+#app .nearbyNavigationMenu{position:relative}
+#app .nearbyNavigationMenu>summary{list-style:none;cursor:pointer}
+#app .nearbyNavigationMenu>summary::-webkit-details-marker{display:none}
+#app .nearbyNavigationOptions{position:absolute;z-index:5;right:0;top:calc(100% + 6px);display:grid;min-width:160px;padding:6px;border:1px solid #35463f;border-radius:12px;background:#111719;box-shadow:0 12px 28px #0009}
+#app .nearbyNavigationOptions a{display:block;padding:10px 12px;border-radius:8px;color:var(--text);text-decoration:none;white-space:nowrap}
+#app .nearbyNavigationOptions a:hover,#app .nearbyNavigationOptions a:focus-visible{background:#1b2924;color:#b7d8c8}
 #app .homeRestaurantFinder{margin:22px 0 26px;padding:14px}
 #app .homeRestaurantFinder .nearbyPanel{margin:0}
 #app .homeNameSearch{grid-column:1/-1;display:grid;gap:8px;margin-top:4px;padding-top:14px;border-top:1px solid #315047}

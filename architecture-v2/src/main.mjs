@@ -4,7 +4,7 @@ import { importedRecipeCategory, recipeEditorCategories, RECIPE_CATEGORIES } fro
 import { parsePastedRecipeText, parseRecipeJsonLd } from "./features/recipes/import-parser.mjs";
 import { averageRestaurantVisitRating, createRestaurantReview, RESTAURANT_REVIEW_DIMENSIONS, restaurantReviewRecords, upsertRestaurantReview } from "./domain/restaurant-review.mjs";
 import { restaurantDishSuggestions } from "./domain/restaurant-dish-suggestions.mjs";
-import { restaurantDirectionsUrl } from "./domain/restaurant-directions.mjs";
+import { restaurantNavigationOptions } from "./domain/restaurant-directions.mjs";
 import { sortRestaurantItems } from "./domain/restaurant-sort.mjs";
 import { searchNearbyRestaurants as lookupNearbyRestaurants, searchRestaurantNames } from "./domain/restaurant-lookup.mjs";
 import { summarizeRestaurantInsights } from "./domain/restaurant-insights.mjs";
@@ -284,7 +284,7 @@ function renderRestaurantReviewForm(restaurantId) {
           <div class="reviewLiveScore"><span id="review-live-title">Current Food Critic score</span><strong id="review-overall-average">—<small>/10</small></strong></div>
           <div class="reviewProgress"><progress id="review-completion-progress" max="5" value="0" aria-label="Review completion"></progress><p id="review-completion" role="status" aria-live="polite">0 of 5 required parts complete. Notes are optional.</p></div>
         </section>
-        ${editingReview ? `<p class="reviewDateReadOnly"><span>Visit date</span><strong>${escapeHtml(restaurantReviewDateText(editingReview))}</strong></p>` : `<label>Visit date<input id="review-visited-at" type="date" value="${escapeHtml(today)}" required></label>`}
+        ${editingReview ? `<p class="reviewDateReadOnly"><span>Visit date</span><strong>${escapeHtml(restaurantReviewDateText(editingReview))}</strong></p>` : `<label class="reviewVisitDate">Visit date<input id="review-visited-at" type="date" value="${escapeHtml(today)}" required></label>`}
         <section class="surveyCard reviewCoreCard">
           <h3>Your 1–10 ratings</h3>
           <p class="hint">Rate each item from 1 (poor) to 10 (exceptional). Overall Experience, Service, Value, one rated dish or drink, and “Would you order it again?” are required. Food Quality is calculated from dish ratings.</p>
@@ -335,7 +335,7 @@ async function searchNearbyRestaurants() {
         ? `Showing places near the approximate area Vercel detected${response.location.city ? ` (${response.location.city})` : ""}. Allow precise location for a closer match.`
         : `Found ${response.places.length} nearby places. Select one to fill in its details and continue to a visit review.`;
       statusLine.textContent = placeLabel;
-      results.innerHTML = response.places.map(place => `<article class="nearbyPlace"><div><strong>${escapeHtml(place.name)}</strong><small>${escapeHtml([place.cuisine, place.distance == null ? "" : place.distance < 1609 ? `${Math.round(place.distance * 3.28084)} ft` : `${(place.distance / 1609.34).toFixed(1)} mi`, place.address].filter(Boolean).join(" · ") || "Nearby food place")}</small></div><div class="nearbyPlaceActions"><a class="btn nearbyDirectionsButton" href="${escapeHtml(restaurantDirectionsUrl(place, navigator.userAgent || ""))}" target="_blank" rel="noopener noreferrer" aria-label="Get directions to ${escapeHtml(place.name)}">Directions</a><button class="btn" type="button" data-action="use-nearby" data-nearby="${escapeHtml(JSON.stringify(place))}">Review this restaurant</button></div></article>`).join("");
+      results.innerHTML = response.places.map(place => `<article class="nearbyPlace"><div><strong>${escapeHtml(place.name)}</strong><small>${escapeHtml([place.cuisine, place.distance == null ? "" : place.distance < 1609 ? `${Math.round(place.distance * 3.28084)} ft` : `${(place.distance / 1609.34).toFixed(1)} mi`, place.address].filter(Boolean).join(" · ") || "Nearby food place")}</small></div><div class="nearbyPlaceActions"><details class="nearbyNavigationMenu"><summary class="btn nearbyDirectionsButton" aria-label="Choose a map app for ${escapeHtml(place.name)}">Directions</summary><div class="nearbyNavigationOptions">${restaurantNavigationOptions(place).map(option => `<a href="${escapeHtml(option.url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(option.label)}</a>`).join("")}</div></details><button class="btn" type="button" data-action="use-nearby" data-nearby="${escapeHtml(JSON.stringify(place))}">Review this restaurant</button></div></article>`).join("");
     } catch (error) {
       if (disclosure) disclosure.hidden = true;
       statusLine.textContent = error.message || "Nearby restaurant search is unavailable right now. Try the name search below.";
