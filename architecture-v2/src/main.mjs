@@ -809,7 +809,9 @@ document.addEventListener("click", async event => {
   if (actionButton.dataset.action === "open-restaurant-recap") {
     event.preventDefault();
     const card = actionButton.closest(".restaurantCard");
+    const moreMenu = card?.querySelector(".restaurantMoreMenu");
     const recap = card?.querySelector(".restaurantRecap");
+    if (moreMenu) moreMenu.open = false;
     if (recap) { recap.open = true; recap.scrollIntoView({ behavior: "smooth", block: "nearest" }); }
     return;
   }
