@@ -45,6 +45,15 @@ test("known Metro East restaurant matches fill official websites when the map li
   assert.equal(places[1].website, "https://www.ropersregalbeagle.com/");
 });
 
+test("restaurant name normalization removes punctuation-only duplicate listings", () => {
+  const places = normalizeRestaurantLookup([
+    feature("Roper's Regal Beagle"),
+    feature("Ropers Regal Beagle")
+  ]);
+  assert.equal(places.length, 1);
+  assert.equal(places[0].name, "Roper's Regal Beagle");
+});
+
 test("restaurant lookup reads public contact website fields and ignores unsafe protocols", () => {
   const places = normalizeRestaurantLookup([
     { properties: { name: "Website Tagged Cafe", city: "Alton", osm_key: "amenity", osm_value: "cafe", "contact:website": "example-cafe.com" }, geometry: { coordinates: [-90.18, 38.89] } },

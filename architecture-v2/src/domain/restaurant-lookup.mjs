@@ -56,7 +56,8 @@ export function normalizeRestaurantLookup(features, origin = null) {
     };
   }).sort((a, b) => (a.distance ?? Infinity) - (b.distance ?? Infinity)).filter(place => {
     if (isExcludedRestaurantName(place.name)) return false;
-    const key = `${place.name.toLocaleLowerCase()}|${place.address.toLocaleLowerCase()}`;
+    const addressKey = normalizedName(place.address) || `${place.lat ?? ""},${place.lon ?? ""}`;
+    const key = `${normalizedName(place.name)}|${addressKey}`;
     if (!place.name || seen.has(key)) return false;
     seen.add(key);
     return true;
