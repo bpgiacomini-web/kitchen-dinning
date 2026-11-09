@@ -29,6 +29,17 @@ test("same-origin name lookup applies Vercel's approximate location as a search 
   assert.equal(res.headers["Cache-Control"], "no-store, max-age=0");
 });
 
+test("known local restaurants remain searchable if Photon is unavailable", async () => {
+  const handler = createRestaurantLookupHandler({ fetcher: async () => { throw new Error("Photon unavailable"); } });
+  const res = responseRecorder();
+  await handler({ method: "POST", body: { mode: "name", query: "Delmar Public House" }, headers: {
+    "x-vercel-ip-latitude": "38.93", "x-vercel-ip-longitude": "-90.24", "x-vercel-ip-city": "Godfrey"
+  } }, res);
+  assert.equal(res.statusCode, 200);
+  assert.ok(res.body.features.some(feature => feature.properties.name === "Delmar Public House"));
+  assert.deepEqual(res.body.features.find(feature => feature.properties.name === "Delmar Public House").geometry.coordinates, [-90.24966, 38.93839]);
+});
+
 test("name lookup falls back to nearby OSM places when Photon has no match", async () => {
   const handler = createRestaurantLookupHandler({ fetcher: async url => {
     const request = new URL(url);

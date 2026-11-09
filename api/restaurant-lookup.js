@@ -100,6 +100,22 @@ function includeCuratedNearby(places, location) {
   return [...ordinary, ...curated].sort((a, b) => (a.distance ?? Infinity) - (b.distance ?? Infinity));
 }
 
+function includeCuratedNameMatches(features, query, location) {
+  const normalizedQuery = String(query || "").toLocaleLowerCase().replace(/[’']/g, "").replace(/[^a-z0-9]+/g, " ").trim();
+  const curatedFeatures = LOCAL_RESTAURANT_OVERRIDES
+    .filter(restaurant => restaurant.aliases.some(alias => {
+      const normalizedAlias = alias.toLocaleLowerCase().replace(/[’']/g, "").replace(/[^a-z0-9]+/g, " ").trim();
+      return normalizedAlias === normalizedQuery || normalizedAlias.startsWith(`${normalizedQuery} `) || normalizedQuery.startsWith(`${normalizedAlias} `);
+    }))
+    .filter(restaurant => !location || distanceMeters(location, restaurant.lat, restaurant.lon) <= 200_000)
+    .map(restaurant => ({
+      type: "Feature",
+      geometry: { type: "Point", coordinates: [restaurant.lon, restaurant.lat] },
+      properties: { osm_key: "amenity", osm_value: "restaurant", name: restaurant.name }
+    }));
+  return [...(Array.isArray(features) ? features : []), ...curatedFeatures];
+}
+
 function hasFoodFeature(feature) {
   const props = feature?.properties || {};
   return String(props.osm_key || "").toLowerCase() === "amenity" && FOOD_AMENITIES.has(String(props.osm_value || "").toLowerCase());
@@ -227,6 +243,7 @@ export function createRestaurantLookupHandler({ fetcher = fetch, authenticate = 
           const fallback = await nearbyNameFeatures(query, location, fetcher);
           if (fallback.length) features = [...features, ...fallback];
         }
+        features = includeCuratedNameMatches(features, query, location);
         if (photonError && !features.length) throw photonError;
         return res.status(200).json({ features, location });
       } catch (error) {
