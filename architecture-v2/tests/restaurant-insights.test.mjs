@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { summarizeRestaurantInsights } from "../src/domain/restaurant-insights.mjs";
+import { summarizeMetroEatsInsights, summarizeRestaurantInsights } from "../src/domain/restaurant-insights.mjs";
 import { averageRestaurantVisitRating, restaurantReviewRecords } from "../src/domain/restaurant-review.mjs";
 
 test("empty collection has no restaurant insights", () => {
@@ -67,4 +67,21 @@ test("an id-less survey mirror does not add a third copy of identical visit-hist
   const result = summarizeRestaurantInsights([{ name: "Cafe North", reviewHistory: [first, second], survey: { ...first } }]);
   assert.equal(result.visitCount, 2);
   assert.equal(result.averageRating, 8);
+});
+
+test("combined insights include restaurant, recipe, and pizza scores in the overall average", () => {
+  const result = summarizeMetroEatsInsights({
+    restaurants: [{ name: "Cafe North", survey: { overall: 8, ratingScale: 10 } }],
+    recipes: [{ title: "Tomato Pasta", overallRating: 10 }, { title: "Bread", overallRating: null }],
+    pizzas: [{ brand: "Metro", name: "Pepperoni", scores: { overall: 6 } }]
+  });
+  assert.equal(result.overallAverageRating, 8);
+  assert.equal(result.ratedItemCount, 3);
+  assert.equal(result.restaurants.visitCount, 1);
+  assert.deepEqual({ count: result.recipes.count, ratedCount: result.recipes.ratedCount, averageRating: result.recipes.averageRating, top: result.recipes.top }, {
+    count: 2, ratedCount: 1, averageRating: 10, top: { name: "Tomato Pasta", rating: 10 }
+  });
+  assert.deepEqual({ count: result.pizzas.count, ratedCount: result.pizzas.ratedCount, averageRating: result.pizzas.averageRating, top: result.pizzas.top }, {
+    count: 1, ratedCount: 1, averageRating: 6, top: { name: "Metro · Pepperoni", rating: 6 }
+  });
 });

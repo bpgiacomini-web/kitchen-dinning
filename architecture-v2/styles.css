@@ -174,6 +174,13 @@
 #app .insightTile>strong{font-size:23px;line-height:1.2;overflow-wrap:anywhere}
 #app .insightTile>strong small{font-size:12px;color:#a6c9b8}
 #app .insightTile>small{color:var(--muted);line-height:1.35}
+#app .overallInsight{display:grid;grid-template-columns:1fr auto;gap:3px 16px;align-items:center;margin:12px 0;padding:16px 18px;border:1px solid #80632f;border-radius:16px;background:linear-gradient(120deg,#2a2112,#14201d)}
+#app .overallInsight>span{font-weight:800;color:#e7c47c}
+#app .overallInsight>strong{grid-column:2;grid-row:1/3;font-size:34px;line-height:1}
+#app .overallInsight>strong small{font-size:14px;color:var(--muted)}
+#app .overallInsight>small{color:var(--muted)}
+#app .insightAverage{margin-top:4px;color:#e7c47c;font-size:20px;font-weight:800}
+#app .insightAverage small{font-size:12px;color:var(--muted);font-weight:600}
 #app .insightHighlights{display:flex;flex-wrap:wrap;gap:8px 20px;margin-top:12px;color:var(--muted);font-size:13px}
 #app .insightHighlights strong{color:#e0c078}
 #app .insightEmpty{margin:0;color:var(--muted)}
@@ -309,6 +316,10 @@
 /* Local food-news section for the architecture preview. */
 #app .localNewsPanel{margin:22px 0 26px;padding:20px;border:1px solid #4a3b24;border-radius:22px;background:linear-gradient(145deg,#211a10,#111519);box-shadow:var(--shadow)}
 #app .localNewsPanel .panel-heading h2{margin:4px 0;font-size:clamp(24px,5vw,32px)}
+#app .newsDisclosure{margin-top:12px;border-top:1px solid #51432d}
+#app .newsDisclosure>summary{padding:12px 0;color:#e7c47c;font-weight:800;cursor:pointer}
+#app .newsDisclosureContent{padding-bottom:2px}
+#app .newsDisclosureContent .newsIntro{margin-top:4px}
 #app .newsIntro{color:var(--muted);line-height:1.5}
 #app .heroTagline{font-size:clamp(15px,3.5vw,17px);line-height:1.45;color:#c9ced3;max-width:590px}
 #app .homeAppsDisclosure{margin-top:20px;border:1px solid #3d493f;border-radius:18px;background:linear-gradient(135deg,#121a18,#111519);overflow:hidden}
@@ -348,6 +359,8 @@
 
 /* Recipe card details: readable ingredients and clean, singly numbered directions. */
 #app .recipeDetailBlock{margin-top:14px}
+#app .recipeWakeControl{display:flex;flex-wrap:wrap;align-items:center;gap:9px;margin-top:12px;padding:10px 12px;border:1px solid #315047;border-radius:12px;background:#111919}
+#app .recipeWakeControl .hint{margin:0}
 #app .recipeDetailBlock h4{margin:0 0 8px;color:#d6b46c;font-size:14px;letter-spacing:.04em;text-transform:uppercase}
 #app .recipeDetailBlock ul,#app .recipeDetailBlock ol{padding-left:24px;margin:0;line-height:1.55}
 #app .recipeDetailBlock li+li{margin-top:5px}

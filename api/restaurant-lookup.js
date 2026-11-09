@@ -282,7 +282,13 @@ export function createRestaurantLookupHandler({ fetcher = fetch, authenticate = 
           break;
         } catch { /* Try the public backup endpoint. */ }
       }
-      if (!payload) return res.status(502).json({ error: "Nearby restaurant data is temporarily unavailable. Name search is still available." });
+      if (!payload) {
+        // Public map providers can be intermittently unavailable. Preserve a useful
+        // nearby experience for supported local areas without requiring either feed.
+        const curated = includeCuratedNearby([], location);
+        if (curated.length) return res.status(200).json({ places: curated, location, source: "curated-fallback" });
+        return res.status(502).json({ error: "Nearby restaurant data is temporarily unavailable. Name search is still available." });
+      }
       return res.status(200).json({ places: includeCuratedNearby(normalizeNearby(payload.elements, location), location), location });
     }
 

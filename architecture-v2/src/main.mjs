@@ -8,7 +8,7 @@ import { restaurantNavigationOptions } from "./domain/restaurant-directions.mjs"
 import { sortRestaurantItems } from "./domain/restaurant-sort.mjs";
 import { searchNearbyRestaurants as lookupNearbyRestaurants, searchRestaurantNames } from "./domain/restaurant-lookup.mjs";
 import { LOCAL_RESTAURANT_OVERRIDES } from "./domain/local-restaurant-overrides.mjs";
-import { summarizeRestaurantInsights } from "./domain/restaurant-insights.mjs";
+import { summarizeMetroEatsInsights } from "./domain/restaurant-insights.mjs";
 import { normalizeScannedUpc } from "./domain/pizza-barcode.mjs";
 
 const root = document.querySelector("#app");
@@ -36,6 +36,9 @@ let restaurantLookupRequest = 0;
 let restaurantLookupLocation = null;
 let restaurantLookupLocationRequested = false;
 let restaurantLookupResults = [];
+let recipeWakeLock = null;
+let recipeWakeLockEnabled = false;
+let recipeWakeLockRecipeId = null;
 function mergeVisibleDataset() {
   cloudRecipeIds = new Set(cloudDataset.recipes.map(item => String(item.id)));
   dataset = { ...cloudDataset };
@@ -57,6 +60,52 @@ function escapeHtml(value) {
 function setStatus(label, kind = "") {
   status.textContent = label;
   status.className = `status ${kind}`.trim();
+}
+async function setRecipeWakeLock(enabled, recipeId = null, statusElement = null) {
+  recipeWakeLockEnabled = enabled;
+  recipeWakeLockRecipeId = enabled ? String(recipeId || "") : null;
+  if (!enabled) {
+    try { await recipeWakeLock?.release(); } catch { /* A released lock is already clear. */ }
+    recipeWakeLock = null;
+    if (statusElement) statusElement.textContent = "Your screen can sleep normally.";
+    return;
+  }
+  if (recipeWakeLock && recipeWakeLockRecipeId === String(recipeId || "")) {
+    if (statusElement) statusElement.textContent = "Screen will stay awake while this recipe is open.";
+    return;
+  }
+  if (!("wakeLock" in navigator) || !navigator.wakeLock?.request) {
+    recipeWakeLockEnabled = false;
+    recipeWakeLockRecipeId = null;
+    if (statusElement) statusElement.textContent = "This browser cannot keep the screen awake. You can change Auto-Lock in your phone settings.";
+    return;
+  }
+  try {
+    const sentinel = await navigator.wakeLock.request("screen");
+    recipeWakeLock = sentinel;
+    if (statusElement) statusElement.textContent = "Screen will stay awake while this recipe is open.";
+    sentinel.addEventListener("release", () => {
+      if (recipeWakeLock === sentinel) recipeWakeLock = null;
+      if (recipeWakeLockEnabled && recipeWakeLockRecipeId === String(recipeId || "") && document.visibilityState === "visible") {
+        recipeWakeLockEnabled = false;
+        recipeWakeLockRecipeId = null;
+        const details = [...document.querySelectorAll("details[data-recipe-details]")].find(item => item.dataset.recipeId === String(recipeId || ""));
+        const button = details?.querySelector('[data-action="toggle-recipe-wake-lock"]');
+        if (button) { button.setAttribute("aria-pressed", "false"); button.textContent = "Keep screen awake"; }
+        const status = details?.querySelector("[data-recipe-wake-status]");
+        if (status) status.textContent = "Your phone released this setting. Tap to try again.";
+      }
+    });
+  } catch {
+    recipeWakeLockEnabled = false;
+    recipeWakeLockRecipeId = null;
+    if (statusElement) statusElement.textContent = "The phone did not allow the screen-awake setting. Check Auto-Lock or battery settings.";
+  }
+}
+function releaseRecipeWakeLock() {
+  recipeWakeLockEnabled = false;
+  recipeWakeLockRecipeId = null;
+  void setRecipeWakeLock(false);
 }
 const RESTAURANT_REVIEW_CATEGORIES = ["Appetizers", "Entrées", "Salads", "Soups", "Sides", "Desserts", "Drinks"];
 const RESTAURANT_CUISINES = ["American", "BBQ", "Bakery & Cafe", "Chinese", "French", "Greek", "Indian", "Italian", "Japanese", "Korean", "Mediterranean", "Mexican", "Middle Eastern", "Pizza", "Seafood", "Southern / Soul Food", "Thai", "Vietnamese", "Other"];
@@ -469,19 +518,34 @@ function renderHome() {
     homeTitle.className = "homeTitle";
     homeTitle.innerHTML = '<span class="homeTitleFleur" aria-hidden="true">⚜</span><span class="homeTitleWords">Metro Eats<br>Recipes & Dining</span>';
   }
+  const newsPanel = root.querySelector(".localNewsPanel");
+  if (newsPanel && !newsPanel.querySelector(".newsDisclosure")) {
+    const intro = newsPanel.querySelector(".newsIntro");
+    const stories = newsPanel.querySelector("#local-food-news");
+    const refreshed = newsPanel.querySelector("#local-news-updated");
+    const disclosure = document.createElement("details");
+    disclosure.className = "newsDisclosure";
+    disclosure.open = true;
+    const summary = document.createElement("summary");
+    summary.textContent = "Latest stories";
+    const content = document.createElement("div");
+    content.className = "newsDisclosureContent";
+    disclosure.append(summary, content);
+    newsPanel.append(disclosure);
+    [intro, stories, refreshed].filter(Boolean).forEach(element => content.append(element));
+  }
   root.querySelector(".localNewsPanel")?.insertAdjacentHTML("afterend", '<section class="content-panel homeRestaurantFinder"><section class="nearbyPanel"><div><div class="sectionKicker">Local dining</div><h3>Restaurants Around Me</h3><p class="hint">Nearby spots load automatically. Location is used for this search and never saved.</p></div><p class="edit-status" id="nearby-status" role="status" aria-live="polite">Nearby restaurant search will start automatically.</p><details class="nearbyDisclosure" id="nearby-disclosure" open hidden><summary id="nearby-summary">Nearby restaurants</summary><div class="nearbyResults" id="nearby-results"></div></details><div class="homeNameSearch"><label for="home-restaurant-search">Looking for somewhere specific?</label><input id="home-restaurant-search" class="restaurantSearch" type="search" placeholder="Search restaurant names" autocomplete="off"><p class="hint">Search by name if it is not in the nearby list.</p><p class="edit-status" id="home-restaurant-search-status" role="status" aria-live="polite"></p><div id="home-restaurant-search-results" class="restaurantLookupResults"></div></div></section></section>');
   root.querySelector(".homePrivacyNote")?.insertAdjacentHTML("afterend", renderHomeInsights());
   root.querySelector("#refresh-local-news")?.addEventListener("click", () => { void loadLocalFoodNews(); });
 }
 function renderHomeInsights() {
-  const insights = summarizeRestaurantInsights(dataset.restaurants);
-  const top = insights.topRestaurant;
-  const most = insights.mostVisited;
-  const highlights = [
-    insights.topCuisine ? `<span>Most-reviewed cuisine: <strong>${escapeHtml(insights.topCuisine.name)}</strong></span>` : "",
-    insights.topDish ? `<span>Top dish: <strong>${escapeHtml(insights.topDish.name)}</strong> · ${insights.topDish.rating.toFixed(1)}/10${insights.topDish.ratings > 1 ? ` across ${insights.topDish.ratings} ratings` : ""}</span>` : ""
+  const insights = summarizeMetroEatsInsights(dataset);
+  const sections = [insights.restaurants.visitCount ? { label: "Restaurants", count: insights.restaurants.placeCount, rated: insights.restaurants.visitCount, average: insights.restaurants.averageRating, top: insights.restaurants.topRestaurant ? { name: insights.restaurants.topRestaurant.restaurant.name, rating: insights.restaurants.topRestaurant.average } : null } : null, insights.recipes.count ? insights.recipes : null, insights.pizzas.count ? insights.pizzas : null].filter(Boolean);
+  const restaurantHighlights = [
+    insights.restaurants.topCuisine ? `<span>Most-reviewed cuisine: <strong>${escapeHtml(insights.restaurants.topCuisine.name)}</strong></span>` : "",
+    insights.restaurants.topDish ? `<span>Top dish: <strong>${escapeHtml(insights.restaurants.topDish.name)}</strong> · ${insights.restaurants.topDish.rating.toFixed(1)}/10${insights.restaurants.topDish.ratings > 1 ? ` across ${insights.restaurants.topDish.ratings} ratings` : ""}</span>` : ""
   ].filter(Boolean).join("");
-  return `<section class="content-panel homeInsights" aria-labelledby="home-insights-title"><div class="panel-heading"><div><p class="eyebrow">Your dining journal</p><h2 id="home-insights-title">Dining Insights</h2></div></div>${insights.visitCount ? `<div class="insightGrid"><article class="insightTile"><span>Places visited</span><strong>${insights.placeCount}</strong><small>${insights.visitCount} ${insights.visitCount === 1 ? "visit review" : "visit reviews"}</small></article><article class="insightTile"><span>Average visit rating</span><strong>${insights.averageRating?.toFixed(1) ?? "—"}<small>/10</small></strong><small>Across your rated visits</small></article><article class="insightTile"><span>Your top-ranked spot</span><strong>${escapeHtml(top?.restaurant.name || "—")}</strong><small>${top?.average != null ? `${top.average.toFixed(1)}/10 average` : "Add ratings to see your top spot"}</small></article><article class="insightTile"><span>Most visited</span><strong>${escapeHtml(most?.restaurant.name || "—")}</strong><small>${most ? `${most.reviews.length} ${most.reviews.length === 1 ? "visit" : "visits"}` : "Your visit history"}</small></article></div>${highlights ? `<div class="insightHighlights">${highlights}</div>` : ""}` : `<p class="insightEmpty">Your restaurant rankings and dining stats will show up here after you save your first visit review.</p>`}</section>`;
+  return `<section class="content-panel homeInsights" aria-labelledby="home-insights-title"><div class="panel-heading"><div><p class="eyebrow">Your Metro Eats journal</p><h2 id="home-insights-title">Metro Eats Insights</h2></div></div>${insights.ratedItemCount ? `<div class="overallInsight"><span>Overall rating across your journal</span><strong>${insights.overallAverageRating.toFixed(1)}<small>/10</small></strong><small>${insights.ratedItemCount} rated ${insights.ratedItemCount === 1 ? "entry" : "entries"} across restaurants, recipes, and frozen pizzas</small></div>` : `<p class="insightEmpty">Your ratings and stats will show up here as you review restaurants, recipes, and frozen pizzas.</p>`}${sections.length ? `<div class="insightGrid">${sections.map(section => `<article class="insightTile"><span>${escapeHtml(section.label)}</span><strong>${section.count}</strong><small>${section.rated} ${section.label === "Restaurants" ? (section.rated === 1 ? "visit review" : "visit reviews") : (section.rated === 1 ? "rated entry" : "rated entries")}</small><span class="insightAverage">${section.average?.toFixed(1) ?? "—"}<small>/10 average</small></span><small>${section.top ? `Top: ${escapeHtml(section.top.name)} · ${section.top.rating?.toFixed(1)}/10` : "Add ratings to see your top entry"}</small></article>`).join("")}</div>` : ""}${restaurantHighlights ? `<div class="insightHighlights">${restaurantHighlights}</div>` : ""}</section>`;
 }
 async function loadLocalFoodNews() {
   const list = document.querySelector("#local-food-news");
@@ -595,7 +659,7 @@ function renderList(title, eyebrow, items, kind) {
     const reviewSummary = item.reviewCount ? `${item.reviewCount} saved review${item.reviewCount === 1 ? "" : "s"}` : "";
     const restaurantRating = item.rating == null ? null : (Number(item.rating) <= 5 ? Number(item.rating) * 2 : Number(item.rating));
     const restaurantDetails = !isRecipe ? `<details><summary>View restaurant details</summary><section class="restaurantDetailBlock"><h4>Restaurant information</h4><dl>${[["Address",item.address],["Cuisine",item.cuisine],["Rating",restaurantRating == null ? "" : `${restaurantRating.toFixed(1)}/10`],["Favorite",item.favorite ? "Yes" : ""],["Notes",item.notes],["Website",item.website],["Last updated",item.updatedAt ? formatDateTime(item.updatedAt) : ""]].filter(([,value])=>value!==""&&value!=null).map(([label,value])=>`<div><dt>${label}</dt><dd>${label === "Website" && /^https?:\/\//i.test(String(value)) ? `<a href="${escapeHtml(value)}" target="_blank" rel="noopener noreferrer">${escapeHtml(value)}</a>` : displayValue(value)}</dd></div>`).join("")}</dl></section>${reviewRecords.length ? reviewFields : `<p class="hint">No saved review details were found for this restaurant.</p>`}${restaurantPhotos.length ? `<section class="restaurantDetailBlock"><h4>Photos</h4><ul>${restaurantPhotos.map(photo=>`<li>${displayValue(photo)}</li>`).join("")}</ul></section>` : ""}</details>` : "";
-    return `<article class="readOnlyItem" data-category="${escapeHtml(item.category || "")}">${isRecipe ? `<div class="recipeCardHeader"><strong>${escapeHtml(item.title)}</strong>${cloudRecipeIds.has(String(item.id)) ? `<div class="recipeCardActions"><button class="btn recipeEditButton" type="button" data-action="open-recipe-edit" data-recipe-id="${escapeHtml(item.id)}">Edit</button><details class="recipeMoreMenu"><summary class="btn">More</summary><div class="recipeMoreOptions"><button class="btn" type="button" data-action="print-recipe" data-recipe-id="${escapeHtml(item.id)}">Print / PDF</button><button class="btn" type="button" data-action="share-recipe" data-recipe-id="${escapeHtml(item.id)}">Create share link</button><button class="btn" type="button" data-action="revoke-share" data-recipe-id="${escapeHtml(item.id)}">Revoke link</button></div></details></div>` : ""}</div>` : `<strong>${escapeHtml(item.name)}</strong>`}<small>${escapeHtml(isRecipe ? [item.category, item.subcategory, ingredients.length ? `${ingredients.length} ingredients` : "", ...timeParts].filter(Boolean).join(" · ") : [item.cuisine, item.address, restaurantRating != null ? `Rating ${restaurantRating.toFixed(1)}/10` : "", item.favorite ? "Favorite" : "", reviewSummary].filter(Boolean).join(" · ") || "No additional details saved")}</small>${isRecipe && (item.createdAt || item.updatedAt) ? `<p class="recipeSavedDate">Saved ${escapeHtml(formatDateTime(item.updatedAt || item.createdAt))}</p>` : ""}${isRecipe && (ingredients.length || directions.length) ? `<details><summary>View recipe</summary>${ingredients.length ? `<section class="recipeDetailBlock"><h4>Ingredients</h4><ul>${ingredients.map(ingredient => `<li>${escapeHtml(ingredient)}</li>`).join("")}</ul></section>` : `<p class="hint">No ingredients were found for this recipe.</p>`}${directions.length ? `<section class="recipeDetailBlock"><h4>Directions</h4><ol>${directions.map(step => `<li>${escapeHtml(cleanStep(step))}</li>`).join("")}</ol></section>` : ""}</details>` : restaurantDetails}</article>`;
+    return `<article class="readOnlyItem" data-category="${escapeHtml(item.category || "")}">${isRecipe ? `<div class="recipeCardHeader"><strong>${escapeHtml(item.title)}</strong>${cloudRecipeIds.has(String(item.id)) ? `<div class="recipeCardActions"><button class="btn recipeEditButton" type="button" data-action="open-recipe-edit" data-recipe-id="${escapeHtml(item.id)}">Edit</button><details class="recipeMoreMenu"><summary class="btn">More</summary><div class="recipeMoreOptions"><button class="btn" type="button" data-action="print-recipe" data-recipe-id="${escapeHtml(item.id)}">Print / PDF</button><button class="btn" type="button" data-action="share-recipe" data-recipe-id="${escapeHtml(item.id)}">Create share link</button><button class="btn" type="button" data-action="revoke-share" data-recipe-id="${escapeHtml(item.id)}">Revoke link</button></div></details></div>` : ""}</div>` : `<strong>${escapeHtml(item.name)}</strong>`}<small>${escapeHtml(isRecipe ? [item.category, item.subcategory, item.overallRating == null ? "" : `Your rating ${Number(item.overallRating).toFixed(1)}/10`, ingredients.length ? `${ingredients.length} ingredients` : "", ...timeParts].filter(Boolean).join(" · ") : [item.cuisine, item.address, restaurantRating != null ? `Rating ${restaurantRating.toFixed(1)}/10` : "", item.favorite ? "Favorite" : "", reviewSummary].filter(Boolean).join(" · ") || "No additional details saved")}</small>${isRecipe && (item.createdAt || item.updatedAt) ? `<p class="recipeSavedDate">Saved ${escapeHtml(formatDateTime(item.updatedAt || item.createdAt))}</p>` : ""}${isRecipe && (ingredients.length || directions.length) ? `<details class="recipeViewDetails" data-recipe-details data-recipe-id="${escapeHtml(item.id)}"><summary>View recipe</summary><div class="recipeWakeControl"><button class="btn" type="button" data-action="toggle-recipe-wake-lock" data-recipe-id="${escapeHtml(item.id)}" aria-pressed="false">Keep screen awake</button><span class="hint" data-recipe-wake-status role="status" aria-live="polite">Optional · while cooking</span></div>${ingredients.length ? `<section class="recipeDetailBlock"><h4>Ingredients</h4><ul>${ingredients.map(ingredient => `<li>${escapeHtml(ingredient)}</li>`).join("")}</ul></section>` : `<p class="hint">No ingredients were found for this recipe.</p>`}${directions.length ? `<section class="recipeDetailBlock"><h4>Directions</h4><ol>${directions.map(step => `<li>${escapeHtml(cleanStep(step))}</li>`).join("")}</ol></section>` : ""}</details>` : restaurantDetails}</article>`;
   }).join("");
   if (isRecipe) {
     const categories = RECIPE_CATEGORIES;
@@ -664,6 +728,7 @@ function renderRecipeEditor(recipeId) {
       <div class="sectionTitle"><div><div class="sectionKicker">Editing recipe</div><h3>${escapeHtml(recipe.title)}</h3></div></div>
       <label>Recipe title<input data-edit-field="title" value="${escapeHtml(recipe.title)}" required maxlength="180"></label>
       <div class="recipeEditorTaxonomy"><label>Recipe category<select data-edit-field="category">${editorCategories.map(category => `<option value="${escapeHtml(category)}"${currentCategory === category ? " selected" : ""}>${escapeHtml(category)}</option>`).join("")}</select></label><label>Subcategory<input data-edit-field="subcategory" value="${escapeHtml(recipe.subcategory || "")}" placeholder="e.g. Beef"></label></div>
+      <label>Overall rating<input data-edit-field="overallRating" type="number" min="1" max="10" step="1" inputmode="numeric" value="${recipe.overallRating == null ? "" : escapeHtml(recipe.overallRating)}" placeholder="Optional · 1–10"></label>
       <label>Ingredients, one per line<textarea data-edit-field="ingredients" rows="8" required>${escapeHtml(ingredients.join("\n"))}</textarea></label>
       <label>Directions, one step per line<textarea data-edit-field="directions" rows="8" required>${escapeHtml(directions.join("\n"))}</textarea></label>
       <div class="recipeEditActions"><button class="btn" type="button" data-view="recipes">Cancel</button><button class="btn primary" type="button" data-action="save-recipe-edit" data-recipe-id="${escapeHtml(recipe.id)}">Save Changes</button><button class="btn danger" type="button" data-action="delete-recipe" data-recipe-id="${escapeHtml(recipe.id)}">Delete Recipe</button></div><p class="edit-status" role="status" aria-live="polite"></p>
@@ -735,7 +800,7 @@ function renderImportPreview(recipe) {
   const metadata = [["Servings", recipe.servings], ["Prep time", formatRecipeDuration(recipe.prepTime)], ["Cook time", formatRecipeDuration(recipe.cookTime)], ["Total time", formatRecipeDuration(recipe.totalTime)]].filter(([, value]) => value);
   const ingredients = (Array.isArray(recipe.ingredients) ? recipe.ingredients : []).map(cleanImportedIngredient);
   const directions = Array.isArray(recipe.directions) ? recipe.directions : [];
-  preview.innerHTML = `<article class="parsedRecipe"><p class="sectionKicker">Review before saving</p><div class="field"><label for="review-recipe-title">Recipe title</label><input id="review-recipe-title" maxlength="180" value="${escapeHtml(recipe.title)}"></div><div class="field"><label for="review-recipe-category">Recipe category</label><select id="review-recipe-category">${RECIPE_CATEGORIES.map(category => `<option value="${escapeHtml(category)}"${category === "Other" ? " selected" : ""}>${escapeHtml(category)}</option>`).join("")}</select></div>${metadata.length ? `<dl>${metadata.map(([label, value]) => `<div><dt>${label}</dt><dd>${escapeHtml(value)}</dd></div>`).join("")}</dl>` : ""}${recipe.source ? `<p class="note"><a class="recipeSourceLink" href="${escapeHtml(recipe.source)}" target="_blank" rel="noopener noreferrer">Recipe link ↗</a></p>` : ""}<div class="field"><label for="review-recipe-ingredients">Ingredients (one per line)</label><textarea id="review-recipe-ingredients" rows="8" maxlength="30000">${escapeHtml(ingredients.join("\n"))}</textarea></div><div class="field"><label for="review-recipe-directions">Directions (one step per line)</label><textarea id="review-recipe-directions" rows="8" maxlength="30000">${escapeHtml(directions.join("\n"))}</textarea></div><div class="actions"><button class="btn primary" type="button" data-action="save-recipe">Save to My Recipes</button></div><p id="recipe-save-status" class="importFeedback" role="status" aria-live="polite"></p></article>`;
+  preview.innerHTML = `<article class="parsedRecipe"><p class="sectionKicker">Review before saving</p><div class="field"><label for="review-recipe-title">Recipe title</label><input id="review-recipe-title" maxlength="180" value="${escapeHtml(recipe.title)}"></div><div class="field"><label for="review-recipe-category">Recipe category</label><select id="review-recipe-category">${RECIPE_CATEGORIES.map(category => `<option value="${escapeHtml(category)}"${category === "Other" ? " selected" : ""}>${escapeHtml(category)}</option>`).join("")}</select></div><div class="field"><label for="review-recipe-rating">Your overall recipe rating <span class="optionalMark">Optional · 1–10</span></label><input id="review-recipe-rating" type="number" min="1" max="10" step="1" inputmode="numeric" value="${recipe.overallRating == null ? "" : escapeHtml(recipe.overallRating)}" placeholder="Leave blank if unrated"></div>${metadata.length ? `<dl>${metadata.map(([label, value]) => `<div><dt>${label}</dt><dd>${escapeHtml(value)}</dd></div>`).join("")}</dl>` : ""}${recipe.source ? `<p class="note"><a class="recipeSourceLink" href="${escapeHtml(recipe.source)}" target="_blank" rel="noopener noreferrer">Recipe link ↗</a></p>` : ""}<div class="field"><label for="review-recipe-ingredients">Ingredients (one per line)</label><textarea id="review-recipe-ingredients" rows="8" maxlength="30000">${escapeHtml(ingredients.join("\n"))}</textarea></div><div class="field"><label for="review-recipe-directions">Directions (one step per line)</label><textarea id="review-recipe-directions" rows="8" maxlength="30000">${escapeHtml(directions.join("\n"))}</textarea></div><div class="actions"><button class="btn primary" type="button" data-action="save-recipe">Save to My Recipes</button></div><p id="recipe-save-status" class="importFeedback" role="status" aria-live="polite"></p></article>`;
 }
 function render() {
   stopPizzaScanner();
@@ -762,6 +827,23 @@ function render() {
   else renderHome();
 }
 let importMode = "text";
+document.addEventListener("toggle", event => {
+  const details = event.target;
+  if (!details?.matches?.("details[data-recipe-details]") || details.open || recipeWakeLockRecipeId !== String(details.dataset.recipeId || "")) return;
+  const button = details.querySelector('[data-action="toggle-recipe-wake-lock"]');
+  const message = details.querySelector("[data-recipe-wake-status]");
+  if (button) { button.setAttribute("aria-pressed", "false"); button.textContent = "Keep screen awake"; }
+  releaseRecipeWakeLock();
+  if (message) message.textContent = "Recipe closed. Screen can sleep normally.";
+}, true);
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState !== "visible" || !recipeWakeLockEnabled || !recipeWakeLockRecipeId) return;
+  const details = [...document.querySelectorAll("details[data-recipe-details]")].find(item => item.open && item.dataset.recipeId === recipeWakeLockRecipeId);
+  if (!details) { releaseRecipeWakeLock(); return; }
+  const button = details.querySelector('[data-action="toggle-recipe-wake-lock"]');
+  void setRecipeWakeLock(true, recipeWakeLockRecipeId, details.querySelector("[data-recipe-wake-status]"));
+  if (button) { button.setAttribute("aria-pressed", "true"); button.textContent = "Stop keeping screen awake"; }
+}, true);
 document.addEventListener("input", event => {
   if (event.target.id === "restaurant-name" && activeView === "restaurant-edit") searchRestaurantName(event.target.value);
   if (event.target.id === "home-restaurant-search") searchRestaurantName(event.target.value, { statusId: "home-restaurant-search-status", resultsId: "home-restaurant-search-results" });
@@ -828,6 +910,7 @@ document.addEventListener("click", async event => {
   const viewButton = event.target.closest("[data-view]");
   if (viewButton) {
     event.preventDefault();
+    releaseRecipeWakeLock();
     activeView = viewButton.dataset.view;
     render();
     if (activeView === "dining" || activeView === "home") searchNearbyRestaurants();
@@ -838,6 +921,17 @@ document.addEventListener("click", async event => {
   }
   const actionButton = event.target.closest("[data-action]");
   if (!actionButton) return;
+  if (actionButton.dataset.action === "toggle-recipe-wake-lock") {
+    const recipeId = actionButton.dataset.recipeId;
+    const details = actionButton.closest("details[data-recipe-details]");
+    const message = details?.querySelector("[data-recipe-wake-status]");
+    const enabled = !recipeWakeLockEnabled || recipeWakeLockRecipeId !== String(recipeId);
+    actionButton.setAttribute("aria-pressed", String(enabled));
+    actionButton.textContent = enabled ? "Stop keeping screen awake" : "Keep screen awake";
+    await setRecipeWakeLock(enabled, recipeId, message);
+    if (enabled && !recipeWakeLockEnabled) { actionButton.setAttribute("aria-pressed", "false"); actionButton.textContent = "Keep screen awake"; }
+    return;
+  }
   if (actionButton.dataset.action === "scan-pizza-upc") {
     void startPizzaScanner();
     return;
@@ -1305,9 +1399,15 @@ document.addEventListener("click", async event => {
     const subcategory = panel?.querySelector('[data-edit-field="subcategory"]')?.value.trim() || "";
     const ingredients = (panel?.querySelector('[data-edit-field="ingredients"]')?.value || "").split("\n").map(value => value.trim()).filter(Boolean);
     const directions = (panel?.querySelector('[data-edit-field="directions"]')?.value || "").split("\n").map(value => value.trim()).filter(Boolean);
+    const ratingInput = panel?.querySelector('[data-edit-field="overallRating"]')?.value.trim() || "";
+    const overallRating = ratingInput === "" ? null : Number(ratingInput);
     const status = panel?.querySelector(".edit-status");
     if (!title || !ingredients.length || !directions.length) {
       if (status) status.textContent = "Please enter a title, at least one ingredient, and at least one direction.";
+      return;
+    }
+    if (overallRating != null && (!Number.isInteger(overallRating) || overallRating < 1 || overallRating > 10)) {
+      if (status) status.textContent = "Recipe rating must be a whole number from 1 to 10, or left blank.";
       return;
     }
     try {
@@ -1317,7 +1417,7 @@ document.addEventListener("click", async event => {
         return;
       }
       const recipes = cloudDataset.recipes.slice();
-      recipes[index] = { ...recipes[index], title, category, subcategory, ingredients, directions, updatedAt: new Date().toISOString() };
+      recipes[index] = { ...recipes[index], title, category, subcategory, ingredients, directions, overallRating, updatedAt: new Date().toISOString() };
       actionButton.disabled = true;
       await saveCloudDataset({ ...cloudDataset, recipes });
       activeView = "recipes";
@@ -1342,6 +1442,9 @@ document.addEventListener("click", async event => {
     const ingredients = (document.querySelector("#review-recipe-ingredients")?.value || "").split("\n").map(value => value.trim()).filter(Boolean);
     const directions = (document.querySelector("#review-recipe-directions")?.value || "").split("\n").map(value => value.trim()).filter(Boolean);
     if (!title || !ingredients.length || !directions.length) { if (feedback) feedback.textContent = "Please provide a title, at least one ingredient, and at least one direction."; return; }
+    const ratingInput = document.querySelector("#review-recipe-rating")?.value.trim() || "";
+    const overallRating = ratingInput === "" ? null : Number(ratingInput);
+    if (overallRating != null && (!Number.isInteger(overallRating) || overallRating < 1 || overallRating > 10)) { if (feedback) feedback.textContent = "Recipe rating must be a whole number from 1 to 10, or left blank."; return; }
     const duplicate = cloudDataset.recipes.find(item =>
       String(item.title || "").trim().toLocaleLowerCase() === title.trim().toLocaleLowerCase() &&
       String(item.source || "").trim().toLocaleLowerCase() === String(extractedRecipe.source || "").trim().toLocaleLowerCase() &&
@@ -1354,7 +1457,7 @@ document.addEventListener("click", async event => {
       if (feedback) feedback.textContent = "This recipe is already saved in your cloud account.";
       return;
     }
-    const recipe = { ...extractedRecipe, id: "metro-recipe-" + crypto.randomUUID(), title, ingredients, directions, category, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() };
+    const recipe = { ...extractedRecipe, id: "metro-recipe-" + crypto.randomUUID(), title, ingredients, directions, category, overallRating, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() };
     actionButton.disabled = true;
     try {
       await saveCloudDataset({ ...cloudDataset, recipes: [...cloudDataset.recipes, recipe] });

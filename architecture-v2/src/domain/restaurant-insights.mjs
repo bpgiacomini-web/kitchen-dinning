@@ -58,3 +58,47 @@ export function summarizeRestaurantInsights(restaurants = []) {
     topDish: topDish ? { name: topDish.name, rating: topDish.sum / topDish.count, ratings: topDish.count } : null
   };
 }
+
+function validTenPointScore(value) {
+  const score = Number(value);
+  return value != null && value !== "" && Number.isFinite(score) && score >= 1 && score <= 10 ? score : null;
+}
+
+function summarizeRatedItems(items, { label, nameOf, scoreOf }) {
+  const rated = (Array.isArray(items) ? items : []).map(item => ({ item, score: validTenPointScore(scoreOf(item)) })).filter(entry => entry.score != null);
+  const top = rated.slice().sort((a, b) => b.score - a.score || nameOf(a.item).localeCompare(nameOf(b.item)))[0] || null;
+  return {
+    label,
+    count: (Array.isArray(items) ? items : []).length,
+    ratedCount: rated.length,
+    averageRating: rated.length ? rated.reduce((sum, entry) => sum + entry.score, 0) / rated.length : null,
+    top: top ? { name: nameOf(top.item), rating: top.score } : null,
+    scores: rated.map(entry => entry.score)
+  };
+}
+
+export function summarizeMetroEatsInsights({ restaurants = [], recipes = [], pizzas = [] } = {}) {
+  const restaurant = summarizeRestaurantInsights(restaurants);
+  const recipe = summarizeRatedItems(recipes, {
+    label: "Recipes",
+    nameOf: item => String(item?.title || item?.name || "Untitled recipe"),
+    scoreOf: item => item?.overallRating
+  });
+  const pizza = summarizeRatedItems(pizzas, {
+    label: "Frozen pizzas",
+    nameOf: item => [item?.brand, item?.name].filter(Boolean).join(" · ") || "Unnamed pizza",
+    scoreOf: item => item?.scores?.overall
+  });
+  const allScores = [
+    ...(restaurant.visitCount ? (Array.isArray(restaurants) ? restaurants : []).flatMap(item => restaurantReviewRecords(item).map(overallScore).filter(Number.isFinite)) : []),
+    ...recipe.scores,
+    ...pizza.scores
+  ];
+  return {
+    overallAverageRating: allScores.length ? allScores.reduce((sum, score) => sum + score, 0) / allScores.length : null,
+    ratedItemCount: allScores.length,
+    restaurants: restaurant,
+    recipes: recipe,
+    pizzas: pizza
+  };
+}

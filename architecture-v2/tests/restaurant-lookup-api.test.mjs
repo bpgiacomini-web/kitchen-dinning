@@ -121,6 +121,15 @@ test("nearby results omit concessions and closed Chic N Pig, and add current loc
   assert.equal(res.body.places[2].website, "https://delmarpublichouse.com/");
 });
 
+test("nearby lookup uses curated local restaurants when Photon and Overpass are unavailable", async () => {
+  const handler = createRestaurantLookupHandler({ fetcher: async () => { throw new Error("map provider unavailable"); } });
+  const res = responseRecorder();
+  await handler({ method: "POST", body: { mode: "nearby", location: { lat: 38.935, lon: -90.193 } }, headers: {} }, res);
+  assert.equal(res.statusCode, 200);
+  assert.equal(res.body.source, "curated-fallback");
+  assert.deepEqual(res.body.places.map(place => place.name), ["Arandas MX Cocina", "Delmar Public House"]);
+});
+
 test("nearby search fails clearly when neither device nor network location exists", async () => {
   const handler = createRestaurantLookupHandler({ fetcher: async () => { throw new Error("should not fetch"); } });
   const res = responseRecorder();

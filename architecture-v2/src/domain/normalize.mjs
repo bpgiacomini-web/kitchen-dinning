@@ -46,6 +46,8 @@ export function normalizeRecipe(record, index = 0) {
     prepTime: asText(item.prepTime ?? item.prep_time),
     cookTime: asText(item.cookTime ?? item.cook_time),
     totalTime: asText(item.totalTime ?? item.total_time),
+    overallRating: item.overallRating == null || item.overallRating === "" || !Number.isFinite(Number(item.overallRating)) || Number(item.overallRating) < 1 || Number(item.overallRating) > 10
+      ? null : Number(item.overallRating),
     favorite: item.favorite === true || item.isFavorite === true,
     source: asText(item.source ?? item.url),
     photos: asList(item.photos),

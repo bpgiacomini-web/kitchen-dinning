@@ -30,6 +30,12 @@ test("recipe normalization accepts imported Schema.org fields", () => {
   assert.deepEqual(result.directions, ["Mix", "Bake"]);
 });
 
+test("recipe rating is normalized as an optional ten-point score", () => {
+  assert.equal(normalizeRecipe({ title: "Rated", overallRating: "8" }).overallRating, 8);
+  assert.equal(normalizeRecipe({ title: "Unrated", overallRating: "" }).overallRating, null);
+  assert.equal(normalizeRecipe({ title: "Invalid", overallRating: 11 }).overallRating, null);
+});
+
 test("restaurant normalization retains current Metro Eats fields and review history", () => {
   const source = {
     id: "restaurant-1", name: "Cafe", type: "American", location: "1 Main, Alton, IL",
