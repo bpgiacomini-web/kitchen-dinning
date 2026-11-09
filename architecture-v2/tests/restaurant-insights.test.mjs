@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { summarizeRestaurantInsights } from "../src/domain/restaurant-insights.mjs";
+import { averageRestaurantVisitRating, restaurantReviewRecords } from "../src/domain/restaurant-review.mjs";
 
 test("empty collection has no restaurant insights", () => {
   assert.deepEqual(summarizeRestaurantInsights([]), {
@@ -31,9 +32,39 @@ test("insights rank reviewed restaurants and summarize visit and dish patterns",
   assert.deepEqual(result.topDish, { name: "Pasta", rating: 9, ratings: 2 });
 });
 
-test("insights count duplicate visit representations only once", () => {
+test("insights count a survey mirror once when it has the same visit ID", () => {
   const restaurant = { name: "Cafe North", reviewHistory: [{ id: "same", overall: 8 }], survey: { id: "same", overall: 8 } };
   const result = summarizeRestaurantInsights([restaurant]);
   assert.equal(result.placeCount, 1);
   assert.equal(result.visitCount, 1);
+});
+
+test("identical reviews with distinct visit IDs remain separate visits and average independently", () => {
+  const first = { id: "visit-1", visitedAt: "2026-11-07", overall: 6, experience: 5, food: 7, service: 6, value: 6, ratingScale: 10 };
+  const second = { ...first, id: "visit-2", overall: 8, experience: 9, food: 7, service: 8, value: 8 };
+  const restaurant = { name: "Cafe North", reviewHistory: [first, second], survey: second };
+  const records = restaurantReviewRecords(restaurant);
+  assert.equal(records.length, 2);
+  assert.equal(averageRestaurantVisitRating(records), 7);
+  assert.equal(records[0].experience, 5);
+  assert.equal(records[1].experience, 9);
+  const result = summarizeRestaurantInsights([restaurant]);
+  assert.equal(result.visitCount, 2);
+  assert.equal(result.averageRating, 7);
+});
+
+test("separate id-less visit rows with identical content are not collapsed", () => {
+  const first = { visitedAt: "2026-11-07", overall: 8, ratingScale: 10 };
+  const second = { ...first };
+  const result = summarizeRestaurantInsights([{ name: "Cafe North", reviewHistory: [first, second] }]);
+  assert.equal(result.visitCount, 2);
+  assert.equal(result.averageRating, 8);
+});
+
+test("an id-less survey mirror does not add a third copy of identical visit-history rows", () => {
+  const first = { visitedAt: "2026-11-07", overall: 8, ratingScale: 10 };
+  const second = { ...first };
+  const result = summarizeRestaurantInsights([{ name: "Cafe North", reviewHistory: [first, second], survey: { ...first } }]);
+  assert.equal(result.visitCount, 2);
+  assert.equal(result.averageRating, 8);
 });

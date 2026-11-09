@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { createRestaurantReview, upsertRestaurantReview } from "../src/domain/restaurant-review.mjs";
+import { createRestaurantReview, restaurantReviewRecords, upsertRestaurantReview } from "../src/domain/restaurant-review.mjs";
 
 const base = {
   id: "visit-1", visitedAt: "2026-11-07", createdAt: "2026-11-07T18:00:00.000Z",
@@ -65,4 +65,16 @@ test("adding a visit appends history and mirrors it to the current survey", () =
   const saved = upsertRestaurantReview({ reviewHistory: [existing], survey: existing }, next);
   assert.deepEqual(saved.reviewHistory, [existing, next]);
   assert.equal(saved.survey, next);
+});
+
+test("adding a fully identical new visit preserves both records and each visit's individual ratings", () => {
+  const existing = { ...createRestaurantReview(base), id: "visit-existing" };
+  const next = { ...createRestaurantReview(base), id: "visit-new" };
+  const saved = upsertRestaurantReview({ reviewHistory: [existing], survey: existing }, next);
+  const records = restaurantReviewRecords(saved);
+  assert.equal(records.length, 2);
+  assert.deepEqual(records.map(review => review.experience), [8, 8]);
+  assert.deepEqual(records.map(review => review.service), [7, 7]);
+  assert.deepEqual(records.map(review => review.value), [9, 9]);
+  assert.notEqual(records[0].id, records[1].id);
 });

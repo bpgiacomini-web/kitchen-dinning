@@ -2,7 +2,9 @@ import { createUserDatasetClient } from "./data/user-dataset-client.mjs";
 import { normalizeDataset } from "./domain/normalize.mjs";
 import { importedRecipeCategory, recipeEditorCategories, RECIPE_CATEGORIES } from "./features/recipes/categories.mjs";
 import { parsePastedRecipeText, parseRecipeJsonLd } from "./features/recipes/import-parser.mjs";
-import { createRestaurantReview, RESTAURANT_REVIEW_DIMENSIONS, reviewContentSignature, upsertRestaurantReview } from "./domain/restaurant-review.mjs";
+import { averageRestaurantVisitRating, createRestaurantReview, RESTAURANT_REVIEW_DIMENSIONS, restaurantReviewRecords, upsertRestaurantReview } from "./domain/restaurant-review.mjs";
+import { restaurantDishSuggestions } from "./domain/restaurant-dish-suggestions.mjs";
+import { restaurantDirectionsUrl } from "./domain/restaurant-directions.mjs";
 import { sortRestaurantItems } from "./domain/restaurant-sort.mjs";
 import { searchNearbyRestaurants as lookupNearbyRestaurants, searchRestaurantNames } from "./domain/restaurant-lookup.mjs";
 import { summarizeRestaurantInsights } from "./domain/restaurant-insights.mjs";
@@ -54,17 +56,6 @@ function escapeHtml(value) {
 function setStatus(label, kind = "") {
   status.textContent = label;
   status.className = `status ${kind}`.trim();
-}
-function restaurantReviewRecords(restaurant) {
-  const records = [...(Array.isArray(restaurant?.reviewHistory) ? restaurant.reviewHistory : []), ...(restaurant?.survey ? [restaurant.survey] : [])];
-  const signatures = new Set();
-  return records.filter(review => {
-    if (!review || typeof review !== "object" || Array.isArray(review)) return false;
-    const signature = reviewContentSignature(review);
-    if (signatures.has(signature)) return false;
-    signatures.add(signature);
-    return true;
-  });
 }
 const RESTAURANT_REVIEW_CATEGORIES = ["Appetizers", "Entrées", "Salads", "Soups", "Sides", "Desserts", "Drinks"];
 const RESTAURANT_CUISINES = ["American", "BBQ", "Bakery & Cafe", "Chinese", "French", "Greek", "Indian", "Italian", "Japanese", "Korean", "Mediterranean", "Mexican", "Middle Eastern", "Pizza", "Seafood", "Southern / Soul Food", "Thai", "Vietnamese", "Other"];
@@ -224,8 +215,7 @@ function restaurantReviewDateText(review) {
   return Number.isNaN(parsed.getTime()) ? raw : parsed.toLocaleDateString();
 }
 function restaurantAverageRating(restaurant) {
-  const scores = restaurantReviewRecords(restaurant).map(review => reviewRating(review, "overall") ?? reviewRating(review, "rating")).filter(Number.isFinite);
-  return scores.length ? scores.reduce((sum, score) => sum + score, 0) / scores.length : null;
+  return averageRestaurantVisitRating(restaurantReviewRecords(restaurant));
 }
 function renderRestaurants(items) {
   const rows = sortRestaurantItems(items, restaurantSort, { lastVisit: restaurantLastVisit, averageRating: restaurantAverageRating }).map(restaurant => {
@@ -278,8 +268,10 @@ function renderRestaurantReviewForm(restaurantId) {
   const savedDishes = reviewFoodItems(editingReview);
   const renderSavedDish = dish => {
     const itemId = crypto.randomUUID();
+    const suggestionsId = `dish-suggestions-${itemId}`;
     const rating = reviewRating({ rating: dish.rating, ratingScale: editingReview?.ratingScale }, "rating") || 0;
-    return `<article class="reviewDish" data-review-dish-id="${itemId}" data-rating="${rating}"><div class="reviewDishHead"><label>Dish or drink<input data-dish-name maxlength="180" value="${escapeHtml(dish.name || "")}" placeholder="e.g. toasted ravioli"></label><button class="btn danger" type="button" data-action="remove-review-dish" aria-label="Remove dish">Remove</button></div><div class="reviewQuestionHead"><b>Food rating</b><span data-dish-rating-label>${rating ? `${rating}/10` : "Select 1–10"}</span></div>${reviewScoreButtons(rating, itemId, "", "Dish or drink", true)}${reviewScaleGuide()}<label>Dish notes <span class="optionalMark">Optional</span><textarea data-dish-notes rows="2" maxlength="1200" placeholder="Taste, texture, preparation, portion…">${escapeHtml(dish.notes || "")}</textarea></label></article>`;
+    const suggestions = restaurantDishSuggestions(restaurant.cuisine, dish.category || "Entrées");
+    return `<article class="reviewDish" data-review-dish-id="${itemId}" data-rating="${rating}"><div class="reviewDishHead"><label>Dish or drink<input data-dish-name list="${suggestionsId}" maxlength="180" value="${escapeHtml(dish.name || "")}" placeholder="Choose a suggestion or enter any item"><datalist id="${suggestionsId}">${suggestions.map(name => `<option value="${escapeHtml(name)}"></option>`).join("")}</datalist></label><button class="btn danger" type="button" data-action="remove-review-dish" aria-label="Remove dish">Remove</button></div>${suggestions.length ? `<p class="hint">Popular ${escapeHtml(restaurant.cuisine || "restaurant")} picks are suggested. You can enter anything.</p>` : ""}<div class="reviewQuestionHead"><b>Food rating</b><span data-dish-rating-label>${rating ? `${rating}/10` : "Select 1–10"}</span></div>${reviewScoreButtons(rating, itemId, "", "Dish or drink", true)}${reviewScaleGuide()}<label>Dish notes <span class="optionalMark">Optional</span><textarea data-dish-notes rows="2" maxlength="1200" placeholder="Taste, texture, preparation, portion…">${escapeHtml(dish.notes || "")}</textarea></label></article>`;
   };
   const categories = RESTAURANT_REVIEW_CATEGORIES.map(category => `<details class="reviewCategory"${category === "Entrées" || savedDishes.some(dish => (dish.category || "Entrées") === category) ? " open" : ""}><summary>${category}</summary><div class="reviewCategoryBody" data-review-category="${category}"><p class="hint">Add the dishes or drinks you tried in this category.</p><div class="reviewDishList">${savedDishes.filter(dish => (dish.category || "Entrées") === category).map(renderSavedDish).join("")}</div><button class="btn" type="button" data-action="add-review-dish" data-category="${category}">＋ Add ${category === "Drinks" ? "a drink" : "a dish"}</button></div></details>`).join("");
   const hasSavedOptionalRatings = RESTAURANT_REVIEW_DIMENSIONS.some(({ key }) => reviewSurveyScore(editingReview, key) != null);
@@ -287,7 +279,7 @@ function renderRestaurantReviewForm(restaurantId) {
     <section class="hero"><div class="heroIn"><div class="eyebrow">Your dining journal · Food Critic</div><h2>${editingReview ? "Edit Visit Review" : "Rate a Visit"}</h2><p>${editingReview ? `Update the saved review for ${escapeHtml(restaurant.name)}. Your current ratings, dishes, and notes have been loaded.` : `Review your visit to <strong>${escapeHtml(restaurant.name)}</strong>. Your restaurant details and review are saved together when you finish.`}</p></div></section>
     <section class="content-panel restaurantEditorPage">
       <div class="restaurantEditPanel">
-        <section class="reviewRestaurantSummary"><strong>${escapeHtml(restaurant.name)}</strong><span>${escapeHtml([restaurant.cuisine, restaurant.address].filter(Boolean).join(" · ") || "Restaurant details added" )}</span>${restaurant.website ? `<a href="${escapeHtml(restaurant.website)}" target="_blank" rel="noopener noreferrer">${escapeHtml(restaurant.website)}</a>` : ""}<label class="inlineCheck"><input id="review-restaurant-favorite" type="checkbox"${restaurant.favorite ? " checked" : ""}> Mark as a favorite</label><button class="btn" type="button" data-action="back-to-restaurant-details">← Back to restaurant details</button></section>
+        <section class="reviewRestaurantSummary" data-restaurant-cuisine="${escapeHtml(restaurant.cuisine || "")}"><strong>${escapeHtml(restaurant.name)}</strong><span>${escapeHtml([restaurant.cuisine, restaurant.address].filter(Boolean).join(" · ") || "Restaurant details added" )}</span>${restaurant.website ? `<a href="${escapeHtml(restaurant.website)}" target="_blank" rel="noopener noreferrer">${escapeHtml(restaurant.website)}</a>` : ""}<label class="inlineCheck"><input id="review-restaurant-favorite" type="checkbox"${restaurant.favorite ? " checked" : ""}> Mark as a favorite</label><button class="btn" type="button" data-action="back-to-restaurant-details">← Back to restaurant details</button></section>
         <section class="reviewLiveSummary" aria-labelledby="review-live-title">
           <div class="reviewLiveScore"><span id="review-live-title">Current Food Critic score</span><strong id="review-overall-average">—<small>/10</small></strong></div>
           <div class="reviewProgress"><progress id="review-completion-progress" max="5" value="0" aria-label="Review completion"></progress><p id="review-completion" role="status" aria-live="polite">0 of 5 required parts complete. Notes are optional.</p></div>
@@ -314,8 +306,7 @@ function renderRestaurantReviewForm(restaurantId) {
 function renderRestaurantRankings() {
   const ranked = dataset.restaurants.map(restaurant => {
     const reviews = restaurantReviewRecords(restaurant);
-    const scores = reviews.map(review => reviewRating(review, "overall") ?? reviewRating(review, "rating")).filter(Number.isFinite);
-    const average = scores.length ? scores.reduce((sum, score) => sum + score, 0) / scores.length : null;
+    const average = averageRestaurantVisitRating(reviews);
     return { restaurant, reviews, average };
   }).filter(item => item.average != null).sort((a, b) => b.average - a.average || a.restaurant.name.localeCompare(b.restaurant.name));
   root.innerHTML = `<section class="hero"><div class="heroIn"><div class="eyebrow">Your dining journal · Food Critic</div><h2>My Restaurant Rankings</h2><p>Restaurants are ranked by your average overall score across saved visits.</p></div></section><section class="content-panel"><div class="sectionTitle"><h3>Your highest rated restaurants</h3><button class="btn" type="button" data-view="dining">← My Restaurants</button></div><div class="restaurantRankings">${ranked.length ? ranked.map(({ restaurant, reviews, average }, index) => `<article class="restaurantRanking"><span class="rankBadge">#${index + 1}</span><div><strong>${escapeHtml(restaurant.name)}</strong><small>${escapeHtml([restaurant.cuisine, `${reviews.length} ${reviews.length === 1 ? "visit" : "visits"}`].filter(Boolean).join(" · "))}</small>${topReviewFoods(restaurant).length ? `<p>Top dishes: ${topReviewFoods(restaurant).map(item => `${escapeHtml(item.name)} ${escapeHtml(item.rating)}/10`).join(" · ")}</p>` : ""}</div><strong class="rankingScore">${average.toFixed(1)}<small>/10</small></strong></article>`).join("") : `<div class="empty">Complete a restaurant visit review to start your rankings.</div>`}</div></section>`;
@@ -344,7 +335,7 @@ async function searchNearbyRestaurants() {
         ? `Showing places near the approximate area Vercel detected${response.location.city ? ` (${response.location.city})` : ""}. Allow precise location for a closer match.`
         : `Found ${response.places.length} nearby places. Select one to fill in its details and continue to a visit review.`;
       statusLine.textContent = placeLabel;
-      results.innerHTML = response.places.map(place => `<article class="nearbyPlace"><div><strong>${escapeHtml(place.name)}</strong><small>${escapeHtml([place.cuisine, place.distance == null ? "" : place.distance < 1609 ? `${Math.round(place.distance * 3.28084)} ft` : `${(place.distance / 1609.34).toFixed(1)} mi`, place.address].filter(Boolean).join(" · ") || "Nearby food place")}</small></div><button class="btn" type="button" data-action="use-nearby" data-nearby="${escapeHtml(JSON.stringify(place))}">Review this restaurant</button></article>`).join("");
+      results.innerHTML = response.places.map(place => `<article class="nearbyPlace"><div><strong>${escapeHtml(place.name)}</strong><small>${escapeHtml([place.cuisine, place.distance == null ? "" : place.distance < 1609 ? `${Math.round(place.distance * 3.28084)} ft` : `${(place.distance / 1609.34).toFixed(1)} mi`, place.address].filter(Boolean).join(" · ") || "Nearby food place")}</small></div><div class="nearbyPlaceActions"><a class="btn nearbyDirectionsButton" href="${escapeHtml(restaurantDirectionsUrl(place, navigator.userAgent || ""))}" target="_blank" rel="noopener noreferrer" aria-label="Get directions to ${escapeHtml(place.name)}">Directions</a><button class="btn" type="button" data-action="use-nearby" data-nearby="${escapeHtml(JSON.stringify(place))}">Review this restaurant</button></div></article>`).join("");
     } catch (error) {
       if (disclosure) disclosure.hidden = true;
       statusLine.textContent = error.message || "Nearby restaurant search is unavailable right now. Try the name search below.";
@@ -457,13 +448,14 @@ function updateReviewSurveySummary() {
     : `${completed} of 5 required parts complete. Finish the ratings and choices below; notes are optional.`;
 }
 function renderHome() {
-  root.innerHTML = `<section class="hero"><div class="heroIn"><div class="eyebrow">St. Louis • Metro East</div><h2>Metro Eats<br><span class="fl">⚜</span> Recipes & Dining</h2><p class="heroTagline">Good eats. Keeper recipes, local spots, and pizza rankings.</p><details class="homeAppsDisclosure"><summary><span>My Metro Eats Journal</span><span class="homeJournalPen" aria-hidden="true">✎</span></summary><div class="homeFeatureButtons"><button class="homeFeatureButton recipeButton" data-view="recipes"><span class="homeFeatureIcon">✦</span><span><strong>My Recipes</strong><small>Your go-to recipes</small></span><span class="homeFeatureArrow">→</span></button><button class="homeFeatureButton diningButton" data-view="dining"><span class="homeFeatureIcon" aria-hidden="true">⚜</span><span><strong>My Restaurants</strong><small>Local spots, your way</small></span><span class="homeFeatureArrow">→</span></button><button class="homeFeatureButton pizzaButton" data-view="pizzas"><span class="homeFeatureIcon pizzaIcon" aria-hidden="true"></span><span><strong>My Frozen Pizzas</strong><small>Rank your freezer faves</small></span><span class="homeFeatureArrow">→</span></button></div></details></div></section>${renderHomeInsights()}<section class="localNewsPanel" aria-labelledby="local-news-title"><div class="panel-heading"><div><p class="eyebrow">St. Louis • Metro East</p><h2 id="local-news-title">Local Food News</h2></div><div class="newsHeadingActions"><span class="liveNewsBadge"><span class="liveNewsDot" aria-hidden="true"></span>LIVE · LOCAL FEED</span><button class="btn newsRefreshButton" type="button" id="refresh-local-news">↻ Refresh</button></div></div><p class="newsIntro">Fresh openings, good bites, and food stories from across the bi-state.</p><div id="local-food-news" class="localNewsList" aria-live="polite"><p class="hint">Loading local food stories…</p></div><p class="hint" id="local-news-updated"></p></section><p class="homePrivacyNote">Your recipes, reviews, and ratings are private to your account.</p>`;
+  root.innerHTML = `<section class="hero"><div class="heroIn"><div class="eyebrow">St. Louis • Metro East</div><h2>Metro Eats<br><span class="fl">⚜</span> Recipes & Dining</h2><p class="heroTagline">Good eats. Keeper recipes, local spots, and pizza rankings.</p><details class="homeAppsDisclosure"><summary><span>My Metro Eats Journal</span><span class="homeJournalPen" aria-hidden="true">✎</span></summary><div class="homeFeatureButtons"><button class="homeFeatureButton recipeButton" data-view="recipes"><span class="homeFeatureIcon">✦</span><span><strong>My Recipes</strong><small>Your go-to recipes</small></span><span class="homeFeatureArrow">→</span></button><button class="homeFeatureButton diningButton" data-view="dining"><span class="homeFeatureIcon" aria-hidden="true">⚜</span><span><strong>My Restaurants</strong><small>Local spots, your way</small></span><span class="homeFeatureArrow">→</span></button><button class="homeFeatureButton pizzaButton" data-view="pizzas"><span class="homeFeatureIcon pizzaIcon" aria-hidden="true"></span><span><strong>My Frozen Pizzas</strong><small>Rank your freezer faves</small></span><span class="homeFeatureArrow">→</span></button></div></details></div></section><section class="localNewsPanel" aria-labelledby="local-news-title"><div class="panel-heading"><div><p class="eyebrow">St. Louis • Metro East</p><h2 id="local-news-title">Local Food News</h2></div><div class="newsHeadingActions"><span class="liveNewsBadge"><span class="liveNewsDot" aria-hidden="true"></span>LIVE · LOCAL FEED</span><button class="btn newsRefreshButton" type="button" id="refresh-local-news">↻ Refresh</button></div></div><p class="newsIntro">Fresh openings, good bites, and food stories from across the bi-state.</p><div id="local-food-news" class="localNewsList" aria-live="polite"><p class="hint">Loading local food stories…</p></div><p class="hint" id="local-news-updated"></p></section><p class="homePrivacyNote">Your recipes, reviews, and ratings are private to your account.</p>`;
   const homeTitle = root.querySelector(".hero h2");
   if (homeTitle) {
     homeTitle.className = "homeTitle";
     homeTitle.innerHTML = '<span class="homeTitleFleur" aria-hidden="true">⚜</span><span class="homeTitleWords">Metro Eats<br>Recipes & Dining</span>';
   }
   root.querySelector(".localNewsPanel")?.insertAdjacentHTML("afterend", '<section class="content-panel homeRestaurantFinder"><section class="nearbyPanel"><div><div class="sectionKicker">Local dining</div><h3>Restaurants Around Me</h3><p class="hint">Nearby spots load automatically. Location is used for this search and never saved.</p></div><p class="edit-status" id="nearby-status" role="status" aria-live="polite">Nearby restaurant search will start automatically.</p><details class="nearbyDisclosure" id="nearby-disclosure" open hidden><summary id="nearby-summary">Nearby restaurants</summary><div class="nearbyResults" id="nearby-results"></div></details><div class="homeNameSearch"><label for="home-restaurant-search">Looking for somewhere specific?</label><input id="home-restaurant-search" class="restaurantSearch" type="search" placeholder="Search restaurant names" autocomplete="off"><p class="hint">Search by name if it is not in the nearby list.</p><p class="edit-status" id="home-restaurant-search-status" role="status" aria-live="polite"></p><div id="home-restaurant-search-results" class="restaurantLookupResults"></div></div></section></section>');
+  root.querySelector(".homePrivacyNote")?.insertAdjacentHTML("afterend", renderHomeInsights());
   root.querySelector("#refresh-local-news")?.addEventListener("click", () => { void loadLocalFoodNews(); });
 }
 function renderHomeInsights() {
@@ -577,19 +569,7 @@ function renderList(title, eyebrow, items, kind) {
       return escapeHtml(value);
     };
     const fieldLabel = key => ({ createdAt: "Review date", updatedAt: "Last updated", orderAgain: "Order again" }[key] || key.replace(/([A-Z])/g, " $1").replace(/^./, c => c.toUpperCase()));
-    const allReviewRecords = [...(Array.isArray(item.reviewHistory) ? item.reviewHistory : []), ...(item.survey ? [item.survey] : [])];
-    // Legacy data may expose the same saved review in both reviewHistory and survey.
-    // Deduplicate identical review payloads for display only; never mutate stored data.
-    const reviewSignature = review => review && typeof review === "object"
-      ? JSON.stringify(Object.keys(review).filter(key => !["id", "_id", "restaurantId"].includes(key)).sort().map(key => [key, review[key]]))
-      : String(review);
-    const seenReviewSignatures = new Set();
-    const reviewRecords = allReviewRecords.filter(review => {
-      const signature = reviewSignature(review);
-      if (seenReviewSignatures.has(signature)) return false;
-      seenReviewSignatures.add(signature);
-      return true;
-    });
+    const reviewRecords = restaurantReviewRecords(item);
     const reviewFields = reviewRecords.map((review, reviewIndex) => {
       if (!review || typeof review !== "object") return "";
       const ignored = new Set(["id", "_id", "restaurantId", "photos", "image", "images"]);
@@ -940,10 +920,13 @@ document.addEventListener("click", async event => {
     const list = actionButton.closest("[data-review-category]")?.querySelector(".reviewDishList");
     if (!list) return;
     const id = crypto.randomUUID();
+    const suggestionsId = `dish-suggestions-${id}`;
+    const cuisine = actionButton.closest(".restaurantEditorPage")?.querySelector(".reviewRestaurantSummary")?.dataset.restaurantCuisine || "";
+    const suggestions = restaurantDishSuggestions(cuisine, category);
     const dish = document.createElement("article");
     dish.className = "reviewDish";
     dish.dataset.reviewDishId = id;
-    dish.innerHTML = `<div class="reviewDishHead"><label>Dish or drink<input data-dish-name maxlength="180" placeholder="e.g. toasted ravioli"></label><button class="btn danger" type="button" data-action="remove-review-dish" aria-label="Remove dish">Remove</button></div><div class="reviewQuestionHead"><b>Food rating</b><span data-dish-rating-label>Select 1–10</span></div>${reviewScoreButtons(0, id, "", "Dish or drink", true)}${reviewScaleGuide()}<label>Dish notes <span class="optionalMark">Optional</span><textarea data-dish-notes rows="2" maxlength="1200" placeholder="Taste, texture, preparation, portion…"></textarea></label>`;
+    dish.innerHTML = `<div class="reviewDishHead"><label>Dish or drink<input data-dish-name list="${suggestionsId}" maxlength="180" placeholder="Choose a suggestion or enter any item"><datalist id="${suggestionsId}">${suggestions.map(name => `<option value="${escapeHtml(name)}"></option>`).join("")}</datalist></label><button class="btn danger" type="button" data-action="remove-review-dish" aria-label="Remove dish">Remove</button></div>${suggestions.length ? `<p class="hint">Popular ${escapeHtml(cuisine || "restaurant")} picks are suggested. You can enter anything.</p>` : ""}<div class="reviewQuestionHead"><b>Food rating</b><span data-dish-rating-label>Select 1–10</span></div>${reviewScoreButtons(0, id, "", "Dish or drink", true)}${reviewScaleGuide()}<label>Dish notes <span class="optionalMark">Optional</span><textarea data-dish-notes rows="2" maxlength="1200" placeholder="Taste, texture, preparation, portion…"></textarea></label>`;
     list.append(dish);
     actionButton.closest("details").open = true;
     updateReviewFoodAverage();
@@ -1123,8 +1106,8 @@ document.addEventListener("click", async event => {
     }
     catch (error) { if (statusLine) statusLine.textContent = error?.message || "Review values are incomplete or invalid."; return; }
     const reviewState = upsertRestaurantReview(restaurant, review, editingReview);
-    const allScores = restaurantReviewRecords(reviewState).map(item => reviewRating(item, "overall") ?? reviewRating(item, "rating")).filter(Number.isFinite);
-    const updated = { ...reviewState, id: savedRestaurant?.id || `metro-restaurant-${crypto.randomUUID()}`, favorite: Boolean(root.querySelector("#review-restaurant-favorite")?.checked), rating: allScores.length ? allScores.reduce((sum, value) => sum + value, 0) / allScores.length : null, ratingScale: 10, updatedAt: now };
+    const rating = averageRestaurantVisitRating(restaurantReviewRecords(reviewState));
+    const updated = { ...reviewState, id: savedRestaurant?.id || `metro-restaurant-${crypto.randomUUID()}`, favorite: Boolean(root.querySelector("#review-restaurant-favorite")?.checked), rating, ratingScale: 10, updatedAt: now };
     const restaurants = savedRestaurant
       ? cloudDataset.restaurants.map(item => String(item.id) === String(id) ? updated : item)
       : [...cloudDataset.restaurants, updated];

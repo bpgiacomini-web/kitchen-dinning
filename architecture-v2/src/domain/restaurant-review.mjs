@@ -13,14 +13,63 @@ export function reviewContentSignature(review) {
   return JSON.stringify(Object.keys(review || {}).filter(key => !["id", "_id", "restaurantId"].includes(key)).sort().map(key => [key, review[key]]));
 }
 
+/**
+ * Return each visit once. Distinct visit IDs always remain distinct, even when
+ * the ratings and notes happen to be identical. `survey` is a compatibility
+ * mirror of the latest visit; an id-less survey mirror is collapsed when its
+ * content appears in visit history, while repeated history rows stay intact.
+ */
+export function restaurantReviewRecords(restaurant) {
+  const history = Array.isArray(restaurant?.reviewHistory) ? restaurant.reviewHistory : [];
+  const records = [];
+  const seenIds = new Set();
+  for (const review of history) {
+    if (!review || typeof review !== "object" || Array.isArray(review)) continue;
+    const id = String(review.id || review._id || "").trim();
+    if (id && seenIds.has(id)) continue;
+    if (id) seenIds.add(id);
+    records.push(review);
+  }
+  const survey = restaurant?.survey;
+  if (!survey || typeof survey !== "object" || Array.isArray(survey)) return records;
+  const surveyId = String(survey.id || survey._id || "").trim();
+  if (surveyId) return seenIds.has(surveyId) ? records : [...records, survey];
+  if (records.includes(survey)) return records;
+  const signature = reviewContentSignature(survey);
+  const idlessMatches = records.filter(review => !String(review.id || review._id || "").trim() && reviewContentSignature(review) === signature);
+  return idlessMatches.length > 0 ? records : [...records, survey];
+}
+
+export function averageRestaurantVisitRating(reviews = []) {
+  const scores = (Array.isArray(reviews) ? reviews : []).map(review => {
+    const score = Number(review?.overall ?? review?.scores?.overall ?? review?.experience ?? review?.scores?.[0] ?? review?.rating);
+    if (!Number.isFinite(score) || score < 1 || score > 10) return null;
+    const legacyTenQuestion = review?.scores && [4, 5, 6, 7, 8, 9].some(index => review.scores[index] != null && review.scores[index] !== "");
+    return Number(review?.ratingScale) === 10 || legacyTenQuestion || score > 5 ? score : score * 2;
+  }).filter(Number.isFinite);
+  return scores.length ? scores.reduce((sum, score) => sum + score, 0) / scores.length : null;
+}
+
+function surveyMirrorsEditedReview(restaurant, editingReview) {
+  const survey = restaurant?.survey;
+  if (!survey) return false;
+  if (survey === editingReview) return true;
+  const surveyId = String(survey.id || survey._id || "").trim();
+  const editingId = String(editingReview?.id || editingReview?._id || "").trim();
+  if (surveyId || editingId) return Boolean(surveyId && editingId && surveyId === editingId);
+  const matchingHistory = (Array.isArray(restaurant?.reviewHistory) ? restaurant.reviewHistory : [])
+    .filter(item => !String(item?.id || item?._id || "").trim() && reviewContentSignature(item) === reviewContentSignature(editingReview));
+  return matchingHistory.length === 1 && reviewContentSignature(survey) === reviewContentSignature(editingReview);
+}
+
 export function upsertRestaurantReview(restaurant, review, editingReview = null) {
   const reviewHistory = [...(Array.isArray(restaurant?.reviewHistory) ? restaurant.reviewHistory : [])];
   let survey = restaurant?.survey;
   if (editingReview) {
+    const surveyMirrorsEdited = surveyMirrorsEditedReview(restaurant, editingReview);
     const historyIndex = reviewHistory.findIndex(item => item === editingReview || (editingReview.id && item?.id && String(item.id) === String(editingReview.id)));
     if (historyIndex >= 0) reviewHistory[historyIndex] = review;
     else reviewHistory.push(review);
-    const surveyMirrorsEdited = survey && (survey === editingReview || (editingReview.id && survey.id && String(survey.id) === String(editingReview.id)) || reviewContentSignature(survey) === reviewContentSignature(editingReview));
     if (surveyMirrorsEdited) survey = review;
   } else {
     reviewHistory.push(review);

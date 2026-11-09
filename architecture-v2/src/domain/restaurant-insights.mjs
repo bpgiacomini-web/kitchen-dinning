@@ -1,18 +1,4 @@
-function reviewList(restaurant) {
-  const reviews = [
-    ...(Array.isArray(restaurant?.reviewHistory) ? restaurant.reviewHistory : []),
-    ...(restaurant?.survey ? [restaurant.survey] : [])
-  ];
-  const seen = new Set();
-  return reviews.filter(review => {
-    if (!review || typeof review !== "object") return false;
-    const signature = JSON.stringify(Object.keys(review).filter(field => !["id", "_id", "restaurantId"].includes(field)).sort().map(field => [field, review[field]]));
-    const key = signature;
-    if (seen.has(key)) return false;
-    seen.add(key);
-    return true;
-  });
-}
+import { restaurantReviewRecords } from "./restaurant-review.mjs";
 
 function overallScore(review) {
   const legacyTenQuestion = review?.scores && [4, 5, 6, 7, 8, 9].some(index => review.scores[index] != null && review.scores[index] !== "");
@@ -32,7 +18,7 @@ function foodScores(review) {
 
 export function summarizeRestaurantInsights(restaurants = []) {
   const entries = (Array.isArray(restaurants) ? restaurants : []).map(restaurant => {
-    const reviews = reviewList(restaurant);
+    const reviews = restaurantReviewRecords(restaurant);
     const scores = reviews.map(overallScore).filter(Number.isFinite);
     return {
       restaurant,
