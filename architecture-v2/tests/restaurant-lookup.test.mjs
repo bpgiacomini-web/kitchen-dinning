@@ -27,6 +27,15 @@ test("known Metro East restaurant matches fill official websites when the map li
   assert.equal(places[1].website, "https://www.ropersregalbeagle.com/");
 });
 
+test("restaurant lookup reads public contact website fields and ignores unsafe protocols", () => {
+  const places = normalizeRestaurantLookup([
+    { properties: { name: "Website Tagged Cafe", city: "Alton", osm_key: "amenity", osm_value: "cafe", "contact:website": "example-cafe.com" }, geometry: { coordinates: [-90.18, 38.89] } },
+    { properties: { name: "Unsafe Tagged Cafe", city: "Alton", osm_key: "amenity", osm_value: "cafe", website: "javascript:alert(1)" }, geometry: { coordinates: [-90.18, 38.89] } }
+  ]);
+  assert.equal(places.find(place => place.name === "Website Tagged Cafe").website, "https://example-cafe.com/");
+  assert.equal(places.find(place => place.name === "Unsafe Tagged Cafe").website, "");
+});
+
 test("restaurant name lookup queries OpenStreetMap and sorts exact matches first", async () => {
   let requested;
   const fetcher = async (url, options) => {

@@ -5,6 +5,7 @@ import { parsePastedRecipeText, parseRecipeJsonLd } from "./features/recipes/imp
 import { createRestaurantReview, RESTAURANT_REVIEW_DIMENSIONS, reviewContentSignature, upsertRestaurantReview } from "./domain/restaurant-review.mjs";
 import { sortRestaurantItems } from "./domain/restaurant-sort.mjs";
 import { searchNearbyRestaurants as lookupNearbyRestaurants, searchRestaurantNames } from "./domain/restaurant-lookup.mjs";
+import { summarizeRestaurantInsights } from "./domain/restaurant-insights.mjs";
 import { normalizeScannedUpc } from "./domain/pizza-barcode.mjs";
 
 const root = document.querySelector("#app");
@@ -66,6 +67,40 @@ function restaurantReviewRecords(restaurant) {
   });
 }
 const RESTAURANT_REVIEW_CATEGORIES = ["Appetizers", "Entrées", "Salads", "Soups", "Sides", "Desserts", "Drinks"];
+const RESTAURANT_CUISINES = ["American", "BBQ", "Bakery & Cafe", "Chinese", "French", "Greek", "Indian", "Italian", "Japanese", "Korean", "Mediterranean", "Mexican", "Middle Eastern", "Pizza", "Seafood", "Southern / Soul Food", "Thai", "Vietnamese", "Other"];
+function canonicalCuisine(value) {
+  const raw = String(value || "").trim();
+  const normalized = raw.toLocaleLowerCase().replace(/[_-]+/g, " ").replace(/\s+/g, " ");
+  const aliases = {
+    "american": ["american", "burger", "burgers", "steak", "steakhouse"],
+    "bbq": ["bbq", "barbecue", "barbeque"],
+    "bakery & cafe": ["bakery", "cafe", "coffee shop", "coffeehouse", "coffee shop; cafe"],
+    "chinese": ["chinese"], "french": ["french"], "greek": ["greek"], "indian": ["indian"],
+    "italian": ["italian"], "japanese": ["japanese", "sushi"], "korean": ["korean"],
+    "mediterranean": ["mediterranean"], "mexican": ["mexican", "taco", "tex mex", "tex-mex"],
+    "middle eastern": ["middle eastern", "lebanese", "persian", "turkish"], "pizza": ["pizza", "pizzeria"],
+    "seafood": ["seafood", "fish"], "southern / soul food": ["southern", "soul food", "cajun", "creole"],
+    "thai": ["thai"], "vietnamese": ["vietnamese"]
+  };
+  return RESTAURANT_CUISINES.find(cuisine => cuisine.toLocaleLowerCase() === normalized || aliases[cuisine.toLocaleLowerCase()]?.includes(normalized)) || (raw ? "Other" : "");
+}
+function cuisineFields(value = "") {
+  const selected = canonicalCuisine(value);
+  return `<label>Cuisine<select id="restaurant-cuisine"><option value=""${selected ? "" : " selected"}>Choose a cuisine (optional)</option>${RESTAURANT_CUISINES.map(cuisine => `<option value="${escapeHtml(cuisine)}"${cuisine === selected ? " selected" : ""}>${escapeHtml(cuisine)}</option>`).join("")}</select><input id="restaurant-cuisine-other" class="cuisineOtherInput" maxlength="120" value="${selected === "Other" ? escapeHtml(value) : ""}" placeholder="Enter cuisine type" aria-label="Enter cuisine type"${selected === "Other" ? "" : " hidden"}></label>`;
+}
+function setCuisineFields(value = "") {
+  const select = root.querySelector("#restaurant-cuisine");
+  const custom = root.querySelector("#restaurant-cuisine-other");
+  if (!select || !custom) return;
+  const selected = canonicalCuisine(value);
+  select.value = selected;
+  custom.value = selected === "Other" ? String(value || "") : "";
+  custom.hidden = selected !== "Other";
+}
+function restaurantCuisineFromForm() {
+  const selected = root.querySelector("#restaurant-cuisine")?.value || "";
+  return selected === "Other" ? root.querySelector("#restaurant-cuisine-other")?.value.trim() || "" : selected;
+}
 function reviewScoreButtons(score, itemId = "", scoreKey = "", label = "Overall Experience", required = false) {
   return `<div class="reviewScore" role="group" aria-label="${escapeHtml(label)} rating from 1 to 10"${required ? ' aria-required="true"' : ""}>${Array.from({ length: 10 }, (_, index) => index + 1).map(value => `<button type="button" data-action="set-review-score" data-review-item-id="${escapeHtml(itemId)}" data-score-key="${escapeHtml(scoreKey)}" aria-label="${escapeHtml(label)}: ${value} out of 10" aria-pressed="${Number(score) === value}" class="${Number(score) === value ? "active" : ""}">${value}</button>`).join("")}</div>`;
 }
@@ -218,7 +253,7 @@ function renderRestaurants(items) {
 function renderRestaurantEditor(restaurantId = null) {
   const restaurant = restaurantId ? cloudDataset.restaurants.find(item => String(item.id) === String(restaurantId)) : restaurantDraft || newRestaurantPrefill;
   if (restaurantId && !restaurant) { activeView = "dining"; render(); return; }
-  root.innerHTML = `<section class="hero"><div class="heroIn"><div class="eyebrow">Your dining journal</div><h2>${restaurantId ? "Edit Restaurant" : "Add a Restaurant"}</h2><p>${restaurantId ? "Update the details or continue straight to a new visit review." : "Choose the restaurant, then complete its details and visit review in one flow. The record is saved when the review is finished."}</p></div></section><section class="content-panel restaurantEditorPage"><div class="restaurantEditPanel"><label>Restaurant name<input id="restaurant-name" required maxlength="180" value="${escapeHtml(restaurant?.name || "")}" placeholder="Start typing a restaurant name" autocomplete="organization"></label><div class="restaurantLookupTools"><p class="hint">Nearby matches use your device location automatically when your browser allows it. Location is never saved. Restaurant websites fill in when the map listing has one.</p></div><div id="restaurant-lookup-status" role="status" aria-live="polite" class="restaurantLookupStatus"></div><div id="restaurant-lookup-results" class="restaurantLookupResults"></div><div class="restaurantEditorGrid"><label>Cuisine<input id="restaurant-cuisine" maxlength="120" value="${escapeHtml(restaurant?.cuisine || restaurant?.type || "")}" placeholder="e.g. Italian"></label><label>Website<input id="restaurant-website" type="url" maxlength="500" value="${escapeHtml(restaurant?.website || "")}" placeholder="Filled automatically when available"></label></div><label>Menu link<input id="restaurant-menu" type="url" maxlength="500" value="${escapeHtml(restaurant?.menuUrl || "")}" placeholder="https://"></label><label>Address<input id="restaurant-address" maxlength="300" value="${escapeHtml(restaurant?.address || "")}" placeholder="Street, city"></label><label>Notes<textarea id="restaurant-notes" rows="3" maxlength="5000" placeholder="Anything you want to remember">${escapeHtml(restaurant?.notes || "")}</textarea></label><label class="inlineCheck"><input id="restaurant-favorite" type="checkbox"${restaurant?.favorite ? " checked" : ""}> Favorite</label><div class="recipeEditActions"><button class="btn" type="button" data-action="cancel-restaurant-edit">Cancel</button>${restaurantId ? `<button class="btn danger restaurantDeleteInEdit" type="button" data-action="delete-restaurant" data-restaurant-id="${escapeHtml(restaurant.id)}">Delete Restaurant</button>` : ""}<button class="btn" type="button" data-action="save-restaurant" data-restaurant-id="${escapeHtml(restaurant?.id || "")}">${restaurantId ? "Save Details Only" : "Save Without Review"}</button><button class="btn primary" type="button" data-action="start-restaurant-review" data-restaurant-id="${escapeHtml(restaurant?.id || "")}">Continue to Visit Review →</button></div><p class="edit-status" role="status" aria-live="polite"></p></div></section>`;
+  root.innerHTML = `<section class="hero"><div class="heroIn"><div class="eyebrow">Your dining journal</div><h2>${restaurantId ? "Edit Restaurant" : "Add a Restaurant"}</h2><p>${restaurantId ? "Update the details or continue straight to a new visit review." : "Choose the restaurant, then complete its details and visit review in one flow. The record is saved when the review is finished."}</p></div></section><section class="content-panel restaurantEditorPage"><div class="restaurantEditPanel"><label>Restaurant name<input id="restaurant-name" required maxlength="180" value="${escapeHtml(restaurant?.name || "")}" placeholder="Start typing a restaurant name" autocomplete="organization"></label><div class="restaurantLookupTools"><p class="hint">Nearby matches use your device location automatically when your browser allows it. Location is never saved. Restaurant websites fill in when the map listing has one.</p></div><div id="restaurant-lookup-status" role="status" aria-live="polite" class="restaurantLookupStatus"></div><div id="restaurant-lookup-results" class="restaurantLookupResults"></div><div class="restaurantEditorGrid">${cuisineFields(restaurant?.cuisine || restaurant?.type || "")}<label>Website<input id="restaurant-website" type="url" maxlength="500" value="${escapeHtml(restaurant?.website || "")}" placeholder="Filled automatically when available"></label></div><label>Menu link<input id="restaurant-menu" type="url" maxlength="500" value="${escapeHtml(restaurant?.menuUrl || "")}" placeholder="https://"></label><label>Address<input id="restaurant-address" maxlength="300" value="${escapeHtml(restaurant?.address || "")}" placeholder="Street, city"></label><label>Notes<textarea id="restaurant-notes" rows="3" maxlength="5000" placeholder="Anything you want to remember">${escapeHtml(restaurant?.notes || "")}</textarea></label><label class="inlineCheck"><input id="restaurant-favorite" type="checkbox"${restaurant?.favorite ? " checked" : ""}> Favorite</label><div class="recipeEditActions"><button class="btn" type="button" data-action="cancel-restaurant-edit">Cancel</button>${restaurantId ? `<button class="btn danger restaurantDeleteInEdit" type="button" data-action="delete-restaurant" data-restaurant-id="${escapeHtml(restaurant.id)}">Delete Restaurant</button>` : ""}<button class="btn" type="button" data-action="save-restaurant" data-restaurant-id="${escapeHtml(restaurant?.id || "")}">${restaurantId ? "Save Details Only" : "Save Without Review"}</button><button class="btn primary" type="button" data-action="start-restaurant-review" data-restaurant-id="${escapeHtml(restaurant?.id || "")}">Continue to Visit Review →</button></div><p class="edit-status" role="status" aria-live="polite"></p></div></section>`;
   if (!restaurantLookupLocation || restaurantLookupLocation.source !== "device") requestDeviceRestaurantLocation();
 }
 function renderRestaurantReviewForm(restaurantId) {
@@ -250,7 +285,7 @@ function renderRestaurantReviewForm(restaurantId) {
           <div class="reviewLiveScore"><span id="review-live-title">Current Food Critic score</span><strong id="review-overall-average">—<small>/10</small></strong></div>
           <div class="reviewProgress"><progress id="review-completion-progress" max="5" value="0" aria-label="Review completion"></progress><p id="review-completion" role="status" aria-live="polite">0 of 5 required parts complete. Notes are optional.</p></div>
         </section>
-        <label>Visit date<input id="review-visited-at" type="date" value="${escapeHtml(String(editingReview?.visitedAt || editingReview?.reviewDate || editingReview?.createdAt || today).slice(0, 10))}" required></label>
+        ${editingReview ? `<p class="reviewDateReadOnly"><span>Visit date</span><strong>${escapeHtml(new Date(`${String(editingReview.visitedAt || editingReview.reviewDate || editingReview.createdAt || today).slice(0, 10)}T00:00:00`).toLocaleDateString())}</strong></p>` : `<label>Visit date<input id="review-visited-at" type="date" value="${escapeHtml(today)}" required></label>`}
         <section class="surveyCard reviewCoreCard">
           <h3>Your 1–10 ratings</h3>
           <p class="hint">Rate each item from 1 (poor) to 10 (exceptional). Overall Experience, Service, Value, one rated dish or drink, and “Would you order it again?” are required. Food Quality is calculated from dish ratings.</p>
@@ -415,7 +450,7 @@ function updateReviewSurveySummary() {
     : `${completed} of 5 required parts complete. Finish the ratings and choices below; notes are optional.`;
 }
 function renderHome() {
-  root.innerHTML = `<section class="hero"><div class="heroIn"><div class="eyebrow">St. Louis • Metro East</div><h2>Metro Eats<br><span class="fl">⚜</span> Recipes & Dining</h2><p class="heroTagline">Good eats. Keeper recipes, local spots, and pizza rankings.</p><details class="homeAppsDisclosure"><summary><span>My Metro Eats Journal</span><span class="homeJournalPen" aria-hidden="true">✎</span></summary><div class="homeFeatureButtons"><button class="homeFeatureButton recipeButton" data-view="recipes"><span class="homeFeatureIcon">✦</span><span><strong>My Recipes</strong><small>Your go-to recipes</small></span><span class="homeFeatureArrow">→</span></button><button class="homeFeatureButton diningButton" data-view="dining"><span class="homeFeatureIcon" aria-hidden="true">⚜</span><span><strong>My Restaurants</strong><small>Local spots, your way</small></span><span class="homeFeatureArrow">→</span></button><button class="homeFeatureButton pizzaButton" data-view="pizzas"><span class="homeFeatureIcon pizzaIcon" aria-hidden="true"></span><span><strong>My Frozen Pizzas</strong><small>Rank your freezer faves</small></span><span class="homeFeatureArrow">→</span></button></div></details></div></section><section class="localNewsPanel" aria-labelledby="local-news-title"><div class="panel-heading"><div><p class="eyebrow">St. Louis • Metro East</p><h2 id="local-news-title">Local Food News</h2></div><div class="newsHeadingActions"><span class="liveNewsBadge"><span class="liveNewsDot" aria-hidden="true"></span>LIVE · LOCAL FEED</span><button class="btn newsRefreshButton" type="button" id="refresh-local-news">↻ Refresh</button></div></div><p class="newsIntro">Fresh openings, good bites, and food stories from across the bi-state.</p><div id="local-food-news" class="localNewsList" aria-live="polite"><p class="hint">Loading local food stories…</p></div><p class="hint" id="local-news-updated"></p></section><p class="homePrivacyNote">Your recipes, reviews, and ratings are private to your account.</p>`;
+  root.innerHTML = `<section class="hero"><div class="heroIn"><div class="eyebrow">St. Louis • Metro East</div><h2>Metro Eats<br><span class="fl">⚜</span> Recipes & Dining</h2><p class="heroTagline">Good eats. Keeper recipes, local spots, and pizza rankings.</p><details class="homeAppsDisclosure"><summary><span>My Metro Eats Journal</span><span class="homeJournalPen" aria-hidden="true">✎</span></summary><div class="homeFeatureButtons"><button class="homeFeatureButton recipeButton" data-view="recipes"><span class="homeFeatureIcon">✦</span><span><strong>My Recipes</strong><small>Your go-to recipes</small></span><span class="homeFeatureArrow">→</span></button><button class="homeFeatureButton diningButton" data-view="dining"><span class="homeFeatureIcon" aria-hidden="true">⚜</span><span><strong>My Restaurants</strong><small>Local spots, your way</small></span><span class="homeFeatureArrow">→</span></button><button class="homeFeatureButton pizzaButton" data-view="pizzas"><span class="homeFeatureIcon pizzaIcon" aria-hidden="true"></span><span><strong>My Frozen Pizzas</strong><small>Rank your freezer faves</small></span><span class="homeFeatureArrow">→</span></button></div></details></div></section>${renderHomeInsights()}<section class="localNewsPanel" aria-labelledby="local-news-title"><div class="panel-heading"><div><p class="eyebrow">St. Louis • Metro East</p><h2 id="local-news-title">Local Food News</h2></div><div class="newsHeadingActions"><span class="liveNewsBadge"><span class="liveNewsDot" aria-hidden="true"></span>LIVE · LOCAL FEED</span><button class="btn newsRefreshButton" type="button" id="refresh-local-news">↻ Refresh</button></div></div><p class="newsIntro">Fresh openings, good bites, and food stories from across the bi-state.</p><div id="local-food-news" class="localNewsList" aria-live="polite"><p class="hint">Loading local food stories…</p></div><p class="hint" id="local-news-updated"></p></section><p class="homePrivacyNote">Your recipes, reviews, and ratings are private to your account.</p>`;
   const homeTitle = root.querySelector(".hero h2");
   if (homeTitle) {
     homeTitle.className = "homeTitle";
@@ -423,6 +458,16 @@ function renderHome() {
   }
   root.querySelector(".localNewsPanel")?.insertAdjacentHTML("afterend", '<section class="content-panel homeRestaurantFinder"><section class="nearbyPanel"><div><div class="sectionKicker">Local dining</div><h3>Restaurants Around Me</h3><p class="hint">Nearby spots load automatically. Location is used for this search and never saved.</p></div><p class="edit-status" id="nearby-status" role="status" aria-live="polite">Nearby restaurant search will start automatically.</p><details class="nearbyDisclosure" id="nearby-disclosure" open hidden><summary id="nearby-summary">Nearby restaurants</summary><div class="nearbyResults" id="nearby-results"></div></details><div class="homeNameSearch"><label for="home-restaurant-search">Looking for somewhere specific?</label><input id="home-restaurant-search" class="restaurantSearch" type="search" placeholder="Search restaurant names" autocomplete="off"><p class="hint">Search by name if it is not in the nearby list.</p><p class="edit-status" id="home-restaurant-search-status" role="status" aria-live="polite"></p><div id="home-restaurant-search-results" class="restaurantLookupResults"></div></div></section></section>');
   root.querySelector("#refresh-local-news")?.addEventListener("click", () => { void loadLocalFoodNews(); });
+}
+function renderHomeInsights() {
+  const insights = summarizeRestaurantInsights(dataset.restaurants);
+  const top = insights.topRestaurant;
+  const most = insights.mostVisited;
+  const highlights = [
+    insights.topCuisine ? `<span>Most-reviewed cuisine: <strong>${escapeHtml(insights.topCuisine.name)}</strong></span>` : "",
+    insights.topDish ? `<span>Top dish: <strong>${escapeHtml(insights.topDish.name)}</strong> · ${insights.topDish.rating.toFixed(1)}/10${insights.topDish.ratings > 1 ? ` across ${insights.topDish.ratings} ratings` : ""}</span>` : ""
+  ].filter(Boolean).join("");
+  return `<section class="content-panel homeInsights" aria-labelledby="home-insights-title"><div class="panel-heading"><div><p class="eyebrow">Your dining journal</p><h2 id="home-insights-title">Dining Insights</h2></div></div>${insights.visitCount ? `<div class="insightGrid"><article class="insightTile"><span>Places visited</span><strong>${insights.placeCount}</strong><small>${insights.visitCount} ${insights.visitCount === 1 ? "visit review" : "visit reviews"}</small></article><article class="insightTile"><span>Average visit rating</span><strong>${insights.averageRating?.toFixed(1) ?? "—"}<small>/10</small></strong><small>Across your rated visits</small></article><article class="insightTile"><span>Your top-ranked spot</span><strong>${escapeHtml(top?.restaurant.name || "—")}</strong><small>${top?.average != null ? `${top.average.toFixed(1)}/10 average` : "Add ratings to see your top spot"}</small></article><article class="insightTile"><span>Most visited</span><strong>${escapeHtml(most?.restaurant.name || "—")}</strong><small>${most ? `${most.reviews.length} ${most.reviews.length === 1 ? "visit" : "visits"}` : "Your visit history"}</small></article></div>${highlights ? `<div class="insightHighlights">${highlights}</div>` : ""}` : `<p class="insightEmpty">Your restaurant rankings and dining stats will show up here after you save your first visit review.</p>`}</section>`;
 }
 async function loadLocalFoodNews() {
   const list = document.querySelector("#local-food-news");
@@ -737,6 +782,14 @@ document.addEventListener("keydown", event => {
   }
 });
 document.addEventListener("change", event => {
+  if (event.target.id === "restaurant-cuisine") {
+    const custom = root.querySelector("#restaurant-cuisine-other");
+    if (custom) {
+      custom.hidden = event.target.value !== "Other";
+      if (event.target.value === "Other") custom.focus();
+      else custom.value = "";
+    }
+  }
   if (event.target.id === "restaurant-sort") {
     restaurantSort = event.target.value;
     render();
@@ -860,8 +913,9 @@ document.addEventListener("click", async event => {
       window.scrollTo({ top: 0, left: 0, behavior: "instant" });
       return;
     }
-    const fields = [["restaurant-name", place.name], ["restaurant-cuisine", place.cuisine], ["restaurant-address", place.address], ["restaurant-website", place.website]];
+    const fields = [["restaurant-name", place.name], ["restaurant-address", place.address], ["restaurant-website", place.website]];
     fields.forEach(([id, value]) => { const field = root.querySelector(`#${id}`); if (field && value) field.value = value; });
+    setCuisineFields(place.cuisine);
     restaurantLookupRequest += 1;
     clearTimeout(restaurantLookupTimer);
     restaurantLookupResults = [];
@@ -960,7 +1014,7 @@ document.addEventListener("click", async event => {
     const id = actionButton.dataset.restaurantId;
     const existing = id ? cloudDataset.restaurants.find(item => String(item.id) === String(id)) : null;
     const name = root.querySelector("#restaurant-name")?.value.trim() || "";
-    const cuisine = root.querySelector("#restaurant-cuisine")?.value.trim() || "";
+    const cuisine = restaurantCuisineFromForm();
     const address = root.querySelector("#restaurant-address")?.value.trim() || "";
     const website = root.querySelector("#restaurant-website")?.value.trim() || "";
     const menuUrl = root.querySelector("#restaurant-menu")?.value.trim() || "";
@@ -998,7 +1052,7 @@ document.addEventListener("click", async event => {
   if (actionButton.dataset.action === "save-restaurant") {
     const statusLine = actionButton.closest(".restaurantEditPanel")?.querySelector(".edit-status");
     const name = document.querySelector("#restaurant-name")?.value.trim() || "";
-    const cuisine = document.querySelector("#restaurant-cuisine")?.value.trim() || "";
+    const cuisine = restaurantCuisineFromForm();
     const address = document.querySelector("#restaurant-address")?.value.trim() || "";
     const website = document.querySelector("#restaurant-website")?.value.trim() || "";
     const menuUrl = document.querySelector("#restaurant-menu")?.value.trim() || "";
@@ -1039,7 +1093,7 @@ document.addEventListener("click", async event => {
     const restaurant = { ...(savedRestaurant || {}), ...(restaurantDraft || {}) };
     const editingReview = activeReviewIndex == null ? null : restaurantReviewRecords(restaurant)[activeReviewIndex] || null;
     if (!restaurant.name || id && !savedRestaurant || !id && !restaurantDraft) { if (statusLine) statusLine.textContent = "This restaurant is no longer available. Go back and review its details before saving."; return; }
-    const visitedAt = document.querySelector("#review-visited-at")?.value || "";
+    const visitedAt = document.querySelector("#review-visited-at")?.value || String(editingReview?.visitedAt || editingReview?.reviewDate || editingReview?.createdAt || "").slice(0, 10);
     const score = key => Number(root.querySelector(`[data-score-key="${key}"]`)?.closest(".reviewScore")?.querySelector("button.active")?.textContent || 0);
     const experience = score("overall");
     const service = score("service");

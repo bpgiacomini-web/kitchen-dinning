@@ -41,6 +41,8 @@
 #app .restaurantEditorGrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
 #app .restaurantEditorGrid label{min-width:0;font-weight:750;line-height:1.4}
 #app .restaurantEditorGrid input{display:block;box-sizing:border-box;width:100%;max-width:100%;min-width:0;margin-top:7px;padding:12px 14px;border:1px solid #394148;border-radius:12px;background:#0b0f13;color:#f4f1e8;font:inherit}
+#app .restaurantEditorGrid select,#app .restaurantEditorGrid .cuisineOtherInput{display:block;box-sizing:border-box;width:100%;max-width:100%;min-width:0;margin-top:7px;padding:12px 14px;border:1px solid #394148;border-radius:12px;background:#0b0f13;color:#f4f1e8;font:inherit}
+#app .restaurantEditorGrid .cuisineOtherInput[hidden]{display:none}
 #app .restaurantEditPanel .inlineCheck{display:flex;align-items:center;gap:10px;font-weight:650}
 #app .restaurantEditPanel .inlineCheck input{width:20px;height:20px;accent-color:#d6a85b}
 #app .restaurantEditorPage .edit-status,#app .pizzaEditorPanel .edit-status{min-height:1.4em;margin:4px 0;color:#f0d28d;overflow-wrap:anywhere}
@@ -164,6 +166,19 @@
 #app .restaurantSearch{box-sizing:border-box;width:100%;min-height:48px;padding:12px 14px;border:1px solid #315047;border-radius:13px;background:#0b1111;color:var(--text);font:inherit}
 #app .restaurantSearch:focus{outline:2px solid #8fb7a6;outline-offset:2px}
 #app .restaurantTopDishes{margin:10px 0 0;color:#a6c9b8;font-size:13px;line-height:1.5}
+#app .homeInsights{margin-top:18px}
+#app .homeInsights>.panel-heading{margin-bottom:14px}
+#app .insightGrid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+#app .insightTile{display:flex;flex-direction:column;gap:5px;min-width:0;padding:15px;border:1px solid #315047;border-radius:14px;background:linear-gradient(145deg,#13231f,#101719)}
+#app .insightTile>span{color:#a6c9b8;font-size:12px;font-weight:800;letter-spacing:.04em;text-transform:uppercase}
+#app .insightTile>strong{font-size:23px;line-height:1.2;overflow-wrap:anywhere}
+#app .insightTile>strong small{font-size:12px;color:#a6c9b8}
+#app .insightTile>small{color:var(--muted);line-height:1.35}
+#app .insightHighlights{display:flex;flex-wrap:wrap;gap:8px 20px;margin-top:12px;color:var(--muted);font-size:13px}
+#app .insightHighlights strong{color:#e0c078}
+#app .insightEmpty{margin:0;color:var(--muted)}
+#app .reviewDateReadOnly{display:flex;align-items:baseline;gap:10px;margin:0;padding:8px 0;color:var(--muted)}
+#app .reviewDateReadOnly strong{color:var(--text)}
 #app .reviewFoodSection{padding:18px;border:1px solid #315047;border-radius:18px;background:linear-gradient(145deg,#13231f,#101719)}
 #app .reviewFoodSection h3,#app .surveyCard h3{margin:0 0 8px}
 #app .reviewCategory{margin:10px 0;border:1px solid #315047;border-radius:14px;background:#101816;overflow:hidden}
@@ -218,6 +233,8 @@
 #app .restaurantLookupResult small{display:block;margin-top:4px;color:var(--muted);line-height:1.4}
 @media(max-width:560px){#app .diningActions{width:100%}#app .diningActions .btn{flex:1}#app .reviewDishHead{grid-template-columns:1fr}#app .reviewDishHead .btn{justify-self:start}#app .restaurantRanking{gap:9px;padding:12px}}
 @media(max-width:560px){#app .restaurantSortControl{flex:1 1 100%;justify-content:space-between}#app .restaurantSortControl select{flex:1;max-width:none}}
+@media(max-width:760px){#app .insightGrid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:420px){#app .insightGrid{gap:7px}#app .insightTile{padding:11px}#app .insightTile>strong{font-size:19px}}
 @media(max-width:560px){#app .nearbyPanel{grid-template-columns:1fr}#app .nearbyPlace{grid-template-columns:1fr}#app .nearbyPlace .btn{justify-self:start}}
 
 

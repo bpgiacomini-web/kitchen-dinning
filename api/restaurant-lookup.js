@@ -51,7 +51,7 @@ function normalizeNearby(elements, location, { filter = () => true, limit = 20 }
       name: String(tags.name || "").trim(),
       cuisine: String(tags.cuisine || "").replaceAll("_", " "),
       address,
-      website: String(tags.website || tags["contact:website"] || ""),
+      website: String(tags.website || tags["contact:website"] || tags["website:en"] || ""),
       lat, lon,
       distance: lat != null && lon != null ? distanceMeters(location, lat, lon) : null,
       amenity
@@ -75,7 +75,7 @@ function normalizePhotonNearby(features, location) {
         name: props.name,
         amenity: props.osm_key === "amenity" ? props.osm_value : "",
         cuisine: props.cuisine || props.extra?.cuisine || "",
-        website: props.website || props.extra?.website || "",
+        website: props.website || props["contact:website"] || props.contact_website || props.extra?.website || props.extra?.contact?.website || "",
         "addr:housenumber": props.housenumber,
         "addr:street": props.street,
         "addr:city": props.city,

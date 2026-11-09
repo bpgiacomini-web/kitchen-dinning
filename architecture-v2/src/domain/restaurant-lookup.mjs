@@ -18,6 +18,15 @@ function distanceMeters(origin, point) {
   return Math.round(6371000 * 2 * Math.asin(Math.sqrt(a)));
 }
 
+function websiteFromProperties(props, fallback = "") {
+  const value = String(props?.website || props?.["contact:website"] || props?.contact_website || props?.extra?.website || props?.extra?.contact?.website || fallback || "").trim();
+  if (!value) return "";
+  try {
+    const url = new URL(/^[a-z][a-z0-9+.-]*:\/\//i.test(value) ? value : `https://${value}`);
+    return ["http:", "https:"].includes(url.protocol) ? url.href : "";
+  } catch { return ""; }
+}
+
 function foodFeature(feature) {
   const props = feature?.properties || {};
   const amenity = String(props.osm_value || "").toLowerCase();
@@ -38,7 +47,7 @@ export function normalizeRestaurantLookup(features, origin = null) {
       name,
       cuisine: String(props.extra?.cuisine || props.cuisine || "").replaceAll("_", " "),
       address: address || knownLocal?.address || "",
-      website: String(props.extra?.website || props.website || knownLocal?.website || ""),
+      website: websiteFromProperties(props, knownLocal?.website),
       lat: Number.isFinite(point.lat) ? point.lat : null,
       lon: Number.isFinite(point.lon) ? point.lon : null,
       distance: distanceMeters(origin, point),
