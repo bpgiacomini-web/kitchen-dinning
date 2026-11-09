@@ -18,6 +18,24 @@ test("restaurant lookup normalizes food places and excludes non-food matches", (
   assert.equal(places[0].distance, 0);
 });
 
+test("nearby/name matching filters concession stands and closed Chic N Pig listings", async () => {
+  const places = normalizeRestaurantLookup([
+    feature("Concession Stand", { amenity: "fast_food" }),
+    feature("Chic N Pig"),
+    feature("Delmar Public House", { amenity: "pub", coordinates: [-90.24966, 38.93839], cuisine: "", website: "" }),
+  ], { lat: 38.938, lon: -90.25 });
+  assert.deepEqual(places.map(place => place.name), ["Delmar Public House"]);
+  assert.equal(places[0].website, "https://delmarpublichouse.com/");
+  assert.equal(places[0].cuisine, "American");
+  assert.equal(places[0].address, "2926 West Delmar Avenue, Godfrey, IL 62035");
+  const { places: knownResult } = await searchRestaurantNames("Delmar Public House", {
+    location: { lat: 38.938, lon: -90.25, source: "device" },
+    fetcher: async () => ({ ok: true, json: async () => ({ features: [] }) })
+  });
+  assert.equal(knownResult[0].name, "Delmar Public House");
+  assert.equal(knownResult[0].website, "https://delmarpublichouse.com/");
+});
+
 test("known Metro East restaurant matches fill official websites when the map listing omits them", () => {
   const places = normalizeRestaurantLookup([
     feature("Fast Eddie's Bon Air", { amenity: "bar", website: "" }),

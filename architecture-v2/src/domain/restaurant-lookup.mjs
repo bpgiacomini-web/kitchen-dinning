@@ -1,8 +1,11 @@
+import { isExcludedRestaurantName, LOCAL_RESTAURANT_OVERRIDES } from "./local-restaurant-overrides.mjs";
+
 const FOOD_AMENITIES = new Set(["restaurant", "fast_food", "cafe", "bar", "pub"]);
 const KNOWN_LOCAL_WEBSITES = [
   { name: "fast eddies bon air", aliases: ["fast eddies", "fast eddies bon air"], website: "https://fasteddiesbonair.com/", address: "1530 E 4th Street, Alton, IL 62002" },
   { name: "ropers regal beagle", aliases: ["regal beagle", "ropers regal beagle"], website: "https://www.ropersregalbeagle.com/", address: "3043 Godfrey Road, Godfrey, IL 62035", lat: 38.9313514, lon: -90.1909723 },
-  { name: "macs downtown", aliases: ["macs downtown"], website: "https://macsdowntown.com/", address: "315 Belle Street, Alton, IL 62002" }
+  { name: "macs downtown", aliases: ["macs downtown"], website: "https://macsdowntown.com/", address: "315 Belle Street, Alton, IL 62002" },
+  ...LOCAL_RESTAURANT_OVERRIDES.map(place => ({ ...place, displayName: place.name }))
 ];
 
 function normalizedName(value) {
@@ -43,17 +46,21 @@ export function normalizeRestaurantLookup(features, origin = null) {
     const name = String(props.name || "").trim();
     const normalizedPlaceName = normalizedName(name);
     const knownLocal = KNOWN_LOCAL_WEBSITES.find(item => item.aliases.some(alias => normalizedPlaceName === alias || normalizedPlaceName.startsWith(`${alias} `)));
+    const curatedCoordinatesMatch = knownLocal && (knownLocal.lat == null || knownLocal.lon == null
+      || distanceMeters({ lat: knownLocal.lat, lon: knownLocal.lon }, point) <= 1_000);
+    const matchedLocal = curatedCoordinatesMatch ? knownLocal : null;
     return {
       name,
-      cuisine: String(props.extra?.cuisine || props.cuisine || "").replaceAll("_", " "),
-      address: address || knownLocal?.address || "",
-      website: websiteFromProperties(props, knownLocal?.website),
+      cuisine: String(props.extra?.cuisine || props.cuisine || matchedLocal?.cuisine || "").replaceAll("_", " "),
+      address: matchedLocal?.address || address || knownLocal?.address || "",
+      website: websiteFromProperties(props, matchedLocal?.website || knownLocal?.website),
       lat: Number.isFinite(point.lat) ? point.lat : null,
       lon: Number.isFinite(point.lon) ? point.lon : null,
       distance: distanceMeters(origin, point),
       source: "OpenStreetMap"
     };
   }).sort((a, b) => (a.distance ?? Infinity) - (b.distance ?? Infinity)).filter(place => {
+    if (isExcludedRestaurantName(place.name)) return false;
     const key = `${place.name.toLocaleLowerCase()}|${place.address.toLocaleLowerCase()}`;
     if (!place.name || seen.has(key)) return false;
     seen.add(key);
@@ -101,8 +108,8 @@ export async function searchRestaurantNames(query, { location = null, fetcher = 
       continue;
     }
     matchingNames.push({
-      name: known.name === "ropers regal beagle" ? "Roper's Regal Beagle" : known.name,
-      cuisine: "",
+      name: known.displayName || (known.name === "ropers regal beagle" ? "Roper's Regal Beagle" : known.name),
+      cuisine: known.cuisine || "",
       address: known.address,
       website: known.website,
       lat: known.lat,

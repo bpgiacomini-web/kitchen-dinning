@@ -87,9 +87,27 @@ test("nearby lookup falls back to approximate network location and returns close
   } }, res);
   assert.equal(res.statusCode, 200);
   assert.match(requested.searchParams.get("data"), /around:8047,38\.89,-90\.18/);
-  assert.deepEqual(res.body.places.map(place => place.name), ["Nearby Cafe"]);
+  assert.deepEqual(res.body.places.map(place => place.name), ["Nearby Cafe", "Arandas MX Cocina"]);
   assert.equal(res.body.places[0].distance, 1112);
   assert.equal(res.body.location.source, "network");
+});
+
+test("nearby results omit concessions and closed Chic N Pig, and add current local restaurants", async () => {
+  const handler = createRestaurantLookupHandler({ fetcher: async url => {
+    const request = new URL(url);
+    if (request.hostname === "photon.komoot.io") return { ok: true, json: async () => ({ features: [
+      { properties: { name: "Concession Stand", osm_key: "amenity", osm_value: "fast_food" }, geometry: { coordinates: [-90.191, 38.935] } },
+      { properties: { name: "Chic N Pig", osm_key: "amenity", osm_value: "restaurant" }, geometry: { coordinates: [-90.1923, 38.935] } },
+      { properties: { name: "Nearby Cafe", osm_key: "amenity", osm_value: "cafe" }, geometry: { coordinates: [-90.193, 38.935] } },
+    ] }) };
+    throw new Error("unexpected lookup fallback");
+  } });
+  const res = responseRecorder();
+  await handler({ method: "POST", body: { mode: "nearby", location: { lat: 38.935, lon: -90.193 } }, headers: {} }, res);
+  assert.equal(res.statusCode, 200);
+  assert.deepEqual(res.body.places.map(place => place.name), ["Nearby Cafe", "Arandas MX Cocina", "Delmar Public House"]);
+  assert.equal(res.body.places[1].website, "https://arandasmxcocina.com/");
+  assert.equal(res.body.places[2].website, "https://delmarpublichouse.com/");
 });
 
 test("nearby search fails clearly when neither device nor network location exists", async () => {

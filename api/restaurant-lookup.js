@@ -1,5 +1,6 @@
 import { authenticatedUser } from './user-data.js';
 import { consumeAccountRateLimit, sendRateLimitResponse } from './_lib/rate-limit.js';
+import { isExcludedRestaurantName, LOCAL_RESTAURANT_OVERRIDES } from '../architecture-v2/src/domain/local-restaurant-overrides.mjs';
 
 const FOOD_AMENITIES = new Set(["restaurant", "fast_food", "cafe", "bar", "pub"]);
 const PHOTON_URL = "https://photon.komoot.io/api/";
@@ -57,7 +58,7 @@ function normalizeNearby(elements, location, { filter = () => true, limit = 20 }
       amenity
     };
   }).filter(place => {
-    if (!place.name || !FOOD_AMENITIES.has(place.amenity) || !filter(place)) return false;
+    if (!place.name || isExcludedRestaurantName(place.name) || !FOOD_AMENITIES.has(place.amenity) || !filter(place)) return false;
     const key = `${place.name.toLocaleLowerCase()}|${place.address.toLocaleLowerCase()}`;
     if (seen.has(key)) return false;
     seen.add(key);
@@ -84,6 +85,19 @@ function normalizePhotonNearby(features, location) {
     };
   });
   return normalizeNearby(elements, location);
+}
+
+function includeCuratedNearby(places, location) {
+  const curated = [];
+  for (const restaurant of LOCAL_RESTAURANT_OVERRIDES) {
+    const distance = distanceMeters(location, restaurant.lat, restaurant.lon);
+    if (distance > 8047) continue;
+    const normalized = restaurant.name.toLocaleLowerCase();
+    if (places.some(place => place.name.toLocaleLowerCase() === normalized)) continue;
+    curated.push({ ...restaurant, distance, amenity: "restaurant", source: "Metro Eats local listing" });
+  }
+  const ordinary = [...places].sort((a, b) => (a.distance ?? Infinity) - (b.distance ?? Infinity)).slice(0, Math.max(0, 20 - curated.length));
+  return [...ordinary, ...curated].sort((a, b) => (a.distance ?? Infinity) - (b.distance ?? Infinity));
 }
 
 function hasFoodFeature(feature) {
@@ -236,7 +250,7 @@ export function createRestaurantLookupHandler({ fetcher = fetch, authenticate = 
           headers: { Accept: "application/json", "User-Agent": "MetroEats/1.0 (nearby restaurant lookup)" }
         }, 4000);
         if (!Array.isArray(nearby?.features)) throw new Error("invalid_photon_response");
-        return res.status(200).json({ places: normalizePhotonNearby(nearby.features, location), location });
+        return res.status(200).json({ places: includeCuratedNearby(normalizePhotonNearby(nearby.features, location), location), location });
       } catch (error) {
         console.error("Metro Eats Photon nearby lookup failed", String(error?.message || "upstream_error").slice(0, 80));
       }
@@ -252,7 +266,7 @@ export function createRestaurantLookupHandler({ fetcher = fetch, authenticate = 
         } catch { /* Try the public backup endpoint. */ }
       }
       if (!payload) return res.status(502).json({ error: "Nearby restaurant data is temporarily unavailable. Name search is still available." });
-      return res.status(200).json({ places: normalizeNearby(payload.elements, location), location });
+      return res.status(200).json({ places: includeCuratedNearby(normalizeNearby(payload.elements, location), location), location });
     }
 
     return res.status(400).json({ error: "Choose a restaurant name or nearby search." });
