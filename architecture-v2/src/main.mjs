@@ -291,19 +291,19 @@ async function searchNearbyRestaurants() {
       const response = await lookupNearbyRestaurants({ location });
       restaurantLookupLocation = response.location || location;
       if (!response.places.length) {
-        statusLine.textContent = "No named restaurants appeared within about five miles. Try Add a Restaurant and search by name.";
+        statusLine.textContent = "No named restaurants appeared within about five miles. Try the name search below.";
         return;
       }
       if (disclosure) { disclosure.hidden = false; disclosure.open = true; }
       if (summary) summary.textContent = `Nearby restaurants (${response.places.length})`;
       const placeLabel = response.location?.source === "network"
         ? `Showing places near the approximate area Vercel detected${response.location.city ? ` (${response.location.city})` : ""}. Allow precise location for a closer match.`
-        : `Found ${response.places.length} nearby places. Select one to review its details before saving.`;
+        : `Found ${response.places.length} nearby places. Select one to fill in its details and continue to a visit review.`;
       statusLine.textContent = placeLabel;
       results.innerHTML = response.places.map(place => `<article class="nearbyPlace"><div><strong>${escapeHtml(place.name)}</strong><small>${escapeHtml([place.cuisine, place.distance == null ? "" : place.distance < 1609 ? `${Math.round(place.distance * 3.28084)} ft` : `${(place.distance / 1609.34).toFixed(1)} mi`, place.address].filter(Boolean).join(" · ") || "Nearby food place")}</small></div><button class="btn" type="button" data-action="use-nearby" data-nearby="${escapeHtml(JSON.stringify(place))}">Review this restaurant</button></article>`).join("");
     } catch (error) {
       if (disclosure) disclosure.hidden = true;
-      statusLine.textContent = error.message || "Nearby restaurant search is unavailable right now. Try Add a Restaurant and search by name.";
+      statusLine.textContent = error.message || "Nearby restaurant search is unavailable right now. Try the name search below.";
     }
   };
   if (!navigator.geolocation) { await search(null); return; }
@@ -413,8 +413,8 @@ function updateReviewSurveySummary() {
     : `${completed} of 5 required parts complete. Finish the ratings and choices below; notes are optional.`;
 }
 function renderHome() {
-  root.innerHTML = `<section class="hero"><div class="heroIn"><div class="eyebrow">St. Louis • Metro East</div><h2>Metro Eats<br><span class="fl">⚜</span> Recipes & Dining</h2><p class="heroTagline">Good eats. Keeper recipes, local spots, and pizza rankings.</p><details class="homeAppsDisclosure"><summary><span>Your Metro Eats tools</span><span class="homeAppsCount">3 destinations</span></summary><div class="homeFeatureButtons"><button class="homeFeatureButton recipeButton" data-view="recipes"><span class="homeFeatureIcon">✦</span><span><strong>My Recipes</strong><small>Your go-to recipes</small></span><span class="homeFeatureArrow">→</span></button><button class="homeFeatureButton diningButton" data-view="dining"><span class="homeFeatureIcon" aria-hidden="true">⚜</span><span><strong>My Restaurants</strong><small>Local spots, your way</small></span><span class="homeFeatureArrow">→</span></button><button class="homeFeatureButton pizzaButton" data-view="pizzas"><span class="homeFeatureIcon pizzaIcon" aria-hidden="true"></span><span><strong>My Frozen Pizzas</strong><small>Rank your freezer faves</small></span><span class="homeFeatureArrow">→</span></button></div></details></div></section><section class="localNewsPanel" aria-labelledby="local-news-title"><div class="panel-heading"><div><p class="eyebrow">St. Louis • Metro East</p><h2 id="local-news-title">Local Food News</h2></div><span class="liveNewsBadge"><span class="liveNewsDot" aria-hidden="true"></span>LIVE · LOCAL FEED</span></div><p class="newsIntro">Fresh openings, good bites, and food stories from across the bi-state.</p><div id="local-food-news" class="localNewsList" aria-live="polite"><p class="hint">Loading local food stories…</p></div><p class="hint" id="local-news-updated"></p></section><div class="homeColumns"><article class="featureCard"><div><div class="sectionKicker">Your Collection</div><h3>Saved with care</h3><p>Your recipes, restaurant visits, and frozen-pizza ratings stay with your account.</p></div><div class="actions"><button class="btn primary" data-view="recipes">Open My Recipes →</button><button class="btn" data-view="dining">Open My Restaurants →</button><button class="btn" data-view="pizzas">Open My Frozen Pizzas →</button></div></article><article class="featureCard accent"><div><div class="sectionKicker">Safety First</div><h3>Existing data stays safe.</h3><p>Shared baseline records stay read-only. Your signed-in Preview account saves its own recipes, reviews, and pizza ratings.</p></div><span class="status">Private account</span></article></div>`;
-  root.querySelector(".localNewsPanel")?.insertAdjacentHTML("afterend", '<section class="content-panel homeRestaurantFinder"><div class="sectionTitle"><div><div class="sectionKicker">Restaurant search</div><h3>Find a place and start a review</h3></div></div><label for="home-restaurant-search">Restaurant name</label><input id="home-restaurant-search" class="restaurantSearch" type="search" placeholder="Start typing a restaurant name" autocomplete="off"><p class="hint">Search nearby places first. Select a match to fill in its details and continue to a visit review.</p><p class="edit-status" id="home-restaurant-search-status" role="status" aria-live="polite"></p><div id="home-restaurant-search-results" class="restaurantLookupResults"></div></section>');
+  root.innerHTML = `<section class="hero"><div class="heroIn"><div class="eyebrow">St. Louis • Metro East</div><h2>Metro Eats<br><span class="fl">⚜</span> Recipes & Dining</h2><p class="heroTagline">Good eats. Keeper recipes, local spots, and pizza rankings.</p><details class="homeAppsDisclosure"><summary><span>My Metro Eats Journal</span><span class="homeAppsCount">3 pages</span><span class="homeJournalPen" aria-hidden="true">✎</span></summary><div class="homeFeatureButtons"><button class="homeFeatureButton recipeButton" data-view="recipes"><span class="homeFeatureIcon">✦</span><span><strong>My Recipes</strong><small>Your go-to recipes</small></span><span class="homeFeatureArrow">→</span></button><button class="homeFeatureButton diningButton" data-view="dining"><span class="homeFeatureIcon" aria-hidden="true">⚜</span><span><strong>My Restaurants</strong><small>Local spots, your way</small></span><span class="homeFeatureArrow">→</span></button><button class="homeFeatureButton pizzaButton" data-view="pizzas"><span class="homeFeatureIcon pizzaIcon" aria-hidden="true"></span><span><strong>My Frozen Pizzas</strong><small>Rank your freezer faves</small></span><span class="homeFeatureArrow">→</span></button></div></details></div></section><section class="localNewsPanel" aria-labelledby="local-news-title"><div class="panel-heading"><div><p class="eyebrow">St. Louis • Metro East</p><h2 id="local-news-title">Local Food News</h2></div><span class="liveNewsBadge"><span class="liveNewsDot" aria-hidden="true"></span>LIVE · LOCAL FEED</span></div><p class="newsIntro">Fresh openings, good bites, and food stories from across the bi-state.</p><div id="local-food-news" class="localNewsList" aria-live="polite"><p class="hint">Loading local food stories…</p></div><p class="hint" id="local-news-updated"></p></section><div class="homeColumns"><article class="featureCard"><div><div class="sectionKicker">Your Collection</div><h3>Saved with care</h3><p>Your recipes, restaurant visits, and frozen-pizza ratings stay with your account.</p></div><div class="actions"><button class="btn primary" data-view="recipes">Open My Recipes →</button><button class="btn" data-view="dining">Open My Restaurants →</button><button class="btn" data-view="pizzas">Open My Frozen Pizzas →</button></div></article><article class="featureCard accent"><div><div class="sectionKicker">Safety First</div><h3>Existing data stays safe.</h3><p>Shared baseline records stay read-only. Your signed-in Preview account saves its own recipes, reviews, and pizza ratings.</p></div><span class="status">Private account</span></article></div>`;
+  root.querySelector(".localNewsPanel")?.insertAdjacentHTML("afterend", '<section class="content-panel homeRestaurantFinder"><section class="nearbyPanel"><div><div class="sectionKicker">Local dining</div><h3>Restaurants Around Me</h3><p class="hint">Nearby spots load automatically. Location is used for this search and never saved.</p></div><p class="edit-status" id="nearby-status" role="status" aria-live="polite">Nearby restaurant search will start automatically.</p><details class="nearbyDisclosure" id="nearby-disclosure" open hidden><summary id="nearby-summary">Nearby restaurants</summary><div class="nearbyResults" id="nearby-results"></div></details><div class="homeNameSearch"><label for="home-restaurant-search">Looking for somewhere specific?</label><input id="home-restaurant-search" class="restaurantSearch" type="search" placeholder="Search restaurant names" autocomplete="off"><p class="hint">Search by name if it is not in the nearby list.</p><p class="edit-status" id="home-restaurant-search-status" role="status" aria-live="polite"></p><div id="home-restaurant-search-results" class="restaurantLookupResults"></div></div></section></section>');
 }
 async function loadLocalFoodNews() {
   const list = document.querySelector("#local-food-news");
@@ -736,7 +736,7 @@ document.addEventListener("click", async event => {
     event.preventDefault();
     activeView = viewButton.dataset.view;
     render();
-    if (activeView === "dining") searchNearbyRestaurants();
+    if (activeView === "dining" || activeView === "home") searchNearbyRestaurants();
     // Every explicit section navigation starts at the top of the new page.
     window.scrollTo({ top: 0, left: 0, behavior: "instant" });
     root.focus({ preventScroll: true });
@@ -1337,12 +1337,12 @@ async function refreshDataset() {
       setStatus(hasRecords ? "Preview records loaded · cloud storage unavailable" : "Cloud storage is not ready", "warn");
     }
     render();
-    if (activeView === "home") loadLocalFoodNews();
+    if (activeView === "home") { loadLocalFoodNews(); searchNearbyRestaurants(); }
   } catch (error) {
     cloudReady = false;
     setStatus(error?.message || "Data unavailable", "warn");
     render();
-    if (activeView === "home") loadLocalFoodNews();
+    if (activeView === "home") { loadLocalFoodNews(); searchNearbyRestaurants(); }
   }
 }
 

@@ -186,6 +186,12 @@
 #app .nearbyPlace{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px;align-items:center;padding:11px 12px;border:1px solid #35463f;border-radius:12px;background:#0e1413}
 #app .nearbyPlace strong{display:block;overflow-wrap:anywhere}
 #app .nearbyPlace small{display:block;margin-top:4px;color:var(--muted);line-height:1.4}
+#app .homeRestaurantFinder{margin:22px 0 26px;padding:14px}
+#app .homeRestaurantFinder .nearbyPanel{margin:0}
+#app .homeNameSearch{grid-column:1/-1;display:grid;gap:8px;margin-top:4px;padding-top:14px;border-top:1px solid #315047}
+#app .homeNameSearch label{font-weight:750}
+#app .homeNameSearch .hint{margin:0}
+#app .homeNameSearch .restaurantSearch{width:100%}
 #app .restaurantLookupTools{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px}
 #app .restaurantLookupTools .hint{flex:1 1 280px;margin:0}
 #app .restaurantLookupStatus{min-height:1.35em;color:#a6c9b8;font-size:13px;line-height:1.45}
@@ -264,8 +270,9 @@
 #app .homeAppsDisclosure{margin-top:20px;border:1px solid #3d493f;border-radius:18px;background:linear-gradient(135deg,#121a18,#111519);overflow:hidden}
 #app .homeAppsDisclosure>summary{list-style:none;display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:56px;padding:14px 16px;color:#e9efe9;font-weight:800;cursor:pointer}
 #app .homeAppsDisclosure>summary::-webkit-details-marker{display:none}
-#app .homeAppsDisclosure>summary::after{content:"+";display:grid;place-items:center;width:28px;height:28px;border-radius:50%;border:1px solid #52625a;color:#a8cfba;font-size:20px;line-height:1}
-#app .homeAppsDisclosure[open]>summary::after{content:"−"}
+#app .homeAppsDisclosure>summary::after{content:none}
+#app .homeJournalPen{display:grid;place-items:center;flex:0 0 32px;width:32px;height:32px;border:1px solid #68786e;border-radius:50%;color:#d6b46c;font-size:22px;line-height:1;transition:transform .18s ease,border-color .18s ease}
+#app .homeAppsDisclosure[open] .homeJournalPen{transform:rotate(-35deg);border-color:#d6b46c}
 #app .homeAppsDisclosure>summary:focus-visible{outline:2px solid #8fc1af;outline-offset:-3px;border-radius:18px}
 #app .homeAppsCount{margin-left:auto;color:#a6b4ac;font-size:12px;font-weight:650;letter-spacing:.04em}
 #app .homeAppsDisclosure .homeFeatureButtons{margin:0;padding:0 14px 14px}
