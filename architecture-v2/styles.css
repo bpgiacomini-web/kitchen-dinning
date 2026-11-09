@@ -220,7 +220,8 @@
 #app .nearbyPlace strong{display:block;overflow-wrap:anywhere}
 #app .nearbyPlace small{display:block;margin-top:4px;color:var(--muted);line-height:1.4}
 #app .nearbyPlaceActions{display:flex;align-items:center;justify-content:flex-end;gap:8px;flex-wrap:wrap}
-#app .nearbyDirectionsButton{display:inline-flex;align-items:center;justify-content:center;text-decoration:none}
+#app .nearbyDirectionsButton{display:inline-flex;align-items:center;justify-content:center;width:44px;height:44px;min-height:44px;padding:0;text-decoration:none}
+#app .nearbyDirectionsButton svg{display:block;width:21px;height:21px}
 #app .nearbyNavigationMenu{position:relative}
 #app .nearbyNavigationMenu>summary{list-style:none;cursor:pointer}
 #app .nearbyNavigationMenu>summary::-webkit-details-marker{display:none}
