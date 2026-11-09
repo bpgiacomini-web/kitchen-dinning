@@ -339,7 +339,8 @@ async function searchNearbyRestaurants() {
       results.innerHTML = response.places.map(place => `<article class="nearbyPlace"><div><strong>${escapeHtml(place.name)}</strong><small>${escapeHtml([place.cuisine, place.distance == null ? "" : place.distance < 1609 ? `${Math.round(place.distance * 3.28084)} ft` : `${(place.distance / 1609.34).toFixed(1)} mi`, place.address].filter(Boolean).join(" · ") || "Nearby food place")}</small></div><div class="nearbyPlaceActions"><details class="nearbyNavigationMenu"><summary class="btn nearbyDirectionsButton" aria-label="Choose a map app for ${escapeHtml(place.name)}" title="Choose a map app"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22s7-7.1 7-13a7 7 0 1 0-14 0c0 5.9 7 13 7 13Z"></path><circle cx="12" cy="9" r="2.4"></circle></svg></summary><div class="nearbyNavigationOptions">${restaurantNavigationOptions(place).map(option => `<a href="${escapeHtml(option.url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(option.label)}</a>`).join("")}</div></details><button class="btn" type="button" data-action="use-nearby" data-nearby="${escapeHtml(JSON.stringify(place))}">Review this restaurant</button></div></article>`).join("");
     } catch (error) {
       if (disclosure) disclosure.hidden = true;
-      statusLine.textContent = error.message || "Nearby restaurant search is unavailable right now. Try the name search below.";
+      const message = typeof error?.message === "string" && error.message !== "[object Object]" ? error.message : "";
+      statusLine.textContent = message || "Nearby restaurant search is temporarily unavailable. You can still search by name below.";
     }
   };
   if (!navigator.geolocation) { await search(null); return; }
