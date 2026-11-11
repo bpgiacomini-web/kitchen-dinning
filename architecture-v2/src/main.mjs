@@ -554,7 +554,7 @@ async function loadLocalFoodNews(manualRefresh = false) {
   try {
     const refreshButton = document.querySelector("#refresh-local-news");
     if (refreshButton) { refreshButton.disabled = true; refreshButton.textContent = "↻ Updating…"; }
-    const response = await fetch("/api/food-news", { headers: { Accept: "application/json" }, cache: "no-store" });
+    const response = await fetch("/api/restaurant-lookup", { method: "POST", headers: { Accept: "application/json", "Content-Type": "application/json" }, body: JSON.stringify({ mode: "food-news" }), cache: "no-store" });
     if (!response.ok) throw new Error("News feed unavailable");
     const payload = await response.json();
     const items = Array.isArray(payload.items) ? payload.items.filter(item => {

@@ -1,6 +1,7 @@
 import { authenticatedUser } from './user-data.js';
 import { consumeAccountRateLimit, sendRateLimitResponse } from './_lib/rate-limit.js';
 import localRestaurantData from './_lib/local-restaurant-overrides.cjs';
+import foodNews from './_lib/food-news.cjs';
 
 const { isExcludedRestaurantName, LOCAL_RESTAURANT_OVERRIDES } = localRestaurantData;
 
@@ -190,6 +191,10 @@ export function createRestaurantLookupHandler({ fetcher = fetch, authenticate = 
 
     const body = req.body && typeof req.body === "object" ? req.body : {};
     const mode = body.mode;
+    if (mode === "food-news") {
+      try { return res.status(200).json(await foodNews.readFoodNews(fetcher)); }
+      catch { return res.status(503).json({ error: "The published food news feed could not be refreshed." }); }
+    }
     if (mode === "pizza-upc") {
       const identity = await authenticate(req);
       if (identity.error) return res.status(identity.status || 503).json({ error: identity.error });
