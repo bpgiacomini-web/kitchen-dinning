@@ -86,7 +86,12 @@ export function createCocktailJournal({ root, getData, save }) {
     if(kind==="delete" || kind==="delete-visit") {
       const data=getData();
       if(tab==="bars" && kind==="delete" && data.drinks.some(drink=>drink.barId===id)) { root.querySelector('#cocktail-editor [role="status"]').textContent="This venue has linked drink ratings. Edit those drinks to remove or change their venue before deleting it.";return true; }
-      if(!window.confirm(`Delete this ${kind==="delete-visit"?"visit":"entry"}? A restore point will keep the previous dataset.`))return true;
+      if(button.dataset.deleteConfirmed !== "true") {
+        button.dataset.deleteConfirmed="true";
+        button.textContent=`Confirm delete ${kind==="delete-visit"?"visit":"entry"}`;
+        root.querySelector('#cocktail-editor [role="status"]').textContent='Select Confirm delete to remove this entry, or Cancel to keep it. The previous dataset is kept in a restore point.';
+        return true;
+      }
       button.disabled=true;
       try { const next=kind==="delete-visit" ? {...data,bars:data.bars.map(bar=>bar.id===id?{...bar,visits:bar.visits.filter(visit=>visit.id!==button.dataset.visitId)}:bar)} : {...data,[tab]:data[tab].filter(row=>row.id!==id)};await save(next);editorOpen=false;editing=null;visitBar=null;editingVisit=null;render(); }
       catch(error){root.querySelector('#cocktail-editor [role="status"]').textContent=error.message;button.disabled=false;}

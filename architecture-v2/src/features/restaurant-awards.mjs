@@ -14,7 +14,8 @@ export function renderRestaurantAwards({root,restaurant,save,getData}) {
     catch(error){feedback.textContent=error.message;button.disabled=false;}
   });
   root.querySelectorAll('[data-remove-award]').forEach(button=>button.addEventListener('click',async()=>{
-    if(!window.confirm('Remove this award from your restaurant?'))return;button.disabled=true;
+    if(button.dataset.removeConfirmed !== 'true'){button.dataset.removeConfirmed='true';button.textContent='Confirm removal';root.querySelector('#award-status').textContent='Select Confirm removal to remove this award. Leave this page to keep it.';return;}
+    button.disabled=true;
     try{const data=getData();await save({...data,restaurants:data.restaurants.map(item=>item.id===restaurant.id?{...item,awards:(item.awards||[]).filter(award=>award.id!==button.dataset.removeAward)}:item)});renderRestaurantAwards({root,restaurant:getData().restaurants.find(item=>item.id===restaurant.id),save,getData});}
     catch(error){root.querySelector('#award-status').textContent=error.message;button.disabled=false;}
   }));
