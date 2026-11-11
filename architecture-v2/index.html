@@ -40,7 +40,7 @@
   <title>Metro Eats — Architecture Preview</title>
   <link rel="stylesheet" href="./base.css?v=1">
   <link rel="stylesheet" href="./styles.css?v=24">
-  <link rel="stylesheet" href="./pizza-theme.css?v=4">
+  <link rel="stylesheet" href="./pizza-theme.css?v=5">
 </head>
 <body>
   <div id="metroAuthLoading" role="status" aria-live="polite"><p id="metroAuthLoadingStatus">Restoring your Metro Eats session…</p><button id="metroAuthContinue" type="button" hidden>Show sign-in form</button></div>
@@ -77,7 +77,13 @@
 </main>
     <footer>Metro Eats · Architecture preview · Existing app remains unchanged</footer>
   </div>
-  <nav class="bottomNav" aria-label="Primary navigation"><button class="active" type="button" data-view="home">⌂<br>Home</button><button  type="button" data-view="recipes">▱<br>My Recipes</button><button type="button" data-view="dining">◉<br>My Restaurants</button><button type="button" data-view="pizzas">🍕<br>My Frozen Pizzas</button><button type="button" data-view="cocktails"><span class="navCocktailIcon" aria-hidden="true">♧</span><br>Cocktails &amp; Bars</button></nav>
+  <nav class="bottomNav" aria-label="Primary navigation">
+    <button class="active" type="button" data-view="home" aria-label="Home"><span class="bottomNavLabel">Home</span></button>
+    <button type="button" data-view="recipes" aria-label="My Recipes"><span class="bottomNavLabel">Recipes</span></button>
+    <button type="button" data-view="dining" aria-label="My Restaurants"><span class="bottomNavLabel">Restaurants</span></button>
+    <button type="button" data-view="pizzas" aria-label="My Frozen Pizzas"><span class="bottomNavLabel">Frozen Pizzas</span></button>
+    <button type="button" data-view="cocktails" aria-label="Cocktails &amp; Bars"><span class="navCocktailIcon" aria-hidden="true">♧</span><span class="bottomNavLabel">Cocktails &amp; Bars</span></button>
+  </nav>
   <section id="metroAccountPanel" role="dialog" aria-modal="false" aria-labelledby="metroAccountTitle" hidden>
     <h2 id="metroAccountTitle">Account &amp; Settings</h2>
     <p id="metroAccountEmail">Signed in to Metro Eats</p>
