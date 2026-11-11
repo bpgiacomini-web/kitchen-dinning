@@ -110,6 +110,9 @@ export function normalizeDataset(value) {
     recipes: (Array.isArray(data.recipes) ? data.recipes : []).map(normalizeRecipe),
     restaurants: (Array.isArray(data.restaurants) ? data.restaurants : []).map(normalizeRestaurant),
     pizzas: (Array.isArray(data.pizzas) ? data.pizzas : []).map(normalizeFrozenPizza),
+    bars: Array.isArray(data.bars) ? data.bars : [],
+    drinks: Array.isArray(data.drinks) ? data.drinks : [],
+    cocktailRecipes: Array.isArray(data.cocktailRecipes) ? data.cocktailRecipes : [],
     cats: data.cats && typeof data.cats === "object" ? data.cats : []
   };
 }

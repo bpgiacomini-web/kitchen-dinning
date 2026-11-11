@@ -39,7 +39,7 @@
   <link rel="apple-touch-icon" href="../icon-180.png">
   <title>Metro Eats — Architecture Preview</title>
   <link rel="stylesheet" href="./base.css?v=1">
-  <link rel="stylesheet" href="./styles.css?v=23">
+  <link rel="stylesheet" href="./styles.css?v=24">
   <link rel="stylesheet" href="./pizza-theme.css?v=4">
 </head>
 <body>
@@ -60,6 +60,7 @@
         <button type="button" data-view="recipes">My Recipes</button>
         <button type="button" data-view="dining">My Restaurants</button>
         <button type="button" data-view="pizzas">My Frozen Pizzas</button>
+        <button type="button" data-view="cocktails"><span class="navCocktailIcon" aria-hidden="true">♧</span> Cocktails &amp; Bars</button>
       </nav>
       <button id="metroAccountButton" type="button" aria-label="Account and settings" title="Account &amp; Settings" aria-expanded="false" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="3.5"></circle><path d="M5 20c.7-3.4 3.1-5.2 7-5.2s6.3 1.8 7 5.2"></path></svg></button>
     </header>
@@ -76,7 +77,7 @@
 </main>
     <footer>Metro Eats · Architecture preview · Existing app remains unchanged</footer>
   </div>
-  <nav class="bottomNav" aria-label="Primary navigation"><button class="active" type="button" data-view="home">⌂<br>Home</button><button  type="button" data-view="recipes">▱<br>My Recipes</button><button type="button" data-view="dining">◉<br>My Restaurants</button><button type="button" data-view="pizzas">🍕<br>My Frozen Pizzas</button></nav>
+  <nav class="bottomNav" aria-label="Primary navigation"><button class="active" type="button" data-view="home">⌂<br>Home</button><button  type="button" data-view="recipes">▱<br>My Recipes</button><button type="button" data-view="dining">◉<br>My Restaurants</button><button type="button" data-view="pizzas">🍕<br>My Frozen Pizzas</button><button type="button" data-view="cocktails"><span class="navCocktailIcon" aria-hidden="true">♧</span><br>Cocktails &amp; Bars</button></nav>
   <section id="metroAccountPanel" role="dialog" aria-modal="false" aria-labelledby="metroAccountTitle" hidden>
     <h2 id="metroAccountTitle">Account &amp; Settings</h2>
     <p id="metroAccountEmail">Signed in to Metro Eats</p>
@@ -209,7 +210,7 @@
         for (const point of payload.restorePoints) {
           const row = document.createElement('div');
           const label = document.createElement('span');
-          label.textContent = new Date(point.created_at).toLocaleString() + ' · ' + point.recipes + ' recipes · ' + point.restaurants + ' restaurants · ' + (point.pizzas || 0) + ' pizzas';
+          label.textContent = new Date(point.created_at).toLocaleString() + ' · ' + point.recipes + ' recipes · ' + point.restaurants + ' restaurants · ' + (point.pizzas || 0) + ' pizzas · ' + (point.bars || 0) + ' bars · ' + (point.drinks || 0) + ' drinks · ' + (point.cocktails || 0) + ' home cocktails';
           const restore = document.createElement('button'); restore.type = 'button'; restore.textContent = 'Restore';
           restore.addEventListener('click', async () => {
             if (!window.confirm('Restore this Metro Eats version? Your current version will remain available as a restore point.')) return;

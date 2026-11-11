@@ -1,4 +1,5 @@
 import { restaurantReviewRecords } from "./restaurant-review.mjs";
+import { summarizeCocktailCollection } from "./cocktails.mjs";
 
 function overallScore(review) {
   const legacyTenQuestion = review?.scores && [4, 5, 6, 7, 8, 9].some(index => review.scores[index] != null && review.scores[index] !== "");
@@ -73,11 +74,12 @@ function summarizeRatedItems(items, { label, nameOf, scoreOf }) {
     ratedCount: rated.length,
     averageRating: rated.length ? rated.reduce((sum, entry) => sum + entry.score, 0) / rated.length : null,
     top: top ? { name: nameOf(top.item), rating: top.score } : null,
+    favoriteCount: items.filter(item => item.favorite === true || item.isFavorite === true).length,
     scores: rated.map(entry => entry.score)
   };
 }
 
-export function summarizeMetroEatsInsights({ restaurants = [], recipes = [], pizzas = [] } = {}) {
+export function summarizeMetroEatsInsights({ restaurants = [], recipes = [], pizzas = [], bars = [], drinks = [], cocktailRecipes = [] } = {}) {
   const restaurant = summarizeRestaurantInsights(restaurants);
   const recipe = summarizeRatedItems(recipes, {
     label: "Recipes",
@@ -89,16 +91,12 @@ export function summarizeMetroEatsInsights({ restaurants = [], recipes = [], piz
     nameOf: item => [item?.brand, item?.name].filter(Boolean).join(" · ") || "Unnamed pizza",
     scoreOf: item => item?.scores?.overall
   });
-  const allScores = [
-    ...(restaurant.visitCount ? (Array.isArray(restaurants) ? restaurants : []).flatMap(item => restaurantReviewRecords(item).map(overallScore).filter(Number.isFinite)) : []),
-    ...recipe.scores,
-    ...pizza.scores
-  ];
   return {
-    overallAverageRating: allScores.length ? allScores.reduce((sum, score) => sum + score, 0) / allScores.length : null,
-    ratedItemCount: allScores.length,
-    restaurants: restaurant,
+    restaurants: { ...restaurant, favoriteCount: restaurants.filter(item => item.favorite === true || item.isFavorite === true).length },
     recipes: recipe,
-    pizzas: pizza
+    pizzas: pizza,
+    bars: summarizeCocktailCollection(bars, { visits: true }),
+    drinks: summarizeCocktailCollection(drinks),
+    cocktailRecipes: summarizeCocktailCollection(cocktailRecipes)
   };
 }

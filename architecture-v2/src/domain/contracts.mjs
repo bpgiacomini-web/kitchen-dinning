@@ -39,5 +39,6 @@ export function validateDatasetEnvelope(value) {
   checkCollection("recipes", value.recipes, errors);
   checkCollection("restaurants", value.restaurants, errors);
   if (value.pizzas != null) checkCollection("pizzas", value.pizzas, errors);
+  for (const name of ["bars", "drinks", "cocktailRecipes"]) if (value[name] != null) checkCollection(name, value[name], errors);
   return { valid: errors.length === 0, errors };
 }

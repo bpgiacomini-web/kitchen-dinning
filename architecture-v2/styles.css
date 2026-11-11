@@ -776,3 +776,46 @@
   .readOnlyItem details>summary{display:none!important}
   .readOnlyItem li,.readOnlyItem h4,.readOnlyItem small,.readOnlyItem strong{color:#111!important}
 }
+/* Cocktails & Bars uses the journal's existing card rhythm with its own plum accent. */
+.cocktailMark,.navCocktailIcon,.insightIcon{display:inline-flex;align-items:center;justify-content:center;flex-shrink:0}
+.cocktailMark svg{width:1em;height:1em;min-width:28px}
+.navCocktailIcon svg{width:20px;height:20px;vertical-align:middle}
+#app.cocktailSection{--section-accent:#e4abd4}
+#app .cocktailHero{border-color:#69455f;background:linear-gradient(130deg,#291c2b,#12171e)}
+#app .cocktailHero h2{display:flex;align-items:center;gap:12px}
+#app .cocktailHero .cocktailMark{color:#e4abd4}
+#app .cocktailTabs{display:flex;gap:8px;flex-wrap:wrap;border-bottom:1px solid var(--line);padding-bottom:14px}
+#app .cocktailTabs button{font:inherit;color:var(--text);padding:11px 14px;border:1px solid #63495f;border-radius:12px;background:#17141e;min-height:44px;cursor:pointer}
+#app .cocktailTabs button[aria-pressed=true]{color:#1a111c;background:#e4abd4;border-color:#e4abd4;font-weight:800}
+#app .cocktailCards{display:grid;gap:12px;margin-top:16px}
+#app .cocktailCard{border-color:#503e50}
+#app .cocktailCard h3{margin:0 0 6px}
+#app .cocktailCard summary{cursor:pointer;min-height:44px;line-height:44px;color:#e4abd4;font-weight:700}
+#app .cocktailCard[hidden]{display:none}
+#app .cocktailRating,#app .cocktailAverage{color:#e4abd4;font-size:22px;font-weight:800}
+#app .cocktailAverage small{font-size:13px;font-weight:500;color:var(--muted)}
+#app .cocktailNotes,#app .cocktailVisit p{white-space:pre-wrap;overflow-wrap:anywhere}
+#app .cocktailVisit{padding:12px 0;border-top:1px solid var(--line)}
+#app .cocktailEditor{display:grid;gap:14px;border:1px solid #69516a;border-radius:16px;padding:20px;margin:16px 0;background:#13141c;scroll-margin-top:100px}
+#app .cocktailEditor label,#app .cocktailSearch{display:grid;gap:7px;font-weight:700}
+#app .cocktailEditor label small{font-size:12px;font-weight:400;color:var(--muted)}
+#app .cocktailEditor input:not([type=checkbox]),#app .cocktailEditor textarea,#app .cocktailEditor select,#app .cocktailSearch input{box-sizing:border-box;width:100%;min-width:0;font:inherit;color:var(--text);background:#0d1115;border:1px solid #555063;border-radius:10px;padding:12px;min-height:46px}
+#app .cocktailEditor .inlineCheck{display:flex;gap:10px;align-items:flex-start;line-height:1.5}
+#app .cocktailEditor input[type=checkbox]{flex-shrink:0;min-width:20px;min-height:20px;accent-color:#e4abd4}
+#app .cocktailFormGrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+#app .cocktailEditor :focus-visible,#app .cocktailTabs :focus-visible{outline:2px solid #e4abd4;outline-offset:3px}
+#app .cocktailButton{border-color:#76516e;background:linear-gradient(140deg,#332033,#171720)}
+#app .cocktailButton .homeFeatureIcon{color:#e4abd4}
+#app .insightGrid{grid-template-columns:repeat(3,minmax(0,1fr))}
+#app .insightLink{font:inherit;color:var(--text);text-align:left;cursor:pointer;width:100%;transition:border-color .15s,background .15s}
+#app .insightLink:hover{border-color:#9abd9d;background:#1b2c26}
+#app .insightLink:focus-visible{outline:2px solid #e7c47c;outline-offset:3px}
+#app .insightCategory{display:flex;align-items:center;gap:8px;width:100%}
+#app .insightCategory>span:last-child{margin-left:auto}
+#app .insightIcon svg{width:22px;height:22px}
+#app .awardSearchLinks{display:flex;gap:8px;flex-wrap:wrap;margin:16px 0 24px}
+#app .awardList{display:grid;gap:10px}
+@media(min-width:761px){#app .homeFeatureButtons{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:760px){#app .insightGrid{grid-template-columns:repeat(2,minmax(0,1fr))}.nav button{font-size:12px;padding-inline:8px}}
+@media(max-width:520px){.bottomNav{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:2px;padding-inline:5px}.bottomNav button{min-width:0;width:100%;padding:5px 2px;font-size:10px;line-height:1.4;overflow-wrap:normal}.navCocktailIcon svg{width:17px;height:17px}#app .cocktailFormGrid{grid-template-columns:1fr}#app .cocktailEditor{padding:14px}#app .cocktailTabs{gap:5px}#app .cocktailTabs button{flex:1;padding-inline:8px;font-size:13px}}
+@media(prefers-reduced-motion:reduce){#app .insightLink{transition:none}}

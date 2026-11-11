@@ -76,7 +76,7 @@ test("frozen pizza normalization preserves original fields and numeric scores", 
 });
 
 test("dataset normalization safely handles malformed top-level shapes", () => {
-  assert.deepEqual(normalizeDataset(null), { recipes: [], restaurants: [], pizzas: [], cats: [] });
+  assert.deepEqual(normalizeDataset(null), { recipes: [], restaurants: [], pizzas: [], bars: [], drinks: [], cocktailRecipes: [], cats: [] });
   assert.deepEqual(normalizeDataset({ cats: { Beef: ["Main Dishes", "Beef"] } }).cats, { Beef: ["Main Dishes", "Beef"] });
   assert.equal(normalizeDataset({ recipes: [null], restaurants: [null] }).recipes[0].title, "Untitled recipe");
   assert.deepEqual(normalizeDataset({ recipes: "bad", restaurants: {} }).restaurants, []);

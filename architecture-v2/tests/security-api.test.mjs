@@ -48,6 +48,9 @@ test('invalid and oversized dataset writes are rejected before a transaction', a
   for (const [body, status] of [
     [{ expectedRevision: 0, data: { recipes: 'no', restaurants: [] } }, 400],
     [{ expectedRevision: 0, data: { ...dataset('x'), pizzas: [{ id: 'p1', brand: 'Brand', name: 'Pizza', scores: { overall: 11 } }] } }, 400],
+    [{ expectedRevision: 0, data: { ...dataset('x'), bars: 'bad' } }, 400],
+    [{ expectedRevision: 0, data: { ...dataset('x'), drinks: [{id:'drink',name:'Drink',barId:'not-owned'}] } }, 400],
+    [{ expectedRevision: 0, data: { ...dataset('x'), restaurants:[{id:'place',awards:[{name:'Unapproved award'}]}] } }, 400],
     [{ expectedRevision: 0, data: dataset('x'.repeat(1_500_100)) }, 413]
   ]) {
     const res = responseRecorder();

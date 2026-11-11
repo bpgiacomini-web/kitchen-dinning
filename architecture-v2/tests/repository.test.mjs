@@ -43,5 +43,5 @@ test("loadDataset fails safely when sources are unavailable", async () => {
   const result = await loadDataset({ storage: fakeStorage(), getToken: async () => "test-session-token", fetchImpl: async () => { throw new Error("offline"); } });
   assert.equal(result.source, "empty");
   assert.equal(result.staleFallback, true);
-  assert.deepEqual(result.data, { recipes: [], restaurants: [], pizzas: [], cats: [] });
+  assert.deepEqual(result.data, { recipes: [], restaurants: [], pizzas: [], bars: [], drinks: [], cocktailRecipes: [], cats: [] });
 });

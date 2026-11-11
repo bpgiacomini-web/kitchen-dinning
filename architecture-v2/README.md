@@ -4,6 +4,12 @@ This is the preview implementation, separate from the root app and Production. I
 
 ## Product scope
 
+- Cocktails & Bars is a separate journal section with its own glass icon. Bars keep visit history and venue-only ratings; drink tastings have independent scores and optional venue links; home cocktail recipes store quantities, steps, glassware, garnish, favorites, and optional ratings. These collections live in the existing account dataset snapshot and participate in revision checks and restore points; no schema migration is required for them.
+- Home Insights keeps all categories separate and links each tile to its journal (including the three Cocktails & Bars tabs). Restaurant counts distinguish places visited from visits. Unrated entries do not enter averages.
+- Restaurant More menus offer Awards & Recognition. Source-guided searches cover local through international recognition. Owners enter the source, year, location, and award status and explicitly approve each item before saving. Search links do not automatically verify or import awards.
+- News refresh reads the current public production feed through `/api/food-news`, rather than the Preview branch's stale bundled file. It reports unchanged stories and failures separately. Optional feed thumbnails are supported; images are not invented or scraped when the feed has none.
+- After changing cocktail or award validation, run `node scripts/build-journal-validation.mjs` from the repository root. CI checks the generated CommonJS server adapter matches its browser domain sources.
+
 - Recipes, restaurant/review records, and frozen-pizza ratings are private to the signed-in account. Recipes can be shared through an explicit revocable read-only link.
 - Recipe create, edit, delete, and website/text import are supported. Imports are reviewed before saving and retain their source URL.
 - Ingredients and directions are stored as ordered text arrays. Recipe photos and offline synchronization are out of scope.

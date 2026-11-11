@@ -69,14 +69,15 @@ test("an id-less survey mirror does not add a third copy of identical visit-hist
   assert.equal(result.averageRating, 8);
 });
 
-test("combined insights include restaurant, recipe, and pizza scores in the overall average", () => {
+test("journal insights keep restaurant, recipe, and pizza ratings separate", () => {
   const result = summarizeMetroEatsInsights({
     restaurants: [{ name: "Cafe North", survey: { overall: 8, ratingScale: 10 } }],
     recipes: [{ title: "Tomato Pasta", overallRating: 10 }, { title: "Bread", overallRating: null }],
     pizzas: [{ brand: "Metro", name: "Pepperoni", scores: { overall: 6 } }]
   });
-  assert.equal(result.overallAverageRating, 8);
-  assert.equal(result.ratedItemCount, 3);
+  assert.equal('overallAverageRating' in result, false);
+  assert.equal('ratedItemCount' in result, false);
+  assert.equal(result.restaurants.averageRating, 8);
   assert.equal(result.restaurants.visitCount, 1);
   assert.deepEqual({ count: result.recipes.count, ratedCount: result.recipes.ratedCount, averageRating: result.recipes.averageRating, top: result.recipes.top }, {
     count: 2, ratedCount: 1, averageRating: 10, top: { name: "Tomato Pasta", rating: 10 }

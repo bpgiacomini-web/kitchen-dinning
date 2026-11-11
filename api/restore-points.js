@@ -34,7 +34,10 @@ export function createRestorePointsHandler({ authenticateUser = getUser, makeSql
     if (req.method === 'GET') {
       const rows = await sql`SELECT id, created_at, jsonb_array_length(COALESCE(snapshot->'recipes','[]'::jsonb)) AS recipes,
         jsonb_array_length(COALESCE(snapshot->'restaurants','[]'::jsonb)) AS restaurants,
-        jsonb_array_length(COALESCE(snapshot->'pizzas','[]'::jsonb)) AS pizzas
+        jsonb_array_length(COALESCE(snapshot->'pizzas','[]'::jsonb)) AS pizzas,
+        jsonb_array_length(COALESCE(snapshot->'bars','[]'::jsonb)) AS bars,
+        jsonb_array_length(COALESCE(snapshot->'drinks','[]'::jsonb)) AS drinks,
+        jsonb_array_length(COALESCE(snapshot->'cocktailRecipes','[]'::jsonb)) AS cocktails
         FROM metro_eats_restore_points WHERE user_id = ${userId}
         ORDER BY created_at DESC, id DESC LIMIT 10`;
       const current = await sql`SELECT revision FROM metro_eats_user_datasets WHERE user_id = ${userId} LIMIT 1`;

@@ -8,13 +8,17 @@ import { restaurantNavigationOptions } from "./domain/restaurant-directions.mjs"
 import { sortRestaurantItems } from "./domain/restaurant-sort.mjs";
 import { searchNearbyRestaurants as lookupNearbyRestaurants, searchRestaurantNames } from "./domain/restaurant-lookup.mjs";
 import { LOCAL_RESTAURANT_OVERRIDES } from "./domain/local-restaurant-overrides.mjs";
-import { summarizeMetroEatsInsights } from "./domain/restaurant-insights.mjs";
+import { renderJournalInsights } from "./features/journal-insights.mjs";
+import { createCocktailJournal } from "./features/cocktail-journal.mjs";
+import { renderRestaurantAwards } from "./features/restaurant-awards.mjs";
+import { COCKTAIL_ICON } from "./domain/cocktails.mjs";
 import { normalizeScannedUpc } from "./domain/pizza-barcode.mjs";
 
 const root = document.querySelector("#app");
 const status = document.querySelector("#previewNotice");
-let dataset = { recipes: [], restaurants: [], pizzas: [], cats: [] };
-let cloudDataset = { recipes: [], restaurants: [], pizzas: [], cats: [] };
+document.querySelectorAll(".navCocktailIcon").forEach(icon => { icon.innerHTML = COCKTAIL_ICON; });
+let dataset = { recipes: [], restaurants: [], pizzas: [], bars: [], drinks: [], cocktailRecipes: [], cats: [] };
+let cloudDataset = { recipes: [], restaurants: [], pizzas: [], bars: [], drinks: [], cocktailRecipes: [], cats: [] };
 let cloudRevision = 0;
 let cloudClient = null;
 let cloudReady = false;
@@ -53,6 +57,9 @@ async function saveCloudDataset(nextDataset) {
   mergeVisibleDataset();
   return result;
 }
+
+const cocktailJournal = createCocktailJournal({ root, getData: () => cloudDataset, save: saveCloudDataset });
+let lastNewsSignature = null;
 
 function escapeHtml(value) {
   return String(value ?? "").replace(/[&<>"']/g, char => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[char]);
@@ -290,7 +297,7 @@ function renderRestaurants(items) {
       .map(([label, value]) => `<div><dt>${label}</dt><dd>${["Website", "Menu"].includes(label) && /^https?:\/\//i.test(String(value)) ? `<a href="${escapeHtml(value)}" target="_blank" rel="noopener noreferrer">${escapeHtml(value)}</a>` : escapeHtml(value)}</dd></div>`).join("");
     const bestDishes = topReviewFoods(restaurant);
     const recapId = `restaurant-recap-${String(restaurant.id).replace(/[^a-zA-Z0-9_-]/g, "-")}`;
-    return `<article class="readOnlyItem restaurantCard" data-search="${escapeHtml(JSON.stringify(restaurant).toLowerCase())}"><div class="recipeCardHeader"><div class="restaurantNameGroup"><button class="restaurantFavoriteStar" type="button" data-action="toggle-restaurant-favorite" data-restaurant-id="${escapeHtml(restaurant.id)}" aria-pressed="${restaurant.favorite ? "true" : "false"}" aria-label="${restaurant.favorite ? "Remove from favorites" : "Add to favorites"}" title="${restaurant.favorite ? "Remove from favorites" : "Add to favorites"}">${restaurant.favorite ? "★" : "☆"}</button><a class="restaurantNameLink" href="#${recapId}" data-action="open-restaurant-recap">${escapeHtml(restaurant.name)}</a></div><div class="recipeCardActions"><button class="btn recipeEditButton" type="button" data-action="edit-restaurant" data-restaurant-id="${escapeHtml(restaurant.id)}">Edit</button><details class="restaurantMoreMenu"><summary class="btn">More</summary><div class="restaurantMoreOptions"><button class="btn" type="button" data-action="add-restaurant-review" data-restaurant-id="${escapeHtml(restaurant.id)}">＋ Rate a visit</button></div></details></div></div><small>${escapeHtml([restaurant.cuisine, restaurant.address, rating == null ? null : `Rating ${rating.toFixed(1)}/10`, restaurant.favorite ? "Favorite" : "", `${reviews.length} ${reviews.length === 1 ? "visit" : "visits"}`].filter(Boolean).join(" · ") || "No additional details saved")}</small>${bestDishes.length ? `<p class="restaurantTopDishes"><strong>Top rated dishes:</strong> ${bestDishes.map(item => `${escapeHtml(item.name)} ${escapeHtml(item.rating)}/10`).join(" · ")}</p>` : ""}<details class="restaurantRecap" id="${recapId}"><summary>Restaurant details and visit history</summary><section class="restaurantDetailBlock"><h4>Restaurant information</h4><dl>${details || `<div><dt>Details</dt><dd>No additional details saved.</dd></div>`}</dl></section><section class="restaurantDetailBlock"><h4>Visit history</h4>${reviewRows || `<p class="hint">No visits or reviews yet. Add a visit to start your personal history.</p>`}</section></details><p class="edit-status" role="status" aria-live="polite"></p></article>`;
+    return `<article class="readOnlyItem restaurantCard" data-search="${escapeHtml(JSON.stringify(restaurant).toLowerCase())}"><div class="recipeCardHeader"><div class="restaurantNameGroup"><button class="restaurantFavoriteStar" type="button" data-action="toggle-restaurant-favorite" data-restaurant-id="${escapeHtml(restaurant.id)}" aria-pressed="${restaurant.favorite ? "true" : "false"}" aria-label="${restaurant.favorite ? "Remove from favorites" : "Add to favorites"}" title="${restaurant.favorite ? "Remove from favorites" : "Add to favorites"}">${restaurant.favorite ? "★" : "☆"}</button><a class="restaurantNameLink" href="#${recapId}" data-action="open-restaurant-recap">${escapeHtml(restaurant.name)}</a></div><div class="recipeCardActions"><button class="btn recipeEditButton" type="button" data-action="edit-restaurant" data-restaurant-id="${escapeHtml(restaurant.id)}">Edit</button><details class="restaurantMoreMenu"><summary class="btn">More</summary><div class="restaurantMoreOptions"><button class="btn" type="button" data-action="restaurant-awards" data-restaurant-id="${escapeHtml(restaurant.id)}">🏅 Awards &amp; Recognition${restaurant.awards?.length ? ` (${restaurant.awards.length})` : ""}</button><button class="btn" type="button" data-action="add-restaurant-review" data-restaurant-id="${escapeHtml(restaurant.id)}">＋ Rate a visit</button></div></details></div></div><small>${escapeHtml([restaurant.cuisine, restaurant.address, rating == null ? null : `Rating ${rating.toFixed(1)}/10`, restaurant.favorite ? "Favorite" : "", `${reviews.length} ${reviews.length === 1 ? "visit" : "visits"}`].filter(Boolean).join(" · ") || "No additional details saved")}</small>${bestDishes.length ? `<p class="restaurantTopDishes"><strong>Top rated dishes:</strong> ${bestDishes.map(item => `${escapeHtml(item.name)} ${escapeHtml(item.rating)}/10`).join(" · ")}</p>` : ""}<details class="restaurantRecap" id="${recapId}"><summary>Restaurant details and visit history</summary><section class="restaurantDetailBlock"><h4>Restaurant information</h4><dl>${details || `<div><dt>Details</dt><dd>No additional details saved.</dd></div>`}</dl></section><section class="restaurantDetailBlock"><h4>Visit history</h4>${reviewRows || `<p class="hint">No visits or reviews yet. Add a visit to start your personal history.</p>`}</section></details><p class="edit-status" role="status" aria-live="polite"></p></article>`;
   }).join("");
   root.innerHTML = `<section class="hero"><div class="heroIn"><div class="eyebrow">Your dining journal</div><h2>My Restaurants</h2><p>Keep restaurant details and visit-by-visit food critic reviews together in your private Metro Eats account.</p></div></section><section class="content-panel"><div class="sectionTitle"><div><div class="sectionKicker">${items.length} saved</div><h3>Your restaurants &amp; reviews</h3></div><div class="diningActions"><label class="restaurantSortControl" for="restaurant-sort">Sort by <select id="restaurant-sort"><option value="recent"${restaurantSort === "recent" ? " selected" : ""}>Last visited · newest first</option><option value="highest"${restaurantSort === "highest" ? " selected" : ""}>Highest rated</option><option value="lowest"${restaurantSort === "lowest" ? " selected" : ""}>Lowest rated</option><option value="name"${restaurantSort === "name" ? " selected" : ""}>Name · A to Z</option></select></label><button class="btn" type="button" data-action="open-rankings">★ My Rankings</button><button class="btn primary" type="button" data-action="new-restaurant">＋ Add a Restaurant</button></div></div><section class="nearbyPanel"><div><h3>Restaurants Around Me</h3><p class="hint">Nearby places load automatically when you open this page. Location is used only for this search, never saved. If device location is unavailable, Metro Eats uses an approximate area.</p></div><p class="edit-status" id="nearby-status" role="status" aria-live="polite">Nearby restaurant search will start automatically.</p><details class="nearbyDisclosure" id="nearby-disclosure" open hidden><summary id="nearby-summary">Nearby restaurants</summary><div class="nearbyResults" id="nearby-results"></div></details></section><label class="restaurantSearchLabel" for="restaurant-search">Search your restaurants</label><input id="restaurant-search" class="restaurantSearch" type="search" placeholder="Name, cuisine, address, dish, or note" autocomplete="off"><p class="hint" id="restaurant-search-count" aria-live="polite">Showing ${items.length} ${items.length === 1 ? "restaurant" : "restaurants"}.</p><div class="readOnlyList" id="restaurant-list">${rows || `<div class="empty">No restaurants saved yet. Add one to start your private dining journal.</div>`}</div><p class="hint">Restaurant search, critic scores, rated dishes, and every visit review are saved to your signed-in Preview account. Existing shared baseline records stay unchanged.</p></section>`;
   const searchLabel = root.querySelector(".restaurantSearchLabel");
@@ -535,32 +542,32 @@ function renderHome() {
     [intro, stories, refreshed].filter(Boolean).forEach(element => content.append(element));
   }
   root.querySelector(".localNewsPanel")?.insertAdjacentHTML("afterend", '<section class="content-panel homeRestaurantFinder"><section class="nearbyPanel"><div><div class="sectionKicker">Local dining</div><h3>Restaurants Around Me</h3><p class="hint">Nearby spots load automatically. Location is used for this search and never saved.</p></div><p class="edit-status" id="nearby-status" role="status" aria-live="polite">Nearby restaurant search will start automatically.</p><details class="nearbyDisclosure" id="nearby-disclosure" open hidden><summary id="nearby-summary">Nearby restaurants</summary><div class="nearbyResults" id="nearby-results"></div></details><div class="homeNameSearch"><label for="home-restaurant-search">Looking for somewhere specific?</label><input id="home-restaurant-search" class="restaurantSearch" type="search" placeholder="Search restaurant names" autocomplete="off"><p class="hint">Search by name if it is not in the nearby list.</p><p class="edit-status" id="home-restaurant-search-status" role="status" aria-live="polite"></p><div id="home-restaurant-search-results" class="restaurantLookupResults"></div></div></section></section>');
+  root.querySelector(".homeFeatureButtons")?.insertAdjacentHTML("beforeend", `<button class="homeFeatureButton cocktailButton" data-view="cocktails"><span class="homeFeatureIcon cocktailMark">${COCKTAIL_ICON}</span><span><strong>Cocktails &amp; Bars</strong><small>Good drinks, great places</small></span><span class="homeFeatureArrow">→</span></button>`);
   root.querySelector(".homePrivacyNote")?.insertAdjacentHTML("afterend", renderHomeInsights());
-  root.querySelector("#refresh-local-news")?.addEventListener("click", () => { void loadLocalFoodNews(); });
+  root.querySelector("#refresh-local-news")?.addEventListener("click", () => { void loadLocalFoodNews(true); });
 }
-function renderHomeInsights() {
-  const insights = summarizeMetroEatsInsights(dataset);
-  const sections = [insights.restaurants.visitCount ? { label: "Restaurants", count: insights.restaurants.placeCount, rated: insights.restaurants.visitCount, average: insights.restaurants.averageRating, top: insights.restaurants.topRestaurant ? { name: insights.restaurants.topRestaurant.restaurant.name, rating: insights.restaurants.topRestaurant.average } : null } : null, insights.recipes.count ? insights.recipes : null, insights.pizzas.count ? insights.pizzas : null].filter(Boolean);
-  const restaurantHighlights = [
-    insights.restaurants.topCuisine ? `<span>Most-reviewed cuisine: <strong>${escapeHtml(insights.restaurants.topCuisine.name)}</strong></span>` : "",
-    insights.restaurants.topDish ? `<span>Top dish: <strong>${escapeHtml(insights.restaurants.topDish.name)}</strong> · ${insights.restaurants.topDish.rating.toFixed(1)}/10${insights.restaurants.topDish.ratings > 1 ? ` across ${insights.restaurants.topDish.ratings} ratings` : ""}</span>` : ""
-  ].filter(Boolean).join("");
-  return `<section class="content-panel homeInsights" aria-labelledby="home-insights-title"><div class="panel-heading"><div><p class="eyebrow">Your Metro Eats journal</p><h2 id="home-insights-title">Metro Eats Insights</h2></div></div>${insights.ratedItemCount ? `<div class="overallInsight"><span>Overall rating across your journal</span><strong>${insights.overallAverageRating.toFixed(1)}<small>/10</small></strong><small>${insights.ratedItemCount} rated ${insights.ratedItemCount === 1 ? "entry" : "entries"} across restaurants, recipes, and frozen pizzas</small></div>` : `<p class="insightEmpty">Your ratings and stats will show up here as you review restaurants, recipes, and frozen pizzas.</p>`}${sections.length ? `<div class="insightGrid">${sections.map(section => `<article class="insightTile"><span>${escapeHtml(section.label)}</span><strong>${section.count}</strong><small>${section.rated} ${section.label === "Restaurants" ? (section.rated === 1 ? "visit review" : "visit reviews") : (section.rated === 1 ? "rated entry" : "rated entries")}</small><span class="insightAverage">${section.average?.toFixed(1) ?? "—"}<small>/10 average</small></span><small>${section.top ? `Top: ${escapeHtml(section.top.name)} · ${section.top.rating?.toFixed(1)}/10` : "Add ratings to see your top entry"}</small></article>`).join("")}</div>` : ""}${restaurantHighlights ? `<div class="insightHighlights">${restaurantHighlights}</div>` : ""}</section>`;
-}
-async function loadLocalFoodNews() {
+function renderHomeInsights() { return renderJournalInsights(dataset); }
+async function loadLocalFoodNews(manualRefresh = false) {
   const list = document.querySelector("#local-food-news");
   const updated = document.querySelector("#local-news-updated");
   if (!list) return;
   try {
     const refreshButton = document.querySelector("#refresh-local-news");
     if (refreshButton) { refreshButton.disabled = true; refreshButton.textContent = "↻ Updating…"; }
-    const response = await fetch("../news.json", { headers: { Accept: "application/json" }, cache: "no-store" });
+    const response = await fetch("/api/food-news", { headers: { Accept: "application/json" }, cache: "no-store" });
     if (!response.ok) throw new Error("News feed unavailable");
     const payload = await response.json();
     const items = Array.isArray(payload.items) ? payload.items.filter(item => {
       if (!item || !item.title || !item.url) return false;
       try { const u = new URL(item.url); return u.protocol === "https:" || u.protocol === "http:"; } catch { return false; }
     }).slice(0, 8) : [];
+    const signature = JSON.stringify(items);
+    const unchanged = lastNewsSignature === signature;
+    lastNewsSignature = signature;
+    if (updated) {
+      const generated = new Date(payload.updated);
+      updated.textContent = `${manualRefresh ? (unchanged ? "No new stories in the published feed. " : "Published feed reloaded. ") : ""}Checked ${new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}.${Number.isNaN(generated.getTime()) ? "" : ` Feed updated ${generated.toLocaleString()}.`} Refresh checks the published feed; publisher updates arrive separately.`;
+    }
     if (!items.length) { list.innerHTML = '<p class="empty">No local food stories are available right now. Please check back soon.</p>'; return; }
     list.innerHTML = items.map(item => {
       let image = "";
@@ -573,8 +580,8 @@ async function loadLocalFoodNews() {
       }
       return '<article class="localNewsItem"><div class="newsItemBody">' + image + '<div class="newsItemText"><div class="newsMeta">' + escapeHtml(item.source || "Local food news") + (item.date ? " · " + escapeHtml(item.date) : "") + '</div><a href="' + escapeHtml(item.url) + '" target="_blank" rel="noopener noreferrer">' + escapeHtml(item.title) + '</a></div></div></article>';
     }).join("");
-    if (updated && payload.updated) { const date = new Date(payload.updated); if (!Number.isNaN(date.getTime())) updated.textContent = "Stories refreshed " + date.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" }) + "."; }
-  } catch { list.innerHTML = '<p class="empty">Local food news could not be loaded. Your recipes and restaurant data are unaffected.</p>'; }
+
+  } catch { if (updated) updated.textContent = "Refresh failed. Please try again; the last displayed stories may be out of date."; if (!list.querySelector("article")) list.innerHTML = '<p class="empty">Local food news could not be loaded. Your journal is unaffected.</p>'; }
   finally { const refreshButton = document.querySelector("#refresh-local-news"); if (refreshButton) { refreshButton.disabled = false; refreshButton.textContent = "↻ Refresh"; } }
 }
 function renderImportPanel() {
@@ -806,7 +813,8 @@ function render() {
   stopPizzaScanner();
   document.querySelector(".app > .top")?.classList.toggle("homeStickyHeader", activeView === "home");
   root.classList.add("section", "active");
-  root.classList.remove("recipeSection", "diningSection", "pizzaSection");
+  root.classList.remove("recipeSection", "diningSection", "pizzaSection", "cocktailSection");
+  if (activeView === "cocktails") root.classList.add("cocktailSection");
   if (activeView === "recipes") root.classList.add("recipeSection");
   if (activeView === "dining" || activeView.startsWith("restaurant-")) root.classList.add("diningSection");
   if (activeView === "pizzas") root.classList.add("pizzaSection");
@@ -824,6 +832,8 @@ function render() {
   else if (activeView === "restaurant-review") renderRestaurantReviewForm(activeRestaurantId);
   else if (activeView === "restaurant-rankings") renderRestaurantRankings();
   else if (activeView === "pizzas") renderFrozenPizzas();
+  else if (activeView === "cocktails") cocktailJournal.render();
+  else if (activeView === "restaurant-awards") renderRestaurantAwards({root,restaurant:cloudDataset.restaurants.find(item => String(item.id) === String(activeRestaurantId)),save:saveCloudDataset,getData:() => cloudDataset});
   else renderHome();
 }
 let importMode = "text";
@@ -898,6 +908,7 @@ function syncImportMode(mode = importMode) {
 }
 
 document.addEventListener("click", async event => {
+  if (activeView === "cocktails" && await cocktailJournal.handleClick(event)) return;
   const importModeButton = event.target.closest("[data-import-mode]");
   if (importModeButton) {
     event.preventDefault();
@@ -912,6 +923,7 @@ document.addEventListener("click", async event => {
     event.preventDefault();
     releaseRecipeWakeLock();
     activeView = viewButton.dataset.view;
+    if (activeView === "cocktails") cocktailJournal.setTab(viewButton.dataset.cocktailCategory || "bars");
     render();
     if (activeView === "dining" || activeView === "home") searchNearbyRestaurants();
     // Every explicit section navigation starts at the top of the new page.
@@ -921,6 +933,7 @@ document.addEventListener("click", async event => {
   }
   const actionButton = event.target.closest("[data-action]");
   if (!actionButton) return;
+  if (actionButton.dataset.action === "restaurant-awards") { activeRestaurantId = actionButton.dataset.restaurantId; activeView = "restaurant-awards"; render(); window.scrollTo({top:0,behavior:"instant"}); return; }
   if (actionButton.dataset.action === "toggle-recipe-wake-lock") {
     const recipeId = actionButton.dataset.recipeId;
     const details = actionButton.closest("details[data-recipe-details]");
@@ -1527,7 +1540,7 @@ document.addEventListener("click", async event => {
 async function refreshDataset() {
   try {
     cloudReady = false;
-    cloudDataset = { recipes: [], restaurants: [], pizzas: [], cats: [] };
+    cloudDataset = { recipes: [], restaurants: [], pizzas: [], bars: [], drinks: [], cocktailRecipes: [], cats: [] };
     cloudRevision = 0;
     try {
       cloudClient = createUserDatasetClient({ getAccessToken: () => globalThis.metroGetAccessToken?.() });

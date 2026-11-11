@@ -1,0 +1,48 @@
+export const COCKTAIL_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 4h18l-9 10L3 4Zm9 10v6m-4 0h8M7 8h10m0-6-4 6"/></svg>';
+export const COCKTAIL_TYPES = ["Whiskey", "Gin", "Vodka", "Rum", "Tequila / Mezcal", "Brandy", "Wine / Aperitif", "Alcohol-free", "Other"];
+export function optionalRating(value) {
+  if (value == null || value === "") return null;
+  if (!["string", "number"].includes(typeof value)) throw new Error("Choose a numeric rating.");
+  const number = Number(value);
+  if (!Number.isFinite(number) || number < 1 || number > 10) throw new Error("Ratings must be between 1 and 10, or left blank.");
+  return number;
+}
+export function safeWebUrl(value) {
+  if (!value) return "";
+  try { const url = new URL(String(value)); return ["https:", "http:"].includes(url.protocol) && !url.username && !url.password ? url.href : ""; } catch { return ""; }
+}
+const object = value => value && typeof value === "object" && !Array.isArray(value);
+const text = (value, max = 5000) => typeof value === "string" && value.length <= max;
+const named = value => object(value) && text(value.id, 200) && value.id.trim() && text(value.name, 180) && value.name.trim();
+const rating = value => { try { optionalRating(value); return true; } catch { return false; } };
+const unique = rows => new Set(rows.map(row => row.id)).size === rows.length;
+const notes = row => row.notes == null || text(row.notes);
+const favorite = row => row.favorite == null || typeof row.favorite === "boolean";
+const date = value => value == null || value === "" || typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value) && new Date(value + "T12:00:00Z").toISOString().slice(0, 10) === value;
+export function validCocktailCollections({ bars = [], drinks = [], cocktailRecipes = [] } = {}) {
+  try {
+    if (![bars, drinks, cocktailRecipes].every(rows => Array.isArray(rows) && rows.length <= 10000 && rows.every(named) && unique(rows))) return false;
+    if (bars.some(row => !notes(row) || !favorite(row) || (row.address != null && !text(row.address, 300)) || (row.website && !safeWebUrl(row.website))
+      || !Array.isArray(row.visits) || row.visits.length > 1000 || !unique(row.visits)
+      || row.visits.some(visit => !object(visit) || !text(visit.id, 200) || !visit.id.trim() || !date(visit.visitedAt) || !notes(visit) || !rating(visit.overallRating) || !rating(visit.service) || !rating(visit.atmosphere) || !rating(visit.value)))) return false;
+    const barIds = new Set(bars.map(row => row.id));
+    if (drinks.some(row => !notes(row) || !favorite(row) || !rating(row.overallRating) || !date(row.triedAt)
+      || (row.barId && !barIds.has(row.barId)) || (row.base != null && !text(row.base, 100))
+      || (row.price != null && (!Number.isFinite(Number(row.price)) || Number(row.price) < 0)))) return false;
+    return !cocktailRecipes.some(row => !notes(row) || !favorite(row) || !rating(row.overallRating)
+      || ![row.ingredients, row.directions].every(lines => Array.isArray(lines) && lines.length > 0 && lines.length <= 200 && lines.every(line => text(line, 2000) && line.trim()))
+      || ["base", "glassware", "garnish"].some(key => row[key] != null && !text(row[key], 300))
+      || (row.source && !safeWebUrl(row.source)));
+  } catch { return false; }
+}
+export function summarizeCocktailCollection(items, { visits = false } = {}) {
+  const ratings = items.flatMap(item => visits ? item.visits || [] : [item]).map(item => { try { return optionalRating(item.overallRating); } catch { return null; } }).filter(value => value != null);
+  const ranked = items.map(item => {
+    const values = (visits ? item.visits || [] : [item]).map(row => { try { return optionalRating(row.overallRating); } catch { return null; } }).filter(value => value != null);
+    return { item, average: values.length ? values.reduce((a, b) => a + b, 0) / values.length : null, ratings: values.length };
+  }).filter(row => row.average != null).sort((a, b) => b.average - a.average || a.item.name.localeCompare(b.item.name));
+  return { count: items.length, visited: visits ? items.filter(item => item.visits?.length).length : undefined,
+    visitCount: visits ? items.reduce((sum, item) => sum + (item.visits?.length || 0), 0) : undefined,
+    ratedCount: ratings.length, averageRating: ratings.length ? ratings.reduce((a, b) => a + b, 0) / ratings.length : null,
+    favoriteCount: items.filter(item => item.favorite).length, top: ranked[0] || null };
+}

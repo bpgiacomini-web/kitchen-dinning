@@ -5,12 +5,14 @@ on:
       - architecture/metro-eats-clean-rebuild-2026-10-25
     paths:
       - 'architecture-v2/**'
-      - 'api/import-recipe-v2.js'
+      - 'api/**'
+      - 'scripts/build-journal-validation.mjs'
       - '.github/workflows/metro-eats-architecture-tests.yml'
   pull_request:
     paths:
       - 'architecture-v2/**'
-      - 'api/import-recipe-v2.js'
+      - 'api/**'
+      - 'scripts/build-journal-validation.mjs'
       - '.github/workflows/metro-eats-architecture-tests.yml'
 jobs:
   test:
@@ -24,6 +26,7 @@ jobs:
         with:
           node-version: 20
       - run: npm test
+      - run: node ../scripts/build-journal-validation.mjs --check
       - run: node --check src/main.mjs
       - run: node --check src/domain/normalize.mjs
       - run: node --check src/data/repository.mjs

@@ -1,4 +1,6 @@
 import { randomUUID } from 'node:crypto';
+import journalValidation from './_lib/journal-validation.cjs';
+const { validCocktailCollections, validAward } = journalValidation;
 
 const MAX_BODY_BYTES = 1_500_000;
 const EMPTY_DATASET = { recipes: [], restaurants: [], pizzas: [], cats: [] };
@@ -35,6 +37,8 @@ export async function authenticatedUser(req) {
 function validDataset(value) {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
   if (!Array.isArray(value.recipes) || !Array.isArray(value.restaurants)) return false;
+  if (!validCocktailCollections(value)) return false;
+  if (value.restaurants.some(row => row?.awards != null && (!Array.isArray(row.awards) || row.awards.length > 100 || !row.awards.every(validAward) || new Set(row.awards.map(award => award.id)).size !== row.awards.length))) return false;
   if (value.pizzas != null && !Array.isArray(value.pizzas)) return false;
   if (value.cats != null && !Array.isArray(value.cats) && (typeof value.cats !== 'object' || value.cats === null)) return false;
   if (value.recipes.length > 10000 || value.restaurants.length > 10000 || (value.pizzas?.length || 0) > 10000) return false;
@@ -102,7 +106,7 @@ export function createUserDataHandler({ authenticateUser: authenticate = authent
     if (!Number.isSafeInteger(expectedRevision) || expectedRevision < 0) {
       return send(res, 400, { error: 'A valid expectedRevision is required.' });
     }
-    if (!validDataset(dataset)) return send(res, 400, { error: 'Dataset must include recipe and restaurant arrays.' });
+    if (!validDataset(dataset)) return send(res, 400, { error: 'Check your entries, ratings, and required fields. Nothing was saved.' });
     if (roughSize(dataset) > MAX_BODY_BYTES) return send(res, 413, { error: 'Dataset is too large to save.' });
 
     // Use an UPDATE for existing datasets and an INSERT for first saves.
