@@ -30,8 +30,9 @@ async function handlePhotos(req,res,{userId,sql,limit,blob}) {
  if(mode==='photo-upload' && req.method==='POST'){
   const body=req.body||{},collection=body.collection,id=String(body.id||'');
   if(!['recipes','restaurants','pizzas','bars','drinks','cocktailRecipes'].includes(collection)||id.length>200)return res.status(400).json({error:'Choose a saved journal entry.'});
-  const rows=await sql`SELECT payload FROM metro_eats_user_datasets WHERE user_id = ${userId} LIMIT 1`;
-  if(!rows[0]?.payload?.[collection]?.some(item=>String(item.id)===id))return res.status(404).json({error:'Save the entry before adding a photo.'});
+  const draft=body.draft===true && collection==='restaurants' && /^draft-[a-f0-9-]{36}$/.test(id);
+  const rows=draft?[]:await sql`SELECT payload FROM metro_eats_user_datasets WHERE user_id = ${userId} LIMIT 1`;
+  if(!draft && !rows[0]?.payload?.[collection]?.some(item=>String(item.id)===id))return res.status(404).json({error:'Save the entry before adding a photo.'});
   if(typeof body.image!=='string' || body.image.length>270000 || !/^[A-Za-z0-9+/]+={0,2}$/.test(body.image))return res.status(400).json({error:'Choose a valid optimized photograph.'});
   const bytes=Buffer.from(body.image,'base64');if(bytes.length>MAX_PHOTO_BYTES || !validWebp(bytes))return res.status(400).json({error:'Use a WebP photo up to 1,200 pixels and 200 KB.'});
   if(!await quota('photo-uploads',200))return;

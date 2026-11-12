@@ -1,10 +1,10 @@
-import { parsePastedRecipeText } from './recipes/import-parser.mjs';
+import { parsePastedRecipeText, recipeImageUrl } from './recipes/import-parser.mjs';
 import { safeWebUrl } from '../domain/cocktails.mjs';
 export function cocktailRecipeDraft(recipe) {
   const ingredients = recipe?.ingredients;
   const directions = recipe?.directions;
   if (!recipe?.title || !Array.isArray(ingredients) || !ingredients.length || !Array.isArray(directions) || !directions.length) throw new Error('No complete recipe found. Paste ingredients and directions instead.');
-  return {name:String(recipe.title).slice(0,180),ingredients:ingredients.map(String),directions:directions.map(String),source:safeWebUrl(recipe.source)};
+  return {name:String(recipe.title).slice(0,180),ingredients:ingredients.map(String),directions:directions.map(String),source:safeWebUrl(recipe.source),sourceImageUrl:recipeImageUrl(recipe.sourceImageUrl)};
 }
 export function parseCocktailText(text) { return cocktailRecipeDraft(parsePastedRecipeText(text)); }
 export async function importCocktailUrl(url, { getToken = () => globalThis.metroGetAccessToken?.(), fetcher = fetch } = {}) {

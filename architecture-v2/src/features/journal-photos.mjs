@@ -1,3 +1,4 @@
+import { recipeImageUrl } from "./recipes/import-parser.mjs";
 export async function optimizePhoto(file) {
  if(!file || file.size>25_000_000 || !file.type.startsWith('image/'))throw new Error('Choose a photograph under 25 MB.');
  let bitmap;
@@ -42,8 +43,21 @@ export function createJournalPhotos({root,getData,save}) {
  function enhance(){
   for(const card of root.querySelectorAll('.readOnlyItem')){
    const [collection,id]=identify(card);if(!collection)continue;const item=getData()[collection]?.find(item=>String(item.id)===id);if(!item)continue;
-   if(!card.querySelector('[data-photo-action]')){const menu=card.querySelector('.cardOptionsList');if(menu){const button=document.createElement('button');button.className='btn';button.type='button';button.textContent='Photos';button.dataset.photoAction='open';button.dataset.collection=collection;button.dataset.itemId=id;menu.append(button);}}
+   if(['recipes','cocktailRecipes'].includes(collection) && !card.querySelector('.visibleRecipePhotoButton')){const button=document.createElement('button');button.type='button';button.className='btn visibleRecipePhotoButton';button.textContent=item.photoRefs?.length || item.sourceImageUrl?'Change Photo':'Add Photo';button.dataset.photoAction='open';button.dataset.collection=collection;button.dataset.itemId=id;card.append(button);}
+   if(!card.querySelector('.cardOptionsList [data-photo-action]')){const menu=card.querySelector('.cardOptionsList');if(menu){const button=document.createElement('button');button.className='btn';button.type='button';button.textContent='Photos';button.dataset.photoAction='open';button.dataset.collection=collection;button.dataset.itemId=id;menu.append(button);}}
+   if(!card.querySelector('.journalPhotoStrip') && !item.photoRefs?.length && recipeImageUrl(item.sourceImageUrl)) {
+    const strip=document.createElement('div');strip.className='journalPhotoStrip sourceRecipePhoto';card.append(strip);
+    const image=new window.Image();image.alt=item.title||item.name||'Recipe photo';image.referrerPolicy='no-referrer';image.onload=()=>{if(!strip.isConnected)return;strip.append(image);if(item.source){const credit=document.createElement('a');try{const url=new URL(item.source);if(['https:','http:'].includes(url.protocol)&&!url.username&&!url.password){credit.href=url.href;credit.target='_blank';credit.rel='noopener noreferrer';credit.className='sourcePhotoCredit';credit.textContent='Recipe source ↗';strip.append(credit);}}catch{}}};image.src=recipeImageUrl(item.sourceImageUrl);
+   }
    if(!card.querySelector('.journalPhotoStrip') && item.photoRefs?.length){const strip=document.createElement('div');strip.className='journalPhotoStrip';card.append(strip);for(const ref of item.photoRefs){if(typeof ref.path!=='string')continue;void imageUrl(ref.path).then(src=>{if(!src||!strip.isConnected)return;const image=new window.Image();image.alt=ref.label||item.name||item.title||'Journal photo';image.decoding='async';image.onload=()=>{if(strip.isConnected)strip.append(image);};image.src=src;});}}
+  }
+  for(const entry of root.querySelectorAll('.recentEntry')){
+   if(entry.dataset.photoLoading || entry.querySelector('.recentThumb'))continue;
+   const item=getData()[entry.dataset.collection]?.find(item=>String(item.id)===entry.dataset.itemId);if(!item)continue;
+   const visits=[...(item.reviewHistory||item.visits||[])].reverse();
+   const path=visits.find(visit=>visit.photoRefs?.length)?.photoRefs?.[0]?.path || item.photoRefs?.[0]?.path;
+   const source=recipeImageUrl(item.sourceImageUrl);if(!path&&!source)continue;entry.dataset.photoLoading='true';
+   void (path?imageUrl(path):Promise.resolve(source)).then(src=>{if(!src||!entry.isConnected)return;const image=new window.Image();image.className='recentThumb';image.alt='';image.referrerPolicy='no-referrer';image.onload=()=>{if(entry.isConnected)entry.append(image);};image.src=src;});
   }
  }
  const observer=new window.MutationObserver(()=>{if(!pending){pending=true;queueMicrotask(()=>{pending=false;enhance();});}});observer.observe(root,{childList:true,subtree:true});

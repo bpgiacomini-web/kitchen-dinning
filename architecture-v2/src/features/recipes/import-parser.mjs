@@ -73,6 +73,13 @@ function walkJsonLd(value, recipes) {
   }
 }
 
+export function recipeImageUrl(value) {
+ const candidates=Array.isArray(value)?value:[value];
+ for(const candidate of candidates){const raw=typeof candidate==='string'?candidate:candidate?.url||candidate?.contentUrl;
+  try{const url=new URL(raw);const host=url.hostname.toLowerCase();if(url.protocol==='https:' && !url.username && !url.password && url.href.length<=2000 && !/^(localhost|127\.|10\.|192\.168\.|169\.254\.|0\.)/.test(host) && !host.includes(':') && !/^172\.(1[6-9]|2[0-9]|3[01])\./.test(host))return url.href;}catch{}
+ }
+ return '';
+}
 export function normalizeImportedRecipe(node) {
   if (!node || typeof node !== "object") return null;
   const ingredients = (Array.isArray(node.recipeIngredient) ? node.recipeIngredient : [node.recipeIngredient])
@@ -84,6 +91,7 @@ export function normalizeImportedRecipe(node) {
     title,
     ingredients,
     directions,
+    sourceImageUrl: recipeImageUrl(node.image),
     description: plainText(node.description),
     servings: plainText(node.recipeYield),
     prepTime: plainText(node.prepTime),

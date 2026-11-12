@@ -79,7 +79,7 @@ export function createCocktailJournal({ root, getData, save }) {
       else {
         content += types(item?.base) + scale + ratingField("overallRating","Overall rating",item?.overallRating);
         if(tab === "drinks") content += `<label>Venue <small>Optional</small><select name="barId"><option value="">No venue / other</option>${data.bars.map(bar=>`<option value="${esc(bar.id)}"${item?.barId===bar.id?' selected':''}>${esc(bar.name)}</option>`).join("")}</select></label><label>Visit <small>Optional</small><select name="visitId">${visitOptions(data,item?.barId,item?.visitId)}</select></label><div class="cocktailFormGrid"><details class="entryDetails"><summary>Change date</summary>${field("triedAt","Date tried",item?.triedAt || today(),'type="date"')}</details>${field("price","Price ($)",item?.price,'type="number" min="0" step="0.01" inputmode="decimal"')}</div>`;
-        else content += `${area("ingredients","Ingredients & quantities (one per line)",item?.ingredients?.join("\n"),true)}${area("directions","Preparation (one step per line)",item?.directions?.join("\n"),true)}<div class="cocktailFormGrid">${field("glassware","Glassware",item?.glassware,'maxlength="300"')}${field("garnish","Garnish",item?.garnish,'maxlength="300"')}</div>${field("source","Recipe source URL",item?.source,'type="url" maxlength="2000" placeholder="https://"')}`;
+        else content += `<input type="hidden" name="sourceImageUrl" value="${esc(item?.sourceImageUrl || "")}">${area("ingredients","Ingredients & quantities (one per line)",item?.ingredients?.join("\n"),true)}${area("directions","Preparation (one step per line)",item?.directions?.join("\n"),true)}<div class="cocktailFormGrid">${field("glassware","Glassware",item?.glassware,'maxlength="300"')}${field("garnish","Garnish",item?.garnish,'maxlength="300"')}</div>${field("source","Recipe source URL",item?.source,'type="url" maxlength="2000" placeholder="https://"')}`;
       }
       content += notesField("notes","Notes",item?.notes) + `<label class="inlineCheck"><input name="favorite" type="checkbox"${item?.favorite?' checked':''}> Favorite</label>`;
     }
@@ -113,7 +113,7 @@ export function createCocktailJournal({ root, getData, save }) {
           if(!linkedVisit) throw new Error("Choose an existing visit.");
           item.triedAt=linkedVisit.visitedAt;
         }
-        if(tab === "cocktailRecipes") Object.assign(item,{ingredients:value("ingredients").split(/\r?\n/).map(line=>line.trim()).filter(Boolean),directions:value("directions").split(/\r?\n/).map(line=>line.trim()).filter(Boolean),glassware:value("glassware"),garnish:value("garnish"),source:value("source")});
+        if(tab === "cocktailRecipes") Object.assign(item,{ingredients:value("ingredients").split(/\r?\n/).map(line=>line.trim()).filter(Boolean),directions:value("directions").split(/\r?\n/).map(line=>line.trim()).filter(Boolean),glassware:value("glassware"),garnish:value("garnish"),source:value("source"),sourceImageUrl:value("sourceImageUrl")});
         for(const key of ["website","source"]) if(item[key] && !safeWebUrl(item[key])) throw new Error("Use a complete http:// or https:// address.");
         next={...data,[tab]:existing ? data[tab].map(row=>row.id===existing.id?item:row) : [...data[tab],item]};
       }
