@@ -41,11 +41,30 @@ export function createJournalPhotos({root,getData,save}) {
   for(const [key,attribute] of [['recipes','data-recipe-id'],['restaurants','data-restaurant-id'],['pizzas','data-pizza-id']]) {const node=card.querySelector('['+attribute+']');if(node)return [key,node.getAttribute(attribute)];}
   return [];
  }
+ function editTargets(){
+  const targets=[];
+  for(const [collection,selector,attribute] of [
+   ['recipes','.recipeEditorForm','data-recipe-id'],
+   ['restaurants','.restaurantEditorPage [data-action="save-restaurant"]','data-restaurant-id'],
+   ['pizzas','.pizzaEditorPanel [data-action="save-pizza"]','data-pizza-id']
+  ]){
+   const node=root.querySelector(selector),id=node?.getAttribute(attribute);
+   if(id)targets.push([collection,id,node.closest('.recipeEditorForm,.restaurantEditPanel,.pizzaEditForm')]);
+  }
+  const form=root.querySelector('#cocktail-editor'),id=form?.querySelector('[data-cocktail-action="delete"]')?.dataset.id;
+  if(id)for(const collection of ['bars','drinks','cocktailRecipes'])if(getData()[collection]?.some(row=>String(row.id)===id)){targets.push([collection,id,form]);break;}
+  return targets;
+ }
  function enhance(){
+  for(const [collection,id,editor] of editTargets()){
+   if(!editor)continue;
+   const item=getData()[collection]?.find(row=>String(row.id)===id);if(!item)continue;
+   let button=editor.querySelector('.visibleRecipePhotoButton');
+   if(!button){button=document.createElement('button');button.type='button';button.className='btn visibleRecipePhotoButton';button.dataset.photoAction='open';button.dataset.collection=collection;button.dataset.itemId=id;const actions=editor.querySelector('.recipeEditActions,.actions:last-of-type');if(actions)actions.before(button);else editor.append(button);}
+   const label=item.photoRefs?.length||item.sourceImageUrl?'Change Photo':'Add Photo';if(button.textContent!==label)button.textContent=label;
+  }
   for(const card of root.querySelectorAll('.readOnlyItem')){
    const [collection,id]=identify(card);if(!collection)continue;const item=getData()[collection]?.find(item=>String(item.id)===id);if(!item)continue;
-   if(['recipes','cocktailRecipes'].includes(collection) && !card.querySelector('.visibleRecipePhotoButton')){const button=document.createElement('button');button.type='button';button.className='btn visibleRecipePhotoButton';button.textContent=item.photoRefs?.length || item.sourceImageUrl?'Change Photo':'Add Photo';button.dataset.photoAction='open';button.dataset.collection=collection;button.dataset.itemId=id;card.append(button);}
-   if(!card.querySelector('.cardOptionsList [data-photo-action]')){const menu=card.querySelector('.cardOptionsList');if(menu){const button=document.createElement('button');button.className='btn';button.type='button';button.textContent='Photos';button.dataset.photoAction='open';button.dataset.collection=collection;button.dataset.itemId=id;menu.append(button);}}
    if(!card.querySelector('.journalPhotoStrip') && !item.photoRefs?.length && recipeImageUrl(item.sourceImageUrl)) {
     const strip=document.createElement('div');strip.className='journalPhotoStrip sourceRecipePhoto';card.append(strip);
     const image=new window.Image();image.alt=item.title||item.name||'Recipe photo';image.referrerPolicy='no-referrer';image.onload=()=>{if(!strip.isConnected)return;strip.append(image);if(item.source){const credit=document.createElement('a');try{const url=new URL(item.source);if(['https:','http:'].includes(url.protocol)&&!url.username&&!url.password){credit.href=url.href;credit.target='_blank';credit.rel='noopener noreferrer';credit.className='sourcePhotoCredit';credit.textContent='Recipe source ↗';strip.append(credit);}}catch{}}};image.src=recipeImageUrl(item.sourceImageUrl);
@@ -62,20 +81,22 @@ export function createJournalPhotos({root,getData,save}) {
   }
  }
  const observer=new window.MutationObserver(()=>{if(!pending){pending=true;queueMicrotask(()=>{pending=false;enhance();});}});observer.observe(root,{childList:true,subtree:true});
- root.addEventListener('click',event=>{const button=event.target.closest('[data-photo-action]');if(!button)return;if(button.dataset.photoAction==='open')open(button.dataset.collection,button.dataset.itemId);});
+ root.addEventListener('click',event=>{const button=event.target.closest('[data-photo-action]');if(!button)return;if(button.dataset.photoAction==='open' && editTargets().some(([collection,id,editor])=>collection===button.dataset.collection && id===button.dataset.itemId && editor?.contains(button)))open(button.dataset.collection,button.dataset.itemId);});
  function open(collection,id){
   const item=getData()[collection]?.find(row=>String(row.id)===id);if(!item)return;root.querySelector('.photoEditor')?.remove();
+  const editor=editTargets().find(([key,itemId])=>key===collection&&itemId===id)?.[2];if(!editor)return;
+  const finish=()=>{const current=getData()[collection]?.find(row=>String(row.id)===id);const source=editor.querySelector('[name="sourceImageUrl"]');if(source&&current)source.value=current.sourceImageUrl||'';panel.remove();enhance();};
   const panel=document.createElement('section');panel.className='content-panel photoEditor';panel.setAttribute('role','dialog');panel.setAttribute('aria-label','Entry photos');
   const max=['restaurants','pizzas','bars'].includes(collection)?4:1;let uploaded=null;
-  panel.innerHTML=`<h3>Photos · ${esc(item.title||item.name)}</h3><p class="hint">${max===1?'One cover photo.':'Up to four photos.'} Optimized automatically.</p><div class="actions"><button class="btn" type="button" data-upload-choice>Upload Photo</button><button class="btn" type="button" data-camera-choice>Take Photo</button>${["recipes","cocktailRecipes"].includes(collection) && item.source ? `<button class="btn" type="button" data-use-source>Use Recipe Photo</button>` : ""}</div><input data-upload type="file" accept="image/*" hidden><input data-camera type="file" accept="image/*" capture="environment" hidden><button class="btn" type="button" data-attach hidden>Save Photo</button><div class="photoRefList">${(item.photoRefs||[]).map((ref,index)=>`<button class="btn" type="button" data-remove="${index}">Remove photo ${index+1}</button>`).join('')}</div><button class="btn" type="button" data-close>Close</button><p role="status" aria-live="polite"></p>`;
+  panel.innerHTML=`<h3>Photos · ${esc(item.title||item.name)}</h3><p class="hint">${max===1?'One cover photo.':'Up to four photos.'} Optimized automatically. Photo changes save immediately.</p><div class="actions"><button class="btn" type="button" data-upload-choice>Upload Photo</button><button class="btn" type="button" data-camera-choice>Take Photo</button>${["recipes","cocktailRecipes"].includes(collection) && item.source ? `<button class="btn" type="button" data-use-source>Use Recipe Photo</button>` : ""}</div><input data-upload type="file" accept="image/*" hidden><input data-camera type="file" accept="image/*" capture="environment" hidden><button class="btn" type="button" data-attach hidden>Save Photo</button><div class="photoRefList">${(item.photoRefs||[]).map((ref,index)=>`<button class="btn" type="button" data-remove="${index}">Remove photo ${index+1}</button>`).join('')}</div><button class="btn" type="button" data-close>Close</button><p role="status" aria-live="polite"></p>`;
   root.prepend(panel);panel.scrollIntoView({block:'center',behavior:'smooth'});
   const feedback=panel.querySelector('[role="status"]');
-  const attach=async()=>{const data=getData(),entry=data[collection].find(row=>String(row.id)===id);if(!entry)throw Error('Entry no longer available.');const refs=max===1?[uploaded]:[...(entry.photoRefs||[]),uploaded];if(refs.length>max)throw Error('Remove a photo before adding another.');await save({...data,[collection]:data[collection].map(row=>String(row.id)===id?{...row,photoRefs:refs}:row)});root.dispatchEvent(new window.CustomEvent('metro-photo-saved',{bubbles:true}));panel.remove();};
+  const attach=async()=>{const data=getData(),entry=data[collection].find(row=>String(row.id)===id);if(!entry)throw Error('Entry no longer available.');const refs=max===1?[uploaded]:[...(entry.photoRefs||[]),uploaded];if(refs.length>max)throw Error('Remove a photo before adding another.');await save({...data,[collection]:data[collection].map(row=>String(row.id)===id?{...row,photoRefs:refs}:row)});finish();};
   for(const [choice,input] of [['[data-upload-choice]','[data-upload]'],['[data-camera-choice]','[data-camera]']]){panel.querySelector(choice).onclick=()=>panel.querySelector(input).click();panel.querySelector(input).onchange=async event=>{const file=event.target.files?.[0];if(!file)return;const current=getData()[collection]?.find(row=>String(row.id)===id);if(max>1 && (current?.photoRefs?.length||0)>=max){feedback.textContent='Remove a photo before adding another.';return;}feedback.textContent='Optimizing…';panel.querySelectorAll('.actions button').forEach(button=>button.disabled=true);try{const optimized=await optimizePhoto(file);if(!panel.isConnected)return;feedback.textContent='Uploading…';const result=await request('photo-upload',{collection,id,image:await encode(optimized.blob),width:optimized.width,height:optimized.height});uploaded=result.photo;if(panel.isConnected)await attach();}catch(error){if(panel.isConnected){feedback.textContent=error.message;panel.querySelector('[data-attach]').hidden=!uploaded;}}finally{panel.querySelectorAll('.actions button').forEach(button=>button.disabled=false);}};}
   panel.querySelector('[data-attach]').onclick=()=>void attach().catch(error=>feedback.textContent=error.message);
   panel.querySelector('[data-use-source]')?.addEventListener('click',async event=>{
     event.currentTarget.disabled=true;feedback.textContent='Checking recipe photo…';
-    try{const draft=await importCocktailUrl(item.source);const sourceImageUrl=recipeImageUrl(draft.sourceImageUrl);if(!sourceImageUrl)throw Error('No usable source photo found. Upload or take a photo instead.');if(!panel.isConnected)return;const data=getData();await save({...data,[collection]:data[collection].map(row=>String(row.id)===id?{...row,sourceImageUrl,photoRefs:[]}:row)});root.dispatchEvent(new window.CustomEvent('metro-photo-saved',{bubbles:true}));panel.remove();}
+    try{const draft=await importCocktailUrl(item.source);const sourceImageUrl=recipeImageUrl(draft.sourceImageUrl);if(!sourceImageUrl)throw Error('No usable source photo found. Upload or take a photo instead.');if(!panel.isConnected)return;const data=getData();await save({...data,[collection]:data[collection].map(row=>String(row.id)===id?{...row,sourceImageUrl,photoRefs:[]}:row)});finish();}
     catch(error){if(panel.isConnected){feedback.textContent=error.message;panel.querySelector('[data-use-source]').disabled=false;}}
   });
   panel.querySelector('[data-close]').onclick=()=>panel.remove();
