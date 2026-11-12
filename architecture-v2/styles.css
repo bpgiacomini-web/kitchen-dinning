@@ -834,3 +834,9 @@
 #app .cardOptions>.cardOptionsList{position:absolute;right:0;top:calc(100% + 5px);z-index:30;display:grid;gap:6px;width:max-content;min-width:170px;max-width:calc(100vw - 56px);padding:8px;border:1px solid #34413e;border-radius:12px;background:#121819;box-shadow:0 12px 28px #0009}
 #app .cardOptionsList>.btn{width:100%;min-height:40px;margin:0;text-align:left;white-space:normal}
 @media(prefers-reduced-motion:reduce){#app .cardOptionsTrigger svg{transition:none}}
+
+/* Make personal restaurant rankings a clear destination. */
+#app .diningActions .rankingsButton{display:inline-flex;align-items:center;justify-content:center;gap:9px;min-height:48px;background:#d6a85b;border-color:#e0b96f;color:#17130b;font-weight:800}
+#app .diningActions .rankingsButton:hover{background:#e0b96f;border-color:#edca87}
+#app .diningActions .rankingsButton:focus-visible{outline:3px solid #f3d89f;outline-offset:3px}
+#app .rankingsButton svg{flex:0 0 auto}
