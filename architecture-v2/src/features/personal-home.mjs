@@ -11,7 +11,7 @@ export function recentJournalEntries(data) {
 }
 export function renderRecentActivity(data) {
  const recent=recentJournalEntries(data);
- return `<div class="journalHighlights"><h3>Recent Activity</h3>${recent.map(item=>`<button class="recentEntry" type="button" data-action="open-journal-item" data-collection="${item.collection}" data-item-id="${esc(item.id)}"><small>${item.label}</small><strong>${esc(item.name)}</strong></button>`).join('')||'<p class="hint">Your next memory starts here.</p>'}</div>`;
+ return `<div class="journalHighlights">${recent.map(item=>`<button class="recentEntry" type="button" data-action="open-journal-item" data-collection="${item.collection}" data-item-id="${esc(item.id)}"><small>${item.label}</small><strong>${esc(item.name)}</strong></button>`).join('')||'<p class="hint">Your next memory starts here.</p>'}</div>`;
 }
 export function pickCandidates(data,filter='all',nearby=[]) {
  const owned=(data.restaurants||[]).filter(item=>filter==='favorites'?item.favorite:filter==='want'?item.wantToTry:filter==='nearby'?false:item.wantToTry || item.reviewHistory?.length || item.reviews?.length || item.rating!=null).map(item=>({...item,_pickSource:item.wantToTry?'Want to Try':'Reviewed'}));
