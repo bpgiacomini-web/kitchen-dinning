@@ -1020,3 +1020,6 @@
  #app .cocktailAverage:has(small:empty){display:none}
  #app .insightTile{padding:14px}
 }
+/* Keep the inset face inside the coin at every responsive size. */
+#app .pickCoin{position:relative;box-sizing:border-box;padding:0;aspect-ratio:1;flex-shrink:0}
+#app .pickCoin .coinFace{position:absolute;inset:10%;width:auto;height:auto;box-sizing:border-box;line-height:1}
