@@ -1,3 +1,4 @@
+import nearbySeed from './_lib/nearby-seed.cjs';
 import { nearbyCache } from "./_lib/nearby-cache.js";
 import { authenticatedUser } from './user-data.js';
 import { consumeAccountRateLimit, sendRateLimitResponse } from './_lib/rate-limit.js';
@@ -62,6 +63,7 @@ function normalizeNearby(elements, location, { filter = () => true, limit = 20 }
       amenity
     };
   }).filter(place => {
+    if (place.distance!=null && place.distance>8047)return false;
     if (!place.name || isExcludedRestaurantName(place.name) || !FOOD_AMENITIES.has(place.amenity) || !filter(place)) return false;
     const key = `${place.name.toLocaleLowerCase()}|${place.address.toLocaleLowerCase()}`;
     if (seen.has(key)) return false;
@@ -271,9 +273,13 @@ export function createRestaurantLookupHandler({ fetcher = fetch, authenticate = 
 
     if (mode === "nearby" || mode === "bar-nearby") {
       if (!location) return res.status(422).json({ error: "Device and network location are unavailable. Allow location access or enter the restaurant details manually." });
+      let primaryPlaces=[];
+      const seeded=normalizePhotonNearby(nearbySeed.features.filter(feature=>!barsOnly||barFeature(feature)),location);
+      const seedResponse=()=>{const seen=new Set(),merged=[...primaryPlaces,...seeded].filter(place=>{const key=place.name.toLowerCase().replace(/[^a-z0-9]/g,'');if(seen.has(key))return false;seen.add(key);return true;}).sort((a,b)=>a.distance-b.distance).slice(0,20);return res.status(200).json({places:barsOnly?merged:includeCuratedNearby(merged,location),location,source:'directory-fallback',cache:{stale:true,updatedAt:nearbySeed.updatedAt}});};
       const cached=await cacheLookup(location,barsOnly?'bars':'restaurants');
       const saved=()=>res.status(200).json({places:cached.places.map(place=>({...place,distance:distanceMeters(location,place.lat,place.lon)})).filter(place=>place.distance<=8047).sort((a,b)=>a.distance-b.distance),location,cache:{stale:!cached.fresh,updatedAt:cached.updatedAt}});
       if(cached?.places.length && cached.skipRefresh)return saved();
+      if(cached?.skipRefresh && !cached.places.length && seeded.length)return seedResponse();
       if(cached?.skipRefresh && !cached.places.length)return res.status(503).json({error:"Nearby map lookup is cooling down. Try again in 15 minutes."});
       const deliver=async places=>{if(places.length)await cached?.save(places);return res.status(200).json({places,location});};
       const query = `[out:json][timeout:15];nwr["amenity"~"^(${barsOnly ? "bar|pub" : "restaurant|fast_food|cafe|bar|pub"})$",i]["name"](around:8047,${location.lat},${location.lon});out center tags;`;
@@ -283,7 +289,6 @@ export function createRestaurantLookupHandler({ fetcher = fetch, authenticate = 
       photonUrl.searchParams.set("radius", "8.05");
       photonUrl.searchParams.set("limit", "50");
       photonUrl.searchParams.set("lang", "en");
-      let primaryPlaces=[];
       for (const amenity of barsOnly ? ["bar","pub"] : FOOD_AMENITIES) photonUrl.searchParams.append("osm_tag", `amenity:${amenity}`);
       try {
         const nearby = await fetchJson(fetcher, photonUrl, {
@@ -303,11 +308,13 @@ export function createRestaurantLookupHandler({ fetcher = fetch, authenticate = 
           payload = await fetchJson(fetcher, url, {
             headers: { Accept: "application/json", "User-Agent": "MetroEats/1.0 (nearby restaurant lookup)" }
           }, 3500);
+          if(!Array.isArray(payload?.elements))throw Error("invalid_overpass_response");
           break;
-        } catch { /* Try the public backup endpoint. */ }
+        } catch { payload=null; /* Try the public backup endpoint. */ }
       }
       if (!payload) {
         if(cached?.places.length)return saved();
+        if(seeded.length)return seedResponse();
         // Public map providers can be intermittently unavailable. Preserve a useful
         // nearby experience for supported local areas without requiring either feed.
         if(primaryPlaces.length)return res.status(200).json({places:primaryPlaces,location,partial:true});
@@ -318,6 +325,7 @@ export function createRestaurantLookupHandler({ fetcher = fetch, authenticate = 
       const secondary=barsOnly ? normalizeNearby(payload.elements, location, {filter:place => ["bar","pub"].includes(place.amenity)}) : normalizeNearby(payload.elements, location);
       const seen=new Set(),places=[...primaryPlaces,...secondary].filter(place=>{const key=place.name.toLowerCase().replace(/[^a-z0-9]/g,'');if(seen.has(key))return false;seen.add(key);return true;}).sort((a,b)=>(a.distance??Infinity)-(b.distance??Infinity)).slice(0,20);
       if(!places.length && cached?.places.length)return saved();
+      if(!places.length && seeded.length)return seedResponse();
       return await deliver(barsOnly ? places : includeCuratedNearby(places,location));
     }
 

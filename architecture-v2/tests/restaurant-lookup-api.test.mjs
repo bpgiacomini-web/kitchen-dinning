@@ -144,9 +144,9 @@ test("nearby lookup uses curated local restaurants when Photon and Overpass are 
   const res = responseRecorder();
   await handler({ method: "POST", body: { mode: "nearby", location: { lat: 38.935, lon: -90.193 } }, headers: {} }, res);
   assert.equal(res.statusCode, 200);
-  assert.equal(res.body.source, "curated-fallback");
+  assert.equal(res.body.source, "directory-fallback");
   assert.ok(["Arandas MX Cocina", "Delmar Public House", "Fast Eddie's Bon Air", "Mac's Downtown", "Roper's Regal Beagle"]
-    .every(name => res.body.places.some(place => place.name === name)));
+    .every(name => res.body.places.some(place => place.name.toLowerCase().replace(/[^a-z0-9]/g,'') === name.toLowerCase().replace(/[^a-z0-9]/g,''))));
 });
 
 test("nearby search fails clearly when neither device nor network location exists", async () => {
@@ -187,7 +187,7 @@ test("bar discovery filters out restaurants for nearby and name searches", async
  for(const mode of ['bar-nearby','bar-name']) {
   const res=responseRecorder();await handler({method:'POST',headers:{},body:{mode,query:'QA',location:{lat:38.93,lon:-90.19}}},res);
   assert.equal(res.statusCode,200);const names=(res.body.places || res.body.features.map(item=>({name:item.properties.name}))).map(item=>item.name);
-  assert.deepEqual(names.sort(),['QA Bar','QA Pub']);
+  assert.ok(names.includes('QA Bar')&&names.includes('QA Pub'));assert.ok(!names.includes('QA Cafe')&&!names.includes('QA Restaurant'));if(mode==='bar-name')assert.equal(names.length,2);
  }
 });
 
@@ -205,4 +205,9 @@ test('cached nearby businesses remain available during provider outages',async()
 test('fresh shared area cache avoids external provider calls',async()=>{
  const handler=createRestaurantLookupHandler({cacheLookup:async()=>({places:[{name:'Fresh Pub',lat:38.93,lon:-90.19}],fresh:true,skipRefresh:true}),fetcher:async()=>{throw Error('should not fetch')}});
  const res=responseRecorder();await handler({method:'POST',headers:{},body:{mode:'bar-nearby',location:{lat:38.93,lon:-90.19}}},res);assert.equal(res.statusCode,200);assert.equal(res.body.cache.stale,false);
+});
+
+test('dated local directory keeps restaurant and bar lists useful during an outage',async()=>{
+ const handler=createRestaurantLookupHandler({cacheLookup:async()=>null,fetcher:async()=>{throw Error('offline')}});
+ for(const mode of ['nearby','bar-nearby']){const res=responseRecorder();await handler({method:'POST',headers:{},body:{mode,location:{lat:38.93,lon:-90.19}}},res);assert.equal(res.statusCode,200);assert.ok(res.body.places.length>5);assert.equal(res.body.source,'directory-fallback');assert.equal(res.body.cache.stale,true);assert.ok(res.body.places.every(place=>place.distance<=8047));if(mode==='bar-nearby')assert.ok(res.body.places.every(place=>['bar','pub'].includes(place.amenity)));}
 });
