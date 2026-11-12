@@ -10,8 +10,9 @@ export async function optimizePhoto(file) {
   for(let attempt=0;attempt<5;attempt++) {
    canvas.width=Math.max(1,Math.round(bitmap.width*scale));canvas.height=Math.max(1,Math.round(bitmap.height*scale));context.drawImage(bitmap,0,0,canvas.width,canvas.height);
    for(const quality of [.82,.7,.58,.46]) {
-    const blob=await new Promise(resolve=>canvas.toBlob(resolve,'image/webp',quality));
-    if(!blob || blob.type!=='image/webp')throw new Error('WebP photos are not supported in this browser.');
+    let blob=await new Promise(resolve=>canvas.toBlob(resolve,'image/webp',quality));
+    if(!blob || blob.type!=='image/webp')blob=await new Promise(resolve=>canvas.toBlob(resolve,'image/jpeg',quality));
+    if(!blob || !['image/webp','image/jpeg'].includes(blob.type))throw new Error('This browser could not compress the photo.');
     if(blob.size<=200_000)return {blob,width:canvas.width,height:canvas.height};
    }
    scale*=.8;

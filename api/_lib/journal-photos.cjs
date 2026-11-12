@@ -11,6 +11,19 @@ function validWebp(bytes){
  else return false;
  return width>0 && height>0 && width<=1200 && height<=1200;
 }
+function validJpeg(bytes){
+ if(bytes.length<4 || bytes[0]!==255 || bytes[1]!==216 || bytes[bytes.length-2]!==255 || bytes[bytes.length-1]!==217)return false;
+ let offset=2;
+ while(offset+4<=bytes.length){
+  if(bytes[offset++]!==255)return false;
+  while(bytes[offset]===255)offset++;
+  const kind=bytes[offset++];if(kind===218 || kind===217)return false;
+  const length=bytes.readUInt16BE(offset);if(length<2 || offset+length>bytes.length)return false;
+  if([192,193,194].includes(kind)){if(length<8)return false;const height=bytes.readUInt16BE(offset+3),width=bytes.readUInt16BE(offset+5);return width>0 && height>0 && width<=1200 && height<=1200;}
+  offset+=length;
+ }
+ return false;
+}
 async function handlePhotos(req,res,{userId,sql,limit,blob}) {
  const mode=req.query?.mode;
  const sdk=blob || await import('@vercel/blob');
@@ -21,11 +34,11 @@ async function handlePhotos(req,res,{userId,sql,limit,blob}) {
   const used=await inventory();return res.status(200).json({used,limit:LIMIT_BYTES,maxPhotoBytes:MAX_PHOTO_BYTES,warning:used>=LIMIT_BYTES*.8,uploadLimitPerMonth:200});
  }
  if(mode==='photo-read' && req.method==='GET'){
-  const path=String(req.query.path||'');if(!path.startsWith(ownerPrefix(userId)) || !/^journal-photos\/[a-f0-9]{64}\/[a-f0-9-]+\.webp$/.test(path))return res.status(404).json({error:'Photo not found.'});
+  const path=String(req.query.path||'');if(!path.startsWith(ownerPrefix(userId)) || !/^journal-photos\/[a-f0-9]{64}\/[a-f0-9-]+\.(?:webp|jpg)$/.test(path))return res.status(404).json({error:'Photo not found.'});
   if(!await quota('photo-reads',5000))return;
   const result=await sdk.get(path,{access:'private'});if(result?.statusCode!==200)return res.status(404).json({error:'Photo not found.'});
   const buffer=Buffer.from(await new Response(result.stream).arrayBuffer());if(buffer.length>MAX_PHOTO_BYTES)return res.status(413).json({error:'Photo too large.'});
-  res.setHeader('Content-Type','image/webp');res.setHeader('Cache-Control','private, max-age=3600');return res.status(200).send(buffer);
+  res.setHeader('Content-Type',path.endsWith('.jpg')?'image/jpeg':'image/webp');res.setHeader('Cache-Control','private, max-age=3600');return res.status(200).send(buffer);
  }
  if(mode==='photo-upload' && req.method==='POST'){
   const body=req.body||{},collection=body.collection,id=String(body.id||'');
@@ -34,14 +47,14 @@ async function handlePhotos(req,res,{userId,sql,limit,blob}) {
   const rows=draft?[]:await sql`SELECT payload FROM metro_eats_user_datasets WHERE user_id = ${userId} LIMIT 1`;
   if(!draft && !rows[0]?.payload?.[collection]?.some(item=>String(item.id)===id))return res.status(404).json({error:'Save the entry before adding a photo.'});
   if(typeof body.image!=='string' || body.image.length>270000 || !/^[A-Za-z0-9+/]+={0,2}$/.test(body.image))return res.status(400).json({error:'Choose a valid optimized photograph.'});
-  const bytes=Buffer.from(body.image,'base64');if(bytes.length>MAX_PHOTO_BYTES || !validWebp(bytes))return res.status(400).json({error:'Use a WebP photo up to 1,200 pixels and 200 KB.'});
+  const bytes=Buffer.from(body.image,'base64'),format=validWebp(bytes)?'webp':validJpeg(bytes)?'jpg':null;if(bytes.length>MAX_PHOTO_BYTES || !format)return res.status(400).json({error:'Use a compressed photo up to 1,200 pixels and 200 KB.'});
   if(!await quota('photo-uploads',200))return;
   const used=await inventory();if(used+bytes.length>LIMIT_BYTES)return res.status(413).json({error:'Photo storage is full. Upload stopped to keep Metro Eats free.'});
-  const path=ownerPrefix(userId)+randomUUID()+'.webp';
-  const result=await sdk.put(path,bytes,{access:'private',contentType:'image/webp',addRandomSuffix:false});
+  const path=ownerPrefix(userId)+randomUUID()+'.'+format;
+  const result=await sdk.put(path,bytes,{access:'private',contentType:format==='jpg'?'image/jpeg':'image/webp',addRandomSuffix:false});
   if(!result.url?.includes('.private.blob.vercel-storage.com/'))throw Error('Private storage required.');
   return res.status(200).json({photo:{path:result.pathname,bytes:bytes.length,width:body.width,height:body.height},used:used+bytes.length,limit:LIMIT_BYTES});
  }
  return res.status(405).json({error:'Unsupported photo action.'});
 }
-module.exports={handlePhotos,validWebp,ownerPrefix,LIMIT_BYTES};
+module.exports={handlePhotos,validWebp,validJpeg,ownerPrefix,LIMIT_BYTES};
