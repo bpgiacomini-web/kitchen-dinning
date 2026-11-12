@@ -395,10 +395,10 @@ async function searchHomeBars() {
  const status=section.querySelector("[data-bar-status]"),list=section.querySelector("[data-bar-results]");
  const location=await new Promise(resolve=>{if(!navigator.geolocation)return resolve(null);navigator.geolocation.getCurrentPosition(p=>resolve({lat:p.coords.latitude,lon:p.coords.longitude}),()=>resolve(null),{timeout:8000,maximumAge:300000});});
  try{const found=await lookupBars({location});if(!section.isConnected)return;
- section.querySelector("summary").textContent="Nearby bars ("+found.places.length+")";
+ section.querySelector("summary").textContent=found.places.length?"Nearby bars ("+found.places.length+")":"Nearby bars · No results";
  status.textContent=found.places.length?"":"No nearby bars found.";
  list.innerHTML=found.places.map(place=>`<article class="nearbyPlace"><div><strong>${escapeHtml(place.name)}</strong><small>${escapeHtml([place.address,place.distance==null?"":(place.distance/1609.34).toFixed(1)+" mi"].filter(Boolean).join(" · "))}</small></div><div class="nearbyPlaceActions">${mapMenuMarkup(place)}</div></article>`).join("");
- }catch{if(section.isConnected)status.textContent="Nearby bars temporarily unavailable.";}
+ }catch{if(section.isConnected){section.querySelector("summary").textContent="Nearby bars · Unavailable";status.textContent="Map provider unavailable. Try again shortly.";}}
 }
 async function searchNearbyRestaurants() {
   const statusLine = root.querySelector("#nearby-status");
@@ -413,7 +413,7 @@ async function searchNearbyRestaurants() {
     statusLine.textContent = "Searching nearby restaurants…";
     try {
       const response = activeView==="home" && homeNearbyCache && Date.now()-homeNearbyCache.time<300000 ? homeNearbyCache.response : await lookupNearbyRestaurants({ location });
-      if(activeView==="home")homeNearbyCache={response,time:Date.now()};
+      if(activeView==="home" && !response.partial)homeNearbyCache={response,time:Date.now()};
       restaurantLookupLocation = response.location || location;
       if (!response.places.length) {
         statusLine.textContent = "No named restaurants appeared within about five miles. Try the name search below.";
@@ -425,6 +425,7 @@ async function searchNearbyRestaurants() {
         ? `Showing places near the approximate area Vercel detected${response.location.city ? ` (${response.location.city})` : ""}. Allow precise location for a closer match.`
         : `Found ${response.places.length} nearby places. Select one to fill in its details and continue to a visit review.`;
       statusLine.textContent = activeView === "home" ? (response.location?.source === "network" ? `Approximate area${response.location.city ? ` · ${response.location.city}` : ""}` : "Nearby spots") : placeLabel;
+      if(response.partial)statusLine.textContent="Limited map results · Try again shortly";
       results.innerHTML = response.places.map(place => `<article class="nearbyPlace"><div><strong>${escapeHtml(place.name)}</strong><small>${escapeHtml([place.cuisine, place.distance == null ? "" : place.distance < 1609 ? `${Math.round(place.distance * 3.28084)} ft` : `${(place.distance / 1609.34).toFixed(1)} mi`, place.address].filter(Boolean).join(" · ") || "Nearby food place")}</small></div><div class="nearbyPlaceActions"><details class="nearbyNavigationMenu"><summary class="btn nearbyDirectionsButton" aria-label="Choose a map app for ${escapeHtml(place.name)}" title="Choose a map app"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22s7-7.1 7-13a7 7 0 1 0-14 0c0 5.9 7 13 7 13Z"></path><circle cx="12" cy="9" r="2.4"></circle></svg></summary><div class="nearbyNavigationOptions">${restaurantNavigationOptions(place).map(option => `<a href="${escapeHtml(option.url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(option.label)}</a>`).join("")}</div></details><button class="btn" type="button" data-action="use-nearby" data-nearby="${escapeHtml(JSON.stringify(place))}">Review this restaurant</button></div></article>`).join("");
     } catch (error) {
       if (disclosure) disclosure.hidden = true;

@@ -277,13 +277,15 @@ export function createRestaurantLookupHandler({ fetcher = fetch, authenticate = 
       photonUrl.searchParams.set("radius", "8.05");
       photonUrl.searchParams.set("limit", "50");
       photonUrl.searchParams.set("lang", "en");
+      let primaryPlaces=[];
       for (const amenity of barsOnly ? ["bar","pub"] : FOOD_AMENITIES) photonUrl.searchParams.append("osm_tag", `amenity:${amenity}`);
       try {
         const nearby = await fetchJson(fetcher, photonUrl, {
           headers: { Accept: "application/json", "User-Agent": "MetroEats/1.0 (nearby restaurant lookup)" }
         }, 4000);
         if (!Array.isArray(nearby?.features)) throw new Error("invalid_photon_response");
-        return res.status(200).json({ places: barsOnly ? normalizePhotonNearby(nearby.features.filter(barFeature), location) : includeCuratedNearby(normalizePhotonNearby(nearby.features, location), location), location });
+        primaryPlaces=barsOnly ? normalizePhotonNearby(nearby.features.filter(barFeature), location) : includeCuratedNearby(normalizePhotonNearby(nearby.features, location), location);
+        if(primaryPlaces.length >= (barsOnly ? 5 : 20))return res.status(200).json({places:primaryPlaces,location});
       } catch (error) {
         console.error("Metro Eats Photon nearby lookup failed", String(error?.message || "upstream_error").slice(0, 80));
       }
@@ -294,18 +296,21 @@ export function createRestaurantLookupHandler({ fetcher = fetch, authenticate = 
         try {
           payload = await fetchJson(fetcher, url, {
             headers: { Accept: "application/json", "User-Agent": "MetroEats/1.0 (nearby restaurant lookup)" }
-          }, 1600);
+          }, 3500);
           break;
         } catch { /* Try the public backup endpoint. */ }
       }
       if (!payload) {
         // Public map providers can be intermittently unavailable. Preserve a useful
         // nearby experience for supported local areas without requiring either feed.
+        if(primaryPlaces.length)return res.status(200).json({places:primaryPlaces,location,partial:true});
         const curated = barsOnly ? [] : includeCuratedNearby([], location);
-        if (curated.length) return res.status(200).json({ places: curated, location, source: "curated-fallback" });
+        if (curated.length) return res.status(200).json({ places: curated, location, partial:true, source: "curated-fallback" });
         return res.status(502).json({ error: "Nearby restaurant data is temporarily unavailable. Name search is still available." });
       }
-      return res.status(200).json({ places: barsOnly ? normalizeNearby(payload.elements, location, {filter:place => ["bar","pub"].includes(place.amenity)}) : includeCuratedNearby(normalizeNearby(payload.elements, location), location), location });
+      const secondary=barsOnly ? normalizeNearby(payload.elements, location, {filter:place => ["bar","pub"].includes(place.amenity)}) : normalizeNearby(payload.elements, location);
+      const seen=new Set(),places=[...primaryPlaces,...secondary].filter(place=>{const key=place.name.toLowerCase().replace(/[^a-z0-9]/g,'');if(seen.has(key))return false;seen.add(key);return true;}).sort((a,b)=>(a.distance??Infinity)-(b.distance??Infinity)).slice(0,20);
+      return res.status(200).json({ places: barsOnly ? places : includeCuratedNearby(places,location), location });
     }
 
     return res.status(400).json({ error: "Choose a restaurant name or nearby search." });

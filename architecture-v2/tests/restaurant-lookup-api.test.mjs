@@ -190,3 +190,9 @@ test("bar discovery filters out restaurants for nearby and name searches", async
   assert.deepEqual(names.sort(),['QA Bar','QA Pub']);
  }
 });
+
+test('sparse successful primary results are supplemented by the backup provider',async()=>{
+ const handler=createRestaurantLookupHandler({fetcher:async url=>({ok:true,json:async()=>String(url).includes('photon')?{features:[]}:{elements:[{lat:38.93,lon:-90.19,tags:{name:'Backup Pub',amenity:'pub'}}]}})});
+ const res=responseRecorder();await handler({method:'POST',headers:{},body:{mode:'bar-nearby',location:{lat:38.93,lon:-90.19}}},res);
+ assert.equal(res.statusCode,200);assert.equal(res.body.places[0].name,'Backup Pub');
+});
