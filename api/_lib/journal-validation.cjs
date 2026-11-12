@@ -28,7 +28,7 @@ function validCocktailCollections({ bars = [], drinks = [], cocktailRecipes = []
       || row.visits.some(visit => !object(visit) || !text(visit.id, 200) || !visit.id.trim() || !date(visit.visitedAt) || !notes(visit) || !rating(visit.overallRating) || !rating(visit.service) || !rating(visit.atmosphere) || !rating(visit.value)))) return false;
     const barIds = new Set(bars.map(row => row.id));
     if (drinks.some(row => !notes(row) || !favorite(row) || !rating(row.overallRating) || !date(row.triedAt)
-      || (row.barId && !barIds.has(row.barId)) || (row.base != null && !text(row.base, 100))
+      || (row.barId && !barIds.has(row.barId)) || (row.visitId && (!text(row.visitId,200) || !bars.find(bar=>bar.id===row.barId)?.visits.some(visit=>visit.id===row.visitId))) || (row.base != null && !text(row.base, 100))
       || (row.price != null && (!Number.isFinite(Number(row.price)) || Number(row.price) < 0)))) return false;
     return !cocktailRecipes.some(row => !notes(row) || !favorite(row) || !rating(row.overallRating)
       || ![row.ingredients, row.directions].every(lines => Array.isArray(lines) && lines.length > 0 && lines.length <= 200 && lines.every(line => text(line, 2000) && line.trim()))
@@ -46,6 +46,26 @@ function summarizeCocktailCollection(items, { visits = false } = {}) {
     visitCount: visits ? items.reduce((sum, item) => sum + (item.visits?.length || 0), 0) : undefined,
     ratedCount: ratings.length, averageRating: ratings.length ? ratings.reduce((a, b) => a + b, 0) / ratings.length : null,
     favoriteCount: items.filter(item => item.favorite).length, top: ranked[0] || null };
+}
+
+// Drinks are stored once; bar visits and Drink Ratings read the same records.
+function drinksForVisit(data, barId, visitId) {
+  return (data.drinks || []).filter(drink => drink.barId === barId && drink.visitId === visitId);
+}
+function saveBarVisit(data, barId, visit, drinks) {
+  const bar = data.bars.find(row => row.id === barId);
+  if (!bar) throw new Error("Venue no longer available.");
+  const old = drinksForVisit(data, barId, visit.id);
+  const oldIds = new Set(old.map(row => row.id));
+  const seen = new Set();
+  const linked = drinks.map(row => {
+    if (!row.name?.trim() || optionalRating(row.overallRating) == null) throw new Error("Give each drink a name and rating.");
+    if (!row.id || seen.has(row.id) || data.drinks.some(item => item.id === row.id && !oldIds.has(item.id))) throw new Error("Drink reference is invalid.");
+    seen.add(row.id);
+    return { ...row, name:row.name.trim(), barId, visitId:visit.id, triedAt:visit.visitedAt };
+  });
+  return { ...data, bars:data.bars.map(row=>row.id===barId ? {...row, updatedAt:visit.updatedAt, visits:row.visits.some(item=>item.id===visit.id) ? row.visits.map(item=>item.id===visit.id?visit:item) : [...row.visits,visit]} : row),
+    drinks:[...data.drinks.filter(row=>!oldIds.has(row.id)), ...linked] };
 }
 
 const AWARD_LEVELS = ["Local", "Regional", "National", "International"];

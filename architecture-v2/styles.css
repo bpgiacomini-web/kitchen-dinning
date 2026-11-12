@@ -878,3 +878,18 @@
 #app .viewModeSwitch[aria-checked="true"]::before{background:#d6a85b}
 #app .viewModeSwitch[aria-checked="true"]>span{transform:translateX(20px)}
 #app .recipeWakeControl .hint{flex-basis:100%;font-size:12px}
+/* Cocktail visits share the journal's 1–10 controls. */
+#app .cocktailScoreButtons{display:grid;grid-template-columns:repeat(10,minmax(0,1fr));gap:4px;margin:9px 0 14px}
+#app .cocktailScoreButtons button{font:inherit;font-size:14px;font-weight:750;min-width:0;padding:10px 0;min-height:44px;border:1px solid #454049;border-radius:9px;background:#10151a;color:var(--text);cursor:pointer}
+#app .cocktailScoreButtons button[aria-pressed="true"]{background:#d6a85b;border-color:#e0b96f;color:#17130b}
+#app .cocktailRatingField .reviewQuestionHead{gap:8px}
+#app .visitDrinkRow{border:1px solid #503e50;border-radius:14px;padding:12px;margin:10px 0}
+#app .visitDrinkRow .reviewDishHead{grid-template-columns:minmax(0,1fr) 44px}
+#app .visitDrinkRow .reviewDishHead .btn{padding:0;min-width:44px;min-height:44px;margin:0;font-size:24px}
+#app .visitDrinkSummary{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:8px 0}
+#app .visitDrinkSummary .btn{min-height:44px;padding:7px 10px;font-size:13px}
+#app .cocktailImport{padding:12px;border:1px solid #503e50;border-radius:14px;display:grid;gap:8px}
+#app .cocktailImport .btn{justify-self:start}
+#app .cocktailCard .cocktailRating+small,#app .cocktailCard .recipeCardHeader small{display:block;margin-top:5px}
+#app .cocktailEditor .entryDetails{min-width:0}
+#app .cocktailRatingField{min-width:0}
