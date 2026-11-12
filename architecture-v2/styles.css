@@ -1057,3 +1057,13 @@
 #app .photoPanelHeading h3{margin:0;font-size:22px}
 #app .photoSelectionPreview{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0}
 #app .photoSelectionPreview img{width:110px;height:110px;object-fit:cover;border-radius:10px}
+#app .photoThumbnailGrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(100px,130px));gap:12px;margin:16px 0}
+#app .photoThumbnailChoice{position:relative;aspect-ratio:1;width:100%;padding:0;border:3px solid transparent;border-radius:12px;overflow:hidden;background:#151b20;color:var(--muted);cursor:pointer}
+#app .photoThumbnailChoice img{display:block;width:100%;height:100%;object-fit:cover}
+#app .photoThumbnailChoice[aria-pressed="true"]{border-color:#dfb96c;box-shadow:0 0 0 2px #dfb96c55}
+#app .photoSelectionMark{position:absolute;right:5px;top:5px;width:26px;height:26px;border-radius:50%;display:none;place-items:center;background:#dfb96c;color:#211a10;font-size:18px;font-weight:800}
+#app .photoThumbnailChoice[aria-pressed="true"] .photoSelectionMark{display:grid}
+#app .photoThumbnailChoice:focus-visible{outline:3px solid #f8e5b7;outline-offset:3px}
+#app .photoThumbnailChoice:disabled{cursor:default}
+#app .photoThumbnailLoading{font-size:16px;padding:8px;display:block}
+#app .photoRemoveSelected{border-color:#b76a76;color:#efbbc4}
