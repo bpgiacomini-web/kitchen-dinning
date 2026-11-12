@@ -67,6 +67,7 @@ const photoController=createJournalPhotos({root,getData:()=>cloudDataset,save:sa
 root.addEventListener("metro-photo-saved",()=>render());
 const cocktailJournal = createCocktailJournal({ root, getData: () => cloudDataset, save: saveCloudDataset });
 let lastNewsSignature = null;
+let cachedNewsPayload=null,newsFetchedAt=0,newsInFlight=null,homeNearbyCache=null;
 
 function escapeHtml(value) {
   return String(value ?? "").replace(/[&<>"']/g, char => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[char]);
@@ -394,7 +395,8 @@ async function searchNearbyRestaurants() {
   const search = async location => {
     statusLine.textContent = "Searching nearby restaurants…";
     try {
-      const response = await lookupNearbyRestaurants({ location });
+      const response = activeView==="home" && homeNearbyCache && Date.now()-homeNearbyCache.time<300000 ? homeNearbyCache.response : await lookupNearbyRestaurants({ location });
+      if(activeView==="home")homeNearbyCache={response,time:Date.now()};
       restaurantLookupLocation = response.location || location;
       if (!response.places.length) {
         statusLine.textContent = "No named restaurants appeared within about five miles. Try the name search below.";
@@ -413,6 +415,7 @@ async function searchNearbyRestaurants() {
       statusLine.textContent = message || "Nearby restaurant search is temporarily unavailable. You can still search by name below.";
     }
   };
+  if (activeView==="home" && homeNearbyCache && Date.now()-homeNearbyCache.time<300000) {await search(null);return;}
   if (!navigator.geolocation) { await search(null); return; }
   navigator.geolocation.getCurrentPosition(position => {
     search({ lat: position.coords.latitude, lon: position.coords.longitude });
@@ -556,6 +559,7 @@ function renderHome() {
   root.querySelector(".homeFeatureButtons")?.insertAdjacentHTML("beforeend", `<button class="homeFeatureButton cocktailButton" data-view="cocktails"><span class="homeFeatureIcon cocktailMark">${COCKTAIL_ICON}</span><span><strong>Cocktails &amp; Bars</strong><small>Good drinks, great places</small></span><span class="homeFeatureArrow">→</span></button>`);
   root.querySelector(".homePrivacyNote")?.insertAdjacentHTML("afterend", renderHomeInsights());
   root.querySelector("#refresh-local-news")?.addEventListener("click", () => { void loadLocalFoodNews(true); });
+  void loadLocalFoodNews();void searchNearbyRestaurants();
 }
 function renderHomeInsights() { return renderJournalInsights(dataset); }
 async function loadLocalFoodNews(manualRefresh = false) {
@@ -565,9 +569,12 @@ async function loadLocalFoodNews(manualRefresh = false) {
   try {
     const refreshButton = document.querySelector("#refresh-local-news");
     if (refreshButton) { refreshButton.disabled = true; refreshButton.textContent = "↻ Updating…"; }
-    const response = await fetch("/api/restaurant-lookup", { method: "POST", headers: { Accept: "application/json", "Content-Type": "application/json" }, body: JSON.stringify({ mode: "food-news" }), cache: "no-store" });
-    if (!response.ok) throw new Error("News feed unavailable");
-    const payload = await response.json();
+    if(manualRefresh || !cachedNewsPayload || Date.now()-newsFetchedAt>300000){
+      if(!newsInFlight)newsInFlight=fetch("/api/restaurant-lookup",{method:"POST",headers:{Accept:"application/json","Content-Type":"application/json"},body:JSON.stringify({mode:"food-news"}),cache:"no-store"}).then(async response=>{if(!response.ok)throw Error("News feed unavailable");return response.json();});
+      try{cachedNewsPayload=await newsInFlight;newsFetchedAt=Date.now();}finally{newsInFlight=null;}
+    }
+    if(!list.isConnected)return;
+    const payload = cachedNewsPayload;
     const items = Array.isArray(payload.items) ? payload.items.filter(item => {
       if (!item || !item.title || !item.url) return false;
       try { const u = new URL(item.url); return u.protocol === "https:" || u.protocol === "http:"; } catch { return false; }
@@ -957,7 +964,7 @@ document.addEventListener("click", async event => {
     activeView = viewButton.dataset.view;
     if (activeView === "cocktails") cocktailJournal.setTab(viewButton.dataset.cocktailCategory || "bars");
     render();
-    if (activeView === "dining" || activeView === "home") searchNearbyRestaurants();
+    if (activeView === "dining") searchNearbyRestaurants();
     // Every explicit section navigation starts at the top of the new page.
     window.scrollTo({ top: 0, left: 0, behavior: "instant" });
     root.focus({ preventScroll: true });
@@ -1640,7 +1647,7 @@ async function refreshDataset() {
       setStatus(hasRecords ? "Preview records loaded · cloud storage unavailable" : "Cloud storage is not ready", "warn");
     }
     render();
-    if (activeView === "home") { loadLocalFoodNews(); searchNearbyRestaurants(); }
+
   } catch (error) {
     cloudReady = false;
     setStatus(error?.message || "Data unavailable", "warn");
