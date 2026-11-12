@@ -94,12 +94,14 @@ export function createJournalPhotos({root,getData,save}) {
  function open(collection,id){
   const item=getData()[collection]?.find(row=>String(row.id)===id);if(!item)return;root.querySelector('.photoEditor')?.remove();
   const editor=editTargets().find(([key,itemId])=>key===collection&&itemId===id)?.[2];if(!editor)return;
-  const finish=()=>{const current=getData()[collection]?.find(row=>String(row.id)===id);const source=editor.querySelector('[name="sourceImageUrl"]');if(source&&current)source.value=current.sourceImageUrl||'';panel.remove();enhance();};
+  const trigger=editor.querySelector('[data-photo-action="open"]');
+  const closePanel=()=>{panel.remove();trigger?.setAttribute('aria-expanded','false');trigger?.focus({preventScroll:true});};
+  const finish=()=>{const current=getData()[collection]?.find(row=>String(row.id)===id);const source=editor.querySelector('[name="sourceImageUrl"]');if(source&&current)source.value=current.sourceImageUrl||'';closePanel();enhance();};
   const panel=document.createElement('section');panel.className='content-panel photoEditor';panel.setAttribute('role','dialog');panel.setAttribute('aria-label','Entry photos');
   const max=['restaurants','pizzas','bars'].includes(collection)?4:1;let selected=[],previewUrls=[];
   const discardPreviews=()=>{previewUrls.forEach(url=>URL.revokeObjectURL(url));previewUrls=[];};
   panel.innerHTML=`<div class="photoPanelHeading"><h3>${max===1?'Recipe photo':'Photos'}</h3><button class="btn" type="button" data-close>Cancel</button></div><p class="hint">${max===1?'One cover photo.':'Choose up to four photos.'}</p><div class="actions"><button class="btn" type="button" data-upload-choice>Upload Photo</button><button class="btn" type="button" data-camera-choice>Take Photo</button>${["recipes","cocktailRecipes"].includes(collection) && item.source ? `<button class="btn" type="button" data-use-source>Use Recipe Photo</button>` : ""}</div><input data-upload type="file" accept="image/*" ${max>1?'multiple':''} hidden><input data-camera type="file" accept="image/*" capture="environment" hidden><div class="photoSelectionPreview"></div><button class="btn primary" type="button" data-attach hidden>Save Photo</button><div class="photoRefList photoThumbnailGrid" aria-label="Saved photos"></div><button class="btn photoRemoveSelected" type="button" data-remove-selected hidden>Remove Selected</button><p role="status" aria-live="polite"></p>`;
-  root.prepend(panel);panel.scrollIntoView({block:'center',behavior:'smooth'});
+  panel.tabIndex=-1;if(trigger){trigger.after(panel);trigger.setAttribute('aria-expanded','true');}else editor.append(panel);panel.scrollIntoView({block:'start',behavior:'auto'});panel.focus({preventScroll:true});
   const feedback=panel.querySelector('[role="status"]');
   for(const [choice,input] of [['[data-upload-choice]','[data-upload]'],['[data-camera-choice]','[data-camera]']]){
    const field=panel.querySelector(input);
@@ -131,7 +133,7 @@ export function createJournalPhotos({root,getData,save}) {
     try{const draft=await importCocktailUrl(item.source);const sourceImageUrl=recipeImageUrl(draft.sourceImageUrl);if(!sourceImageUrl)throw Error('No usable source photo found. Upload or take a photo instead.');if(!panel.isConnected)return;const data=getData();await save({...data,[collection]:data[collection].map(row=>String(row.id)===id?{...row,sourceImageUrl,photoRefs:[]}:row)});finish();}
     catch(error){if(panel.isConnected){feedback.textContent=error.message;panel.querySelector('[data-use-source]').disabled=false;}}
   });
-  panel.querySelector('[data-close]').onclick=()=>{discardPreviews();panel.remove();};
+  panel.querySelector('[data-close]').onclick=()=>{discardPreviews();closePanel();};
   panel.addEventListener('keydown',event=>{if(event.key==='Escape'){discardPreviews();panel.remove();}});
   const removal=new Set(),removeButton=panel.querySelector('[data-remove-selected]'),grid=panel.querySelector('.photoRefList');
   for(const [index,ref] of (item.photoRefs||[]).entries()){
