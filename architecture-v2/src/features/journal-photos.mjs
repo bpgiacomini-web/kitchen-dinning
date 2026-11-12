@@ -96,19 +96,43 @@ export function createJournalPhotos({root,getData,save}) {
   const editor=editTargets().find(([key,itemId])=>key===collection&&itemId===id)?.[2];if(!editor)return;
   const finish=()=>{const current=getData()[collection]?.find(row=>String(row.id)===id);const source=editor.querySelector('[name="sourceImageUrl"]');if(source&&current)source.value=current.sourceImageUrl||'';panel.remove();enhance();};
   const panel=document.createElement('section');panel.className='content-panel photoEditor';panel.setAttribute('role','dialog');panel.setAttribute('aria-label','Entry photos');
-  const max=['restaurants','pizzas','bars'].includes(collection)?4:1;let uploaded=null;
-  panel.innerHTML=`<h3>Photos · ${esc(item.title||item.name)}</h3><p class="hint">${max===1?'One cover photo.':'Up to four photos.'} Optimized automatically. Photo changes save immediately.</p><div class="actions"><button class="btn" type="button" data-upload-choice>Upload Photo</button><button class="btn" type="button" data-camera-choice>Take Photo</button>${["recipes","cocktailRecipes"].includes(collection) && item.source ? `<button class="btn" type="button" data-use-source>Use Recipe Photo</button>` : ""}</div><input data-upload type="file" accept="image/*" hidden><input data-camera type="file" accept="image/*" capture="environment" hidden><button class="btn" type="button" data-attach hidden>Save Photo</button><div class="photoRefList">${(item.photoRefs||[]).map((ref,index)=>`<button class="btn" type="button" data-remove="${index}">Remove photo ${index+1}</button>`).join('')}</div><button class="btn" type="button" data-close>Close</button><p role="status" aria-live="polite"></p>`;
+  const max=['restaurants','pizzas','bars'].includes(collection)?4:1;let selected=[],previewUrls=[];
+  const discardPreviews=()=>{previewUrls.forEach(url=>URL.revokeObjectURL(url));previewUrls=[];};
+  panel.innerHTML=`<div class="photoPanelHeading"><h3>${max===1?'Recipe photo':'Photos'}</h3><button class="btn" type="button" data-close>Cancel</button></div><p class="hint">${max===1?'One cover photo.':'Choose up to four photos.'}</p><div class="actions"><button class="btn" type="button" data-upload-choice>Upload Photo</button><button class="btn" type="button" data-camera-choice>Take Photo</button>${["recipes","cocktailRecipes"].includes(collection) && item.source ? `<button class="btn" type="button" data-use-source>Use Recipe Photo</button>` : ""}</div><input data-upload type="file" accept="image/*" ${max>1?'multiple':''} hidden><input data-camera type="file" accept="image/*" capture="environment" hidden><div class="photoSelectionPreview"></div><button class="btn primary" type="button" data-attach hidden>Save Photo</button><div class="photoRefList">${(item.photoRefs||[]).map((ref,index)=>`<button class="btn" type="button" data-remove="${index}">Remove photo ${index+1}</button>`).join('')}</div><p role="status" aria-live="polite"></p>`;
   root.prepend(panel);panel.scrollIntoView({block:'center',behavior:'smooth'});
   const feedback=panel.querySelector('[role="status"]');
-  const attach=async()=>{const data=getData(),entry=data[collection].find(row=>String(row.id)===id);if(!entry)throw Error('Entry no longer available.');const refs=max===1?[uploaded]:[...(entry.photoRefs||[]),uploaded];if(refs.length>max)throw Error('Remove a photo before adding another.');await save({...data,[collection]:data[collection].map(row=>String(row.id)===id?{...row,photoRefs:refs}:row)});finish();};
-  for(const [choice,input] of [['[data-upload-choice]','[data-upload]'],['[data-camera-choice]','[data-camera]']]){panel.querySelector(choice).onclick=()=>panel.querySelector(input).click();panel.querySelector(input).onchange=async event=>{const file=event.target.files?.[0];if(!file)return;const current=getData()[collection]?.find(row=>String(row.id)===id);if(max>1 && (current?.photoRefs?.length||0)>=max){feedback.textContent='Remove a photo before adding another.';return;}feedback.textContent='Optimizing…';panel.querySelectorAll('.actions button').forEach(button=>button.disabled=true);try{const optimized=await optimizePhoto(file);if(!panel.isConnected)return;feedback.textContent='Uploading…';const result=await request('photo-upload',{collection,id,image:await encode(optimized.blob),width:optimized.width,height:optimized.height});uploaded=result.photo;if(panel.isConnected)await attach();}catch(error){if(panel.isConnected){feedback.textContent=error.message;panel.querySelector('[data-attach]').hidden=!uploaded;}}finally{panel.querySelectorAll('.actions button').forEach(button=>button.disabled=false);}};}
-  panel.querySelector('[data-attach]').onclick=()=>void attach().catch(error=>feedback.textContent=error.message);
+  for(const [choice,input] of [['[data-upload-choice]','[data-upload]'],['[data-camera-choice]','[data-camera]']]){
+   const field=panel.querySelector(input);
+   panel.querySelector(choice).onclick=()=>{field.value='';field.click();};
+   field.addEventListener('cancel',()=>{feedback.textContent=selected.length?'Photo selected. Save when ready.':'';});
+   field.onchange=event=>{
+    const files=Array.from(event.target.files||[]);if(!files.length)return;
+    const existing=getData()[collection]?.find(row=>String(row.id)===id)?.photoRefs?.length||0;
+    const available=max===1?1:max-existing;
+    if(files.length>available){feedback.textContent=available>0?'Choose up to '+available+' photos.':'Remove a photo before adding another.';return;}
+    selected=files;discardPreviews();const preview=panel.querySelector('.photoSelectionPreview');preview.replaceChildren();
+    for(const file of files){const image=new window.Image();const url=URL.createObjectURL(file);previewUrls.push(url);image.alt='Selected photo';image.src=url;preview.append(image);}
+    const save=panel.querySelector('[data-attach]');save.hidden=false;save.textContent=files.length>1?'Save Photos':'Save Photo';feedback.textContent='';
+   };
+  }
+  panel.querySelector('[data-attach]').onclick=async()=>{
+   if(!selected.length)return;const saveButton=panel.querySelector('[data-attach]');saveButton.disabled=true;panel.querySelectorAll('.actions button').forEach(button=>button.disabled=true);
+   try{
+    const additions=[];
+    for(const file of selected){feedback.textContent='Saving photo…';const optimized=await optimizePhoto(file);if(!panel.isConnected)return;const result=await request('photo-upload',{collection,id,image:await encode(optimized.blob),width:optimized.width,height:optimized.height});if(!panel.isConnected)return;additions.push(result.photo);}
+    const data=getData(),entry=data[collection].find(row=>String(row.id)===id);if(!entry)throw Error('Entry no longer available.');
+    const refs=max===1?additions:[...(entry.photoRefs||[]),...additions];if(refs.length>max)throw Error('Remove a photo before adding another.');
+    await save({...data,[collection]:data[collection].map(row=>String(row.id)===id?{...row,photoRefs:refs}:row)});discardPreviews();finish();
+   }catch(error){if(panel.isConnected)feedback.textContent=error.message;}
+   finally{if(panel.isConnected){saveButton.disabled=false;panel.querySelectorAll('.actions button').forEach(button=>button.disabled=false);}}
+  };
   panel.querySelector('[data-use-source]')?.addEventListener('click',async event=>{
     event.currentTarget.disabled=true;feedback.textContent='Checking recipe photo…';
     try{const draft=await importCocktailUrl(item.source);const sourceImageUrl=recipeImageUrl(draft.sourceImageUrl);if(!sourceImageUrl)throw Error('No usable source photo found. Upload or take a photo instead.');if(!panel.isConnected)return;const data=getData();await save({...data,[collection]:data[collection].map(row=>String(row.id)===id?{...row,sourceImageUrl,photoRefs:[]}:row)});finish();}
     catch(error){if(panel.isConnected){feedback.textContent=error.message;panel.querySelector('[data-use-source]').disabled=false;}}
   });
-  panel.querySelector('[data-close]').onclick=()=>panel.remove();
+  panel.querySelector('[data-close]').onclick=()=>{discardPreviews();panel.remove();};
+  panel.addEventListener('keydown',event=>{if(event.key==='Escape'){discardPreviews();panel.remove();}});
   panel.querySelectorAll('[data-remove]').forEach(button=>button.onclick=async()=>{try{const data=getData();await save({...data,[collection]:data[collection].map(row=>String(row.id)===id?{...row,photoRefs:(row.photoRefs||[]).filter((_,index)=>index!==Number(button.dataset.remove))}:row)});root.dispatchEvent(new CustomEvent('metro-photo-saved',{bubbles:true}));panel.remove();}catch(error){feedback.textContent=error.message;}});
  }
  async function usage(container){container.textContent='Checking photo storage…';try{const result=await request('photo-usage');container.innerHTML=`<label>Photo storage <progress max="${result.limit}" value="${result.used}"></progress></label><small>${(result.used/1e6).toFixed(1)} / ${(result.limit/1e6).toFixed(0)} MB safety limit</small><p>${result.warning?'Storage is nearing the free limit.':'Within the free storage budget.'}</p>`;}catch(error){container.textContent=error.message;}}

@@ -1053,3 +1053,7 @@
 #app .compactNearbyPanel .nearbyDisclosure{margin-top:8px;padding-top:4px}
 #app .cocktailSection .cocktailJournal>.sectionTitle [data-cocktail-action="new"],#app.cocktailSection .cocktailJournal>.sectionTitle [data-cocktail-action="new"]{background:#e2abd2;color:#21131e;border-color:#e2abd2;font-weight:800;box-shadow:0 4px 14px #e2abd21a}
 #app.cocktailSection .cocktailJournal>.sectionTitle [data-cocktail-action="new"]:hover{background:#edbfdf;border-color:#edbfdf}
+#app .photoPanelHeading{display:flex;align-items:center;justify-content:space-between;gap:12px}
+#app .photoPanelHeading h3{margin:0;font-size:22px}
+#app .photoSelectionPreview{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0}
+#app .photoSelectionPreview img{width:110px;height:110px;object-fit:cover;border-radius:10px}
