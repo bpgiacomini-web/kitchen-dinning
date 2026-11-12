@@ -167,3 +167,15 @@ test("restaurant lookup accepts only POST and rejects malformed name searches", 
   await handler({ method: "POST", body: { mode: "name", query: "x" }, headers: {} }, badQuery);
   assert.equal(badQuery.statusCode, 400);
 });
+
+test("nearby aliases inherit a verified local website at the matching location", async () => {
+  const handler = createRestaurantLookupHandler({fetcher: async () => ({ok:true,json:async()=>({features:[
+    {properties:{name:'Ropers Regal Beagle',osm_key:'amenity',osm_value:'restaurant'},geometry:{coordinates:[-90.190838,38.930969]}}
+  ]})})});
+  const res=responseRecorder();
+  await handler({method:'POST',headers:{},body:{mode:'nearby',location:{lat:38.930969,lon:-90.190838}}},res);
+  assert.equal(res.statusCode,200);
+  const matching=res.body.places.filter(place=>/regal beagle/i.test(place.name));
+  assert.equal(matching.length,1);
+  assert.equal(matching[0].website,'https://www.ropersregalbeagle.com/');
+});

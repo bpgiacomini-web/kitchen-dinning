@@ -91,12 +91,18 @@ function normalizePhotonNearby(features, location) {
 }
 
 function includeCuratedNearby(places, location) {
+  const normalize = value => String(value || "").toLowerCase().replace(/[’']/g, "").replace(/[^a-z0-9]+/g, " ").trim();
+  places = places.map(place => {
+    const known = LOCAL_RESTAURANT_OVERRIDES.find(item => item.aliases.some(alias => normalize(alias) === normalize(place.name))
+      && Number.isFinite(place.lat) && Number.isFinite(place.lon) && distanceMeters(item, place.lat, place.lon) <= 2000);
+    return known ? { ...place, website: place.website || known.website, cuisine: place.cuisine || known.cuisine } : place;
+  });
   const curated = [];
   for (const restaurant of LOCAL_RESTAURANT_OVERRIDES) {
     const distance = distanceMeters(location, restaurant.lat, restaurant.lon);
     if (distance > 8047) continue;
     const normalized = restaurant.name.toLocaleLowerCase();
-    if (places.some(place => place.name.toLocaleLowerCase() === normalized)) continue;
+    if (places.some(place => restaurant.aliases.some(alias => normalize(alias) === normalize(place.name)) && Number.isFinite(place.lat) && Number.isFinite(place.lon) && distanceMeters(restaurant, place.lat, place.lon) <= 2000)) continue;
     curated.push({ ...restaurant, distance, amenity: "restaurant", source: "Metro Eats local listing" });
   }
   const ordinary = [...places].sort((a, b) => (a.distance ?? Infinity) - (b.distance ?? Infinity)).slice(0, Math.max(0, 20 - curated.length));

@@ -858,3 +858,23 @@
 #app .reviewDish{padding:14px;margin-bottom:12px}
 #app .reviewFoodSection>.hint{margin-bottom:12px}
 #app .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+/* Compact forms and recipe viewing. */
+#app .restaurantLookupStatus:empty,#app .restaurantLookupResults:empty{display:none}
+#app .restaurantLookupTools .hint{margin:4px 0 8px}
+#app .restaurantEditPanel{gap:12px}
+#app .restaurantEditPanel>.recipeEditActions{gap:8px;margin:4px 0}
+#app .restaurantEditPanel>.recipeEditActions .btn{padding:10px 14px;min-height:44px;font-size:14px}
+#app .recipeTitleToggle{flex:1;min-width:0;display:flex;gap:8px;align-items:start;text-align:left;padding:0;background:none;border:0;color:var(--text);font:inherit;font-size:20px;font-weight:800;line-height:1.3;cursor:pointer}
+#app .recipeTitleToggle>span{color:#d6a85b;font-size:20px;flex:none;transition:transform .15s}
+#app .recipeTitleToggle[aria-expanded="true"]>span{transform:rotate(180deg)}
+#app .recipeTitleToggle:focus-visible{outline:2px solid #d6a85b;outline-offset:4px;border-radius:4px}
+#app .recipeViewDetails>.recipeHiddenSummary{display:none}
+#app .readOnlyItem:has(.recipeTitleToggle)>small{font-size:15px;line-height:1.6;margin-top:10px}
+#app .recipeWakeControl{gap:10px;padding:10px 12px}
+#app .viewModeLabel{font-size:15px;font-weight:700}
+#app .viewModeSwitch{position:relative;flex:none;box-sizing:border-box;width:48px;height:44px;padding:0;background:transparent;border:0;cursor:pointer}
+#app .viewModeSwitch::before{content:"";position:absolute;inset:8px 0;border-radius:999px;background:#454b4d;transition:background .15s}
+#app .viewModeSwitch>span{position:absolute;left:4px;top:12px;width:20px;height:20px;border-radius:50%;background:#fff;transition:transform .15s}
+#app .viewModeSwitch[aria-checked="true"]::before{background:#d6a85b}
+#app .viewModeSwitch[aria-checked="true"]>span{transform:translateX(20px)}
+#app .recipeWakeControl .hint{flex-basis:100%;font-size:12px}
