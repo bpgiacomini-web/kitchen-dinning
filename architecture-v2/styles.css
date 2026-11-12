@@ -1089,3 +1089,5 @@
 @media(max-width:600px){#app .journeyMap{height:340px}#app .homeInsights .panel-heading{display:flex;align-items:center;justify-content:space-between;gap:10px}#app .homeInsights .panel-heading .btn{font-size:16px;padding:9px}}
 #app .mapCredit{display:block;margin-top:10px;font-size:12px;color:var(--muted)}
 #app .mapCredit a{color:inherit}
+#app .journeyPage>.sectionTitle{display:flex;flex-direction:row;align-items:center;justify-content:space-between;gap:10px}
+#app .journeyPage>.sectionTitle h2{margin:0;font-size:28px}
