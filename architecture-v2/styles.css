@@ -911,3 +911,12 @@
 #app .homeRestaurantFinder .nearbyDisclosure>summary{padding:8px 0;min-height:44px;font-size:15px}
 #app .homeNameSearch{margin:10px 0 0}
 #app .homeNameSearch[hidden]{display:none}
+/* Main home action: open the private journal. */
+#app .homeAppsDisclosure{border-color:#e0b96f}
+#app .homeAppsDisclosure>summary{justify-content:flex-start;min-height:56px;box-sizing:border-box;padding:13px 16px;background:#d6a85b;color:#17130b;font-size:20px;line-height:1.3}
+#app .homeAppsDisclosure>summary:hover{background:#e0b96f}
+#app .homeJournalIcon{flex:none}
+#app .homeJournalChevron{margin-left:auto;flex:none}
+#app .homeAppsDisclosure[open] .homeJournalChevron{transform:rotate(180deg)}
+#app .homeAppsDisclosure>summary:focus-visible{outline:3px solid #fff0cb;outline-offset:-4px}
+#app .homeAppsDisclosure .homeFeatureButtons{padding-top:14px}
