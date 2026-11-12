@@ -138,5 +138,5 @@ export async function searchNearbyRestaurants({ location = null, fetcher = fetch
   });
   const payload = await response.json();
   if (!response.ok) throw new Error(payload?.error || `Nearby restaurant lookup returned HTTP ${response.status}.`);
-  return { places: Array.isArray(payload?.places) ? payload.places : [], location: payload?.location || location };
+  return { places: Array.isArray(payload?.places) ? payload.places : [], location: payload?.location || location, partial:payload.partial, cache:payload.cache };
 }

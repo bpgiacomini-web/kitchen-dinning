@@ -1,3 +1,4 @@
+import { nearbyCache } from "./_lib/nearby-cache.js";
 import { authenticatedUser } from './user-data.js';
 import { consumeAccountRateLimit, sendRateLimitResponse } from './_lib/rate-limit.js';
 import localRestaurantData from './_lib/local-restaurant-overrides.cjs';
@@ -186,7 +187,7 @@ async function fetchJson(fetcher, url, options, timeoutMs = 9000) {
   } finally { clearTimeout(timer); }
 }
 
-export function createRestaurantLookupHandler({ fetcher = fetch, authenticate = authenticatedUser, limitRequests = consumeAccountRateLimit } = {}) {
+export function createRestaurantLookupHandler({ fetcher = fetch, authenticate = authenticatedUser, limitRequests = consumeAccountRateLimit, cacheLookup = nearbyCache } = {}) {
   return async function handler(req, res) {
     res.setHeader("Cache-Control", "no-store, max-age=0");
     res.setHeader("X-Content-Type-Options", "nosniff");
@@ -270,6 +271,11 @@ export function createRestaurantLookupHandler({ fetcher = fetch, authenticate = 
 
     if (mode === "nearby" || mode === "bar-nearby") {
       if (!location) return res.status(422).json({ error: "Device and network location are unavailable. Allow location access or enter the restaurant details manually." });
+      const cached=await cacheLookup(location,barsOnly?'bars':'restaurants');
+      const saved=()=>res.status(200).json({places:cached.places.map(place=>({...place,distance:distanceMeters(location,place.lat,place.lon)})).filter(place=>place.distance<=8047).sort((a,b)=>a.distance-b.distance),location,cache:{stale:!cached.fresh,updatedAt:cached.updatedAt}});
+      if(cached?.places.length && cached.skipRefresh)return saved();
+      if(cached?.skipRefresh && !cached.places.length)return res.status(503).json({error:"Nearby map lookup is cooling down. Try again in 15 minutes."});
+      const deliver=async places=>{if(places.length)await cached?.save(places);return res.status(200).json({places,location});};
       const query = `[out:json][timeout:15];nwr["amenity"~"^(${barsOnly ? "bar|pub" : "restaurant|fast_food|cafe|bar|pub"})$",i]["name"](around:8047,${location.lat},${location.lon});out center tags;`;
       const photonUrl = new URL(PHOTON_REVERSE_URL);
       photonUrl.searchParams.set("lat", String(location.lat));
@@ -285,7 +291,7 @@ export function createRestaurantLookupHandler({ fetcher = fetch, authenticate = 
         }, 4000);
         if (!Array.isArray(nearby?.features)) throw new Error("invalid_photon_response");
         primaryPlaces=barsOnly ? normalizePhotonNearby(nearby.features.filter(barFeature), location) : includeCuratedNearby(normalizePhotonNearby(nearby.features, location), location);
-        if(primaryPlaces.length >= (barsOnly ? 5 : 20))return res.status(200).json({places:primaryPlaces,location});
+        if(primaryPlaces.length >= (barsOnly ? 5 : 20))return await deliver(primaryPlaces);
       } catch (error) {
         console.error("Metro Eats Photon nearby lookup failed", String(error?.message || "upstream_error").slice(0, 80));
       }
@@ -301,6 +307,7 @@ export function createRestaurantLookupHandler({ fetcher = fetch, authenticate = 
         } catch { /* Try the public backup endpoint. */ }
       }
       if (!payload) {
+        if(cached?.places.length)return saved();
         // Public map providers can be intermittently unavailable. Preserve a useful
         // nearby experience for supported local areas without requiring either feed.
         if(primaryPlaces.length)return res.status(200).json({places:primaryPlaces,location,partial:true});
@@ -310,7 +317,8 @@ export function createRestaurantLookupHandler({ fetcher = fetch, authenticate = 
       }
       const secondary=barsOnly ? normalizeNearby(payload.elements, location, {filter:place => ["bar","pub"].includes(place.amenity)}) : normalizeNearby(payload.elements, location);
       const seen=new Set(),places=[...primaryPlaces,...secondary].filter(place=>{const key=place.name.toLowerCase().replace(/[^a-z0-9]/g,'');if(seen.has(key))return false;seen.add(key);return true;}).sort((a,b)=>(a.distance??Infinity)-(b.distance??Infinity)).slice(0,20);
-      return res.status(200).json({ places: barsOnly ? places : includeCuratedNearby(places,location), location });
+      if(!places.length && cached?.places.length)return saved();
+      return await deliver(barsOnly ? places : includeCuratedNearby(places,location));
     }
 
     return res.status(400).json({ error: "Choose a restaurant name or nearby search." });

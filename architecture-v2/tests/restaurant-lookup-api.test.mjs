@@ -196,3 +196,13 @@ test('sparse successful primary results are supplemented by the backup provider'
  const res=responseRecorder();await handler({method:'POST',headers:{},body:{mode:'bar-nearby',location:{lat:38.93,lon:-90.19}}},res);
  assert.equal(res.statusCode,200);assert.equal(res.body.places[0].name,'Backup Pub');
 });
+
+test('cached nearby businesses remain available during provider outages',async()=>{
+ const handler=createRestaurantLookupHandler({cacheLookup:async()=>({places:[{name:'Saved Pub',lat:38.93,lon:-90.19,distance:999}],updatedAt:'2026-11-01',fresh:false,skipRefresh:false,save(){throw Error('must not overwrite with failure')}}),fetcher:async()=>{throw Error('offline')}});
+ const res=responseRecorder();await handler({method:'POST',headers:{},body:{mode:'bar-nearby',location:{lat:38.93,lon:-90.19}}},res);
+ assert.equal(res.statusCode,200);assert.equal(res.body.places[0].name,'Saved Pub');assert.equal(res.body.places[0].distance,0);assert.equal(res.body.cache.stale,true);
+});
+test('fresh shared area cache avoids external provider calls',async()=>{
+ const handler=createRestaurantLookupHandler({cacheLookup:async()=>({places:[{name:'Fresh Pub',lat:38.93,lon:-90.19}],fresh:true,skipRefresh:true}),fetcher:async()=>{throw Error('should not fetch')}});
+ const res=responseRecorder();await handler({method:'POST',headers:{},body:{mode:'bar-nearby',location:{lat:38.93,lon:-90.19}}},res);assert.equal(res.statusCode,200);assert.equal(res.body.cache.stale,false);
+});
