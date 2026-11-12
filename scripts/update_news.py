@@ -48,10 +48,12 @@ def fetch_feed(query):
 
 items = []
 seen = set()
+successful_feeds = 0
 
 for query in QUERIES:
     try:
         root = fetch_feed(query)
+        successful_feeds += 1
     except Exception as exc:
         print("Feed failed:", query, exc)
         continue
@@ -86,10 +88,13 @@ for query in QUERIES:
             "_published": published.isoformat(),
         })
 
+if not successful_feeds:
+    raise RuntimeError("All news sources failed; retaining the existing feed")
+
 items.sort(key=lambda x: x["_published"], reverse=True)
 items = items[:12]
 for item in items:
-    item.pop("_published", None)
+    item["publishedAt"] = item.pop("_published", None)
 
 payload = {
     "updated": dt.datetime.now(dt.timezone.utc).isoformat(),

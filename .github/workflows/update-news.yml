@@ -5,15 +5,22 @@ on:
     - cron: "17 * * * *"
   workflow_dispatch:
 
+concurrency:
+  group: metro-eats-news-feed
+  cancel-in-progress: false
+
 permissions:
   contents: write
 
 jobs:
   update-news:
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - name: Check out Metro Eats
         uses: actions/checkout@v4
+        with:
+          ref: main
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
@@ -29,5 +36,6 @@ jobs:
             echo "No news changes."
           else
             git commit -m "Update Metro Eats local news"
-            git push
+            git pull --rebase origin main
+            git push origin HEAD:main
           fi
