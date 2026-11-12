@@ -1047,3 +1047,7 @@
  #app .tonightPick .coinCaption{grid-column:2;grid-row:3;font-size:16px!important}
  #app .tonightPick .pickReveal{grid-column:2;grid-row:2}
 }
+#app .compactNearbyPanel{padding:14px 16px;margin:12px 0 18px}
+#app .compactNearbyPanel h3{margin:0;font-size:22px}
+#app .compactNearbyPanel .edit-status{margin:6px 0;font-size:16px;min-height:0}
+#app .compactNearbyPanel .nearbyDisclosure{margin-top:8px;padding-top:4px}
