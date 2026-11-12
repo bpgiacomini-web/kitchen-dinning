@@ -11,3 +11,9 @@ test('Preview news reloads the current public feed at a fixed URL without forwar
 test('news failures are explicit and never reported as successful empty feeds',async()=>{
   for(const fetchImpl of [async()=>{throw Error('offline')},async()=>({ok:false}),async()=>({ok:true,text:async()=>'{}'})]){const res=recorder();await createFoodNewsHandler({fetchImpl})({method:'POST',body:{mode:'food-news'}},res);assert.equal(res.code,503);assert.ok(res.body.error);}
 });
+
+test('newest stories lead regardless of photos and duplicate URLs preserve the photo',async()=>{
+ const {createRequire}=await import('node:module');const {mergeStories}=createRequire(import.meta.url)('../../api/_lib/food-news.cjs');
+ const rows=mergeStories([{url:'https://new.test',title:'New',date:'November 12, 2026'},{url:'https://old.test',title:'Old',date:'November 10, 2026'}],[{url:'https://old.test',image:'https://img.test/a.jpg',date:'November 10, 2026'}]);
+ assert.equal(rows[0].title,'New');assert.equal(rows.length,2);assert.equal(rows[1].image,'https://img.test/a.jpg');
+});

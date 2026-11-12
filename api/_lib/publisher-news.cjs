@@ -10,7 +10,7 @@ function publisherStories(xml){
   const image=decode(block.match(/<(?:media:content|media:thumbnail|enclosure)\b[^>]*url=["']([^"']+)["']/i)?.[1] || description.match(/<img\b[^>]*src=["']([^"']+)["']/i)?.[1]);
   let safe='';try{const parsed=new URL(image,url);if(parsed.protocol==='https:' && /(^|\.)riverbender\.com$/.test(parsed.hostname) && !/logo|banner|avatar|pixel/i.test(parsed.pathname))safe=parsed.href;}catch{}
   if(!safe)continue;
-  const date=tag('pubDate');items.push({title,source:'RiverBender',url,image:safe,date:Number.isNaN(Date.parse(date))?'':new Date(date).toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'})});
+  const date=tag('pubDate');items.push({title,source:'RiverBender',url,image:safe,publishedAt:Number.isNaN(Date.parse(date))?'':new Date(date).toISOString(),date:Number.isNaN(Date.parse(date))?'':new Date(date).toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'})});
  }
  return items.slice(0,4);
 }

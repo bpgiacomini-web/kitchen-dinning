@@ -11,7 +11,15 @@ async function readFoodNews(fetchImpl) {
   const payload = JSON.parse(text);
   if (!Array.isArray(payload.items)) throw new Error('Invalid feed');
   let pictures=[];try{pictures=await publisherNews.readPublisherPhotos(fetchImpl);}catch{}
-  const seen=new Set(pictures.map(item=>item.url));
-  return { updated: payload.updated, items: [...pictures,...payload.items.filter(item=>!seen.has(item.url))].slice(0,20) };
+  return { updated: payload.updated, items: mergeStories(payload.items,pictures) };
 }
-module.exports = { readFoodNews };
+function mergeStories(items,pictures){
+ const merged=new Map();
+ for(const item of [...pictures,...items]){
+  const old=merged.get(item.url);
+  merged.set(item.url,old?{...old,...item,image:item.image||old.image}:item);
+ }
+ const timestamp=item=>{const value=Date.parse(item.publishedAt||item.date||'');return Number.isFinite(value)?value:0;};
+ return [...merged.values()].sort((a,b)=>timestamp(b)-timestamp(a)).slice(0,20);
+}
+module.exports = { readFoodNews,mergeStories };
