@@ -840,3 +840,21 @@
 #app .diningActions .rankingsButton:hover{background:#e0b96f;border-color:#edca87}
 #app .diningActions .rankingsButton:focus-visible{outline:3px solid #f3d89f;outline-offset:3px}
 #app .rankingsButton svg{flex:0 0 auto}
+/* Compact review entry: keep scores prominent and secondary detail optional. */
+#app .entryDetails{margin:8px 0;padding:0;border:0;background:transparent}
+#app .entryDetails>summary{display:list-item;cursor:pointer;color:var(--accent2);font-size:14px;font-weight:600;padding:8px 0;min-height:36px}
+#app .entryDetails[open]>summary{margin-bottom:6px}
+#app .entryDetails input[type="date"]{max-width:100%;min-width:0;box-sizing:border-box}
+#app .reviewDishHead{display:grid;grid-template-columns:minmax(0,1fr) 44px;align-items:end;gap:8px}
+#app .reviewDishHead .dishRemove{display:grid;place-items:center;width:44px;height:44px;min-height:44px;padding:0;margin:0;border:0;background:transparent;color:var(--muted)}
+#app .dishIdeas{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0 16px}
+#app .dishIdea{font:inherit;font-size:13px;padding:8px 11px;min-height:36px;border:1px solid var(--line);border-radius:999px;background:#182320;color:var(--text);cursor:pointer}
+#app .dishIdea:hover{border-color:var(--accent2)}
+#app .orderAgainChoice{border:0;padding:0;margin:8px 0 16px;min-width:0}
+#app .orderAgainChoice legend{font-weight:700;margin-bottom:10px}
+#app .orderAgainChoice>div{display:flex;gap:8px}
+#app .orderAgainChoice .btn{min-width:88px;min-height:44px;margin:0}
+#app .orderAgainChoice .btn[aria-pressed="true"]{background:#d6a85b;color:#17130b;border-color:#e0b96f}
+#app .reviewDish{padding:14px;margin-bottom:12px}
+#app .reviewFoodSection>.hint{margin-bottom:12px}
+#app .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
