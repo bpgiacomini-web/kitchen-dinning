@@ -963,3 +963,6 @@
 #app .photoEditor .btn{min-height:44px;font-size:14px;padding:10px 12px}
 #photo-storage-usage{font-size:12px;margin-top:10px}
 #photo-storage-usage progress{display:block;width:100%;height:8px;margin:8px 0}
+#app .barGamingFilter{display:flex;gap:10px;align-items:center;font-size:12px;margin:8px 0;color:var(--muted)}
+#app .barGamingFilter select{max-width:100%;min-height:44px;background:#10151a;color:var(--text);padding:8px;border:1px solid var(--line);border-radius:10px}
+#app .barDiscovery details[open]>summary>span{transform:rotate(90deg)}
