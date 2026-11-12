@@ -553,7 +553,7 @@ function updateReviewSurveySummary() {
     : `${completed} of 5 complete`;
 }
 function renderHome() {
-  root.innerHTML = `<section class="hero"><div class="heroIn"><h2>Your Table</h2><details class="homeAppsDisclosure"><summary><svg class="homeJournalIcon" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="3" width="15" height="18" rx="2"/><path d="M9 3v18M3 7h4m-4 5h4m-4 5h4m6-9h4m-4 4h4"/></svg><span>My Journal</span><svg class="homeJournalChevron" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary>${renderRecentActivity(cloudDataset)}</details></div></section><section class="localNewsPanel" aria-labelledby="local-news-title"><div class="panel-heading"><div><p class="eyebrow">St. Louis • Metro East</p><h2 id="local-news-title">Local Food News</h2></div><div class="newsHeadingActions"><span class="liveNewsBadge"><span class="liveNewsDot" aria-hidden="true"></span>LIVE · LOCAL FEED</span><button class="btn newsRefreshButton" type="button" id="refresh-local-news">↻ Refresh</button></div></div><p class="newsIntro">Fresh openings, good bites, and food stories from across the bi-state.</p><div id="local-food-news" class="localNewsList" aria-live="polite"><p class="hint">Loading local food stories…</p></div><p class="hint" id="local-news-updated"></p></section><p class="homePrivacyNote">Your recipes, reviews, and ratings are private to your account.</p>`;
+  root.innerHTML = `<section class="hero"><div class="heroIn"><h2>Your Table</h2><details class="homeAppsDisclosure"><summary><svg class="homeJournalIcon" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="3" width="15" height="18" rx="2"/><path d="M9 3v18M3 7h4m-4 5h4m-4 5h4m6-9h4m-4 4h4"/></svg><span>My Journal</span><svg class="homeJournalChevron" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary>${renderRecentActivity(cloudDataset)}</details></div></section><section class="localNewsPanel" aria-labelledby="local-news-title"><div class="panel-heading"><div><p class="eyebrow">St. Louis • Metro East</p><h2 id="local-news-title">Local Food News</h2></div><div class="newsHeadingActions"><span class="liveNewsBadge"><span class="liveNewsDot" aria-hidden="true"></span>LOCAL HEADLINES</span><button class="btn newsRefreshButton" type="button" id="refresh-local-news">↻ Refresh</button></div></div><p class="newsIntro">Fresh openings, good bites, and food stories from across the bi-state.</p><div id="local-food-news" class="localNewsList" aria-live="polite"><p class="hint">Loading local food stories…</p></div><p class="hint" id="local-news-updated"></p></section><p class="homePrivacyNote">Your recipes, reviews, and ratings are private to your account.</p>`;
   root.querySelector(".hero")?.insertAdjacentHTML("afterend",renderTonightPick(cloudDataset,pickFilter,chosenPickId,homeNearbyCache?.response?.places||[]));
   root.querySelector("#pick-filter")?.addEventListener("change",event=>{pickFilter=event.target.value;chosenPickId=null;render();});
   const newsPanel = root.querySelector(".localNewsPanel");
@@ -600,8 +600,8 @@ async function loadLocalFoodNews(manualRefresh = false) {
     const unchanged = lastNewsSignature === signature;
     lastNewsSignature = signature;
     if (updated) {
-      const generated = new Date(payload.updated);
-      updated.textContent = `${manualRefresh ? (unchanged ? "No new stories in the published feed. " : "Published feed reloaded. ") : ""}Checked ${new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}.${Number.isNaN(generated.getTime()) ? "" : ` Feed updated ${generated.toLocaleString()}.`} Refresh checks the published feed; publisher updates arrive separately.`;
+      const checked = new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+      updated.textContent = manualRefresh ? `${unchanged ? "No new stories" : "Stories updated"} · Checked ${checked}` : `Checked ${checked}`;
     }
     if (!items.length) { list.innerHTML = '<p class="empty">No local food stories are available right now. Please check back soon.</p>'; return; }
     list.innerHTML = items.map(item => {
@@ -617,7 +617,7 @@ async function loadLocalFoodNews(manualRefresh = false) {
     }).join("");
     list.querySelectorAll("img.newsThumbnail").forEach(image=>{image.onload=()=>{image.hidden=false;};image.onerror=()=>image.remove();if(image.complete && image.naturalWidth)image.hidden=false;});
 
-  } catch { if (updated) updated.textContent = "Refresh failed. Please try again; the last displayed stories may be out of date."; if (!list.querySelector("article")) list.innerHTML = '<p class="empty">Local food news could not be loaded. Your journal is unaffected.</p>'; }
+  } catch { if (updated) updated.textContent = "Couldn’t refresh · Try again."; if (!list.querySelector("article")) list.innerHTML = '<p class="empty">Local food news could not be loaded. Your journal is unaffected.</p>'; }
   finally { const refreshButton = document.querySelector("#refresh-local-news"); if (refreshButton) { refreshButton.disabled = false; refreshButton.textContent = "↻ Refresh"; } }
 }
 function renderImportPanel() {
