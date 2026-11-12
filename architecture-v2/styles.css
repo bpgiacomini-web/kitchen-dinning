@@ -1035,3 +1035,15 @@
 #app .pickCoin.is-flipping::after{animation:coin-glint .85s ease-in-out}
 @keyframes coin-glint{0%{transform:translateX(-85%);opacity:0}45%{opacity:.85}100%{transform:translateX(85%);opacity:0}}
 @media(prefers-reduced-motion:reduce){#app .pickCoin.is-flipping::after{animation:none}}
+/* Let the chosen restaurant lead the coin card. */
+#app .tonightPick .coinCaption{font-size:16px!important;font-weight:400;color:var(--muted);line-height:1.3}
+#app .tonightPick .pickResult{display:flex;flex-direction:column;align-items:flex-start;gap:8px;padding:0;border:0;background:none;max-width:100%}
+#app .tonightPick .pickResult strong{font-size:clamp(27px,5vw,36px)!important;line-height:1.12;color:var(--gold,#dfb96c);overflow-wrap:anywhere}
+#app .tonightPick .pickResult small{font-size:14px!important;line-height:1.3;font-weight:500;color:#bdc5cb;border:1px solid #b6c4cd35;border-radius:20px;padding:3px 9px}
+@media(max-width:600px){
+ #app .tonightPick{grid-template-columns:76px minmax(0,1fr);row-gap:8px}
+ #app .tonightPick h3{font-size:20px!important}
+ #app .tonightPick .pickCoin{grid-row:1/4;align-self:center}
+ #app .tonightPick .coinCaption{grid-column:2;grid-row:3;font-size:16px!important}
+ #app .tonightPick .pickReveal{grid-column:2;grid-row:2}
+}
