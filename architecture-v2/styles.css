@@ -1051,3 +1051,5 @@
 #app .compactNearbyPanel h3{margin:0;font-size:22px}
 #app .compactNearbyPanel .edit-status{margin:6px 0;font-size:16px;min-height:0}
 #app .compactNearbyPanel .nearbyDisclosure{margin-top:8px;padding-top:4px}
+#app .cocktailSection .cocktailJournal>.sectionTitle [data-cocktail-action="new"],#app.cocktailSection .cocktailJournal>.sectionTitle [data-cocktail-action="new"]{background:#e2abd2;color:#21131e;border-color:#e2abd2;font-weight:800;box-shadow:0 4px 14px #e2abd21a}
+#app.cocktailSection .cocktailJournal>.sectionTitle [data-cocktail-action="new"]:hover{background:#edbfdf;border-color:#edbfdf}
