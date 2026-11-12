@@ -1,3 +1,4 @@
+import { mountCompactBrowse } from "./features/compact-browse.mjs";
 import { lookupBars } from "./features/bar-lookup.mjs";
 import { mountReviewPhotos } from "./features/review-photos.mjs";
 import { mapMenuMarkup } from "./features/map-menu.mjs";
@@ -66,6 +67,7 @@ async function saveCloudDataset(nextDataset) {
   return result;
 }
 
+mountCompactBrowse(root);
 const photoController=createJournalPhotos({root,getData:()=>cloudDataset,save:saveCloudDataset});
 root.addEventListener("metro-photo-saved",()=>render());
 const cocktailJournal = createCocktailJournal({ root, getData: () => cloudDataset, save: saveCloudDataset });

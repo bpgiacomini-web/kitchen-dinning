@@ -989,3 +989,34 @@
 #app .recentEntry:has(.recentThumb){display:grid;grid-template-columns:70px minmax(0,1fr);gap:2px 10px;align-items:center}
 #app .recentEntry .recentThumb{grid-column:1;grid-row:1/3;width:70px;height:70px;object-fit:cover;border-radius:10px}
 #app .recentEntry:has(.recentThumb)>small,#app .recentEntry:has(.recentThumb)>strong{grid-column:2}
+
+/* Compact browsing keeps readable controls behind one disclosure. */
+#app .compactBrowseMenu{margin:10px 0 16px;border:1px solid var(--line);border-radius:12px;padding:0 12px}
+#app .compactBrowseMenu>summary{min-height:48px;display:flex;align-items:center;gap:8px;cursor:pointer;font-weight:700}
+#app .compactBrowseMenu>summary::before{content:'▸';color:var(--gold,#dfb96c)}
+#app .compactBrowseMenu[open]>summary::before{content:'▾'}
+#app .compactBrowseBody{padding:8px 0 12px;display:grid;gap:12px}
+#app .compactBrowseBody .restaurantSortControl{flex-wrap:wrap}
+#app .cocktailAverage:empty{display:none}
+@media(max-width:600px){
+ #app>.hero .eyebrow,#app>.hero p{display:none}
+ #app>.hero .heroIn{padding:18px 20px}
+ #app>.hero h2{margin:0;font-size:30px;line-height:1.15}
+ #app>.hero{margin-bottom:12px}
+ #app .content-panel{padding:16px}
+ #app .sectionTitle{margin-bottom:12px;gap:10px}
+ #app .sectionTitle .sectionKicker{display:none}
+ #app .sectionTitle:has(.diningActions)>div:first-child h3{display:none}
+ #app .sectionTitle:has([data-action="new-recipe"])>div:first-child{display:none}
+ #app .diningActions{width:100%;gap:8px}
+ #app .diningActions .btn{padding:10px;min-height:48px;font-size:17px}
+ #app .tonightPick{display:grid;grid-template-columns:76px minmax(0,1fr);gap:4px 14px;text-align:left;align-items:center}
+ #app .tonightPick h3{grid-column:2;margin:0;font-size:22px}
+ #app .tonightPick .pickCoin{grid-column:1;grid-row:1/4;width:72px;height:72px;margin:0;font-size:24px}
+ #app .tonightPick .coinCaption,#app .tonightPick .pickReveal{grid-column:2}
+ #app .tonightPick .pickReveal p{margin:0;font-size:16px}
+ #app .tonightPick .pickResult{text-align:left}
+ #app .cocktailTabs{margin-bottom:12px}
+ #app .cocktailAverage:has(small:empty){display:none}
+ #app .insightTile{padding:14px}
+}
