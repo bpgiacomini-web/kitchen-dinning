@@ -895,3 +895,19 @@
 #app .cocktailRatingField{min-width:0}
 #app .recipeFavoriteStar{flex:0 0 32px;width:32px;min-height:44px;display:grid;place-items:center;padding:0;background:none;border:0;color:#d6a85b;font-size:26px;line-height:1;cursor:pointer}
 #app .recipeFavoriteStar:focus-visible{outline:2px solid #d6a85b;outline-offset:2px;border-radius:5px}
+#app .barDiscovery{margin:12px 0;padding:12px;border:1px solid #503e50;border-radius:14px}
+#app .barDiscovery summary{cursor:pointer;min-height:44px;display:flex;align-items:center;font-weight:750;color:#e4abd4}
+#app .barMatch{display:block;width:100%;text-align:left;font:inherit;color:var(--text);border:1px solid #454049;border-radius:12px;background:#10151a;padding:12px;margin-top:8px;cursor:pointer}
+#app .barMatch strong,#app .barMatch small{display:block;overflow-wrap:anywhere}
+#app .barMatch small{font-size:12px;color:var(--muted);margin-top:5px}
+#app .barMatch:hover{border-color:#e4abd4}
+#app [data-bar-search-status]:empty,#app [data-bar-search-results]:empty{display:none}
+#app .homeRestaurantFinder{padding:14px 18px}
+#app .homeFinderHeading{display:flex;justify-content:space-between;align-items:center;gap:12px}
+#app .homeFinderHeading h3{margin:0;font-size:20px}
+#app .homeSearchToggle{display:grid;place-items:center;width:44px;height:44px;padding:0;margin:0}
+#app .homeRestaurantFinder .edit-status{font-size:12px;min-height:0;margin:6px 0}
+#app .homeRestaurantFinder .nearbyDisclosure{margin-top:8px;padding-top:4px}
+#app .homeRestaurantFinder .nearbyDisclosure>summary{padding:8px 0;min-height:44px;font-size:15px}
+#app .homeNameSearch{margin:10px 0 0}
+#app .homeNameSearch[hidden]{display:none}

@@ -179,3 +179,14 @@ test("nearby aliases inherit a verified local website at the matching location",
   assert.equal(matching.length,1);
   assert.equal(matching[0].website,'https://www.ropersregalbeagle.com/');
 });
+
+test("bar discovery filters out restaurants for nearby and name searches", async () => {
+ const feature=(name,type)=>({properties:{name,osm_key:'amenity',osm_value:type,website:'https://example.org'},geometry:{coordinates:[-90.19,38.93]}});
+ const features=[feature('QA Pub','pub'),feature('QA Cafe','cafe'),feature('QA Restaurant','restaurant'),feature('QA Bar','bar')];
+ const handler=createRestaurantLookupHandler({fetcher:async()=>({ok:true,json:async()=>({features})})});
+ for(const mode of ['bar-nearby','bar-name']) {
+  const res=responseRecorder();await handler({method:'POST',headers:{},body:{mode,query:'QA',location:{lat:38.93,lon:-90.19}}},res);
+  assert.equal(res.statusCode,200);const names=(res.body.places || res.body.features.map(item=>({name:item.properties.name}))).map(item=>item.name);
+  assert.deepEqual(names.sort(),['QA Bar','QA Pub']);
+ }
+});

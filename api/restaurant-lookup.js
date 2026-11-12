@@ -151,15 +151,15 @@ function nameMatches(candidate, query) {
   return words.length > 0 && words.filter(word => name.includes(word)).length / words.length >= 0.7;
 }
 
-async function nearbyNameFeatures(query, location, fetcher) {
+async function nearbyNameFeatures(query, location, fetcher, barsOnly = false) {
   if (!location) return [];
-  const overpassQuery = `[out:json][timeout:15];nwr["amenity"~"^(restaurant|fast_food|cafe|bar|pub)$",i]["name"](around:30000,${location.lat},${location.lon});out center tags;`;
+  const overpassQuery = `[out:json][timeout:15];nwr["amenity"~"^(${barsOnly ? "bar|pub" : "restaurant|fast_food|cafe|bar|pub"})$",i]["name"](around:30000,${location.lat},${location.lon});out center tags;`;
   for (const [index, endpoint] of OVERPASS_URLS.entries()) {
     const url = new URL(endpoint);
     url.searchParams.set("data", overpassQuery);
     try {
       const payload = await fetchJson(fetcher, url, { headers: { Accept: "application/json" } }, index === 0 ? 7000 : 3000);
-      return normalizeNearby(payload.elements, location, { filter: place => nameMatches(place.name, query) }).map(place => ({
+      return normalizeNearby(payload.elements, location, { filter: place => nameMatches(place.name, query) && (!barsOnly || ["bar","pub"].includes(place.amenity)) }).map(place => ({
         type: "Feature",
         properties: {
           name: place.name,
@@ -197,6 +197,8 @@ export function createRestaurantLookupHandler({ fetcher = fetch, authenticate = 
 
     const body = req.body && typeof req.body === "object" ? req.body : {};
     const mode = body.mode;
+    const barsOnly = mode === "bar-name" || mode === "bar-nearby";
+    const barFeature = feature => ["bar", "pub"].includes(String(feature?.properties?.osm_value || "").toLowerCase());
     if (mode === "food-news") {
       try { return res.status(200).json(await foodNews.readFoodNews(fetcher)); }
       catch { return res.status(503).json({ error: "The published food news feed could not be refreshed." }); }
@@ -233,7 +235,7 @@ export function createRestaurantLookupHandler({ fetcher = fetch, authenticate = 
       } finally { clearTimeout(timeout); }
     }
     const location = requestLocation(req, body.location);
-    if (mode === "name") {
+    if (mode === "name" || mode === "bar-name") {
       const query = typeof body.query === "string" ? body.query.trim() : "";
       if (query.length < 2 || query.length > 120) return res.status(400).json({ error: "Enter a restaurant name between 2 and 120 characters." });
       try {
@@ -241,6 +243,7 @@ export function createRestaurantLookupHandler({ fetcher = fetch, authenticate = 
         url.searchParams.set("q", query);
         url.searchParams.set("limit", "30");
         url.searchParams.set("lang", "en");
+        if (barsOnly) for (const amenity of ["bar","pub"]) url.searchParams.append("osm_tag", `amenity:${amenity}`);
         if (location) {
           url.searchParams.set("lat", String(location.lat));
           url.searchParams.set("lon", String(location.lon));
@@ -250,13 +253,13 @@ export function createRestaurantLookupHandler({ fetcher = fetch, authenticate = 
         let photonError = null;
         try {
           const payload = await fetchJson(fetcher, url, { headers: { Accept: "application/json" } });
-          features = Array.isArray(payload?.features) ? payload.features : [];
+          features = Array.isArray(payload?.features) ? payload.features.filter(feature => !barsOnly || barFeature(feature)) : [];
         } catch (error) { photonError = error; }
         if (!hasNearbyNameMatch(features, query, location)) {
-          const fallback = await nearbyNameFeatures(query, location, fetcher);
+          const fallback = await nearbyNameFeatures(query, location, fetcher, barsOnly);
           if (fallback.length) features = [...features, ...fallback];
         }
-        features = includeCuratedNameMatches(features, query, location);
+        if (!barsOnly) features = includeCuratedNameMatches(features, query, location);
         if (photonError && !features.length) throw photonError;
         return res.status(200).json({ features, location });
       } catch (error) {
@@ -265,22 +268,22 @@ export function createRestaurantLookupHandler({ fetcher = fetch, authenticate = 
       }
     }
 
-    if (mode === "nearby") {
+    if (mode === "nearby" || mode === "bar-nearby") {
       if (!location) return res.status(422).json({ error: "Device and network location are unavailable. Allow location access or enter the restaurant details manually." });
-      const query = `[out:json][timeout:15];nwr["amenity"~"^(restaurant|fast_food|cafe|bar|pub)$",i]["name"](around:8047,${location.lat},${location.lon});out center tags;`;
+      const query = `[out:json][timeout:15];nwr["amenity"~"^(${barsOnly ? "bar|pub" : "restaurant|fast_food|cafe|bar|pub"})$",i]["name"](around:8047,${location.lat},${location.lon});out center tags;`;
       const photonUrl = new URL(PHOTON_REVERSE_URL);
       photonUrl.searchParams.set("lat", String(location.lat));
       photonUrl.searchParams.set("lon", String(location.lon));
       photonUrl.searchParams.set("radius", "8.05");
       photonUrl.searchParams.set("limit", "50");
       photonUrl.searchParams.set("lang", "en");
-      for (const amenity of FOOD_AMENITIES) photonUrl.searchParams.append("osm_tag", `amenity:${amenity}`);
+      for (const amenity of barsOnly ? ["bar","pub"] : FOOD_AMENITIES) photonUrl.searchParams.append("osm_tag", `amenity:${amenity}`);
       try {
         const nearby = await fetchJson(fetcher, photonUrl, {
           headers: { Accept: "application/json", "User-Agent": "MetroEats/1.0 (nearby restaurant lookup)" }
         }, 4000);
         if (!Array.isArray(nearby?.features)) throw new Error("invalid_photon_response");
-        return res.status(200).json({ places: includeCuratedNearby(normalizePhotonNearby(nearby.features, location), location), location });
+        return res.status(200).json({ places: barsOnly ? normalizePhotonNearby(nearby.features.filter(barFeature), location) : includeCuratedNearby(normalizePhotonNearby(nearby.features, location), location), location });
       } catch (error) {
         console.error("Metro Eats Photon nearby lookup failed", String(error?.message || "upstream_error").slice(0, 80));
       }
@@ -298,11 +301,11 @@ export function createRestaurantLookupHandler({ fetcher = fetch, authenticate = 
       if (!payload) {
         // Public map providers can be intermittently unavailable. Preserve a useful
         // nearby experience for supported local areas without requiring either feed.
-        const curated = includeCuratedNearby([], location);
+        const curated = barsOnly ? [] : includeCuratedNearby([], location);
         if (curated.length) return res.status(200).json({ places: curated, location, source: "curated-fallback" });
         return res.status(502).json({ error: "Nearby restaurant data is temporarily unavailable. Name search is still available." });
       }
-      return res.status(200).json({ places: includeCuratedNearby(normalizeNearby(payload.elements, location), location), location });
+      return res.status(200).json({ places: barsOnly ? normalizeNearby(payload.elements, location, {filter:place => ["bar","pub"].includes(place.amenity)}) : includeCuratedNearby(normalizeNearby(payload.elements, location), location), location });
     }
 
     return res.status(400).json({ error: "Choose a restaurant name or nearby search." });

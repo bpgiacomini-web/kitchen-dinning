@@ -1,11 +1,13 @@
+import { lookupBars } from "./bar-lookup.mjs";
 import { importCocktailUrl, parseCocktailText } from "./cocktail-import.mjs";
 import { COCKTAIL_ICON, COCKTAIL_TYPES, optionalRating, safeWebUrl, summarizeCocktailCollection, drinksForVisit, saveBarVisit } from "../domain/cocktails.mjs";
 const esc = value => String(value ?? "").replace(/[&<>"']/g, char => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[char]);
 const today = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`; };
 const score = value => value == null ? "Unrated" : `${Number(value).toFixed(1)}/10`;
-const tabs = { bars: "Bars & Venues", drinks: "Drink Ratings", cocktailRecipes: "Home Cocktails" };
+const tabs = { bars: "The Barstool", drinks: "Top Drinks", cocktailRecipes: "My Cocktails" };
 export function createCocktailJournal({ root, getData, save }) {
   let tab = "bars", editing = null, visitBar = null, editingVisit = null, editorOpen = false;
+  let nearby = [], nearbyLoaded = false, nearbyMessage = '', searchResults = [], location = null, searchTimer, searchController, prefill = null, generation = 0;
   const field = (name, label, value = "", attributes = "") => `<label>${label}<input name="${name}" value="${esc(value)}" ${attributes}></label>`;
   const area = (name, label, value = "", required = false) => `<label>${label}<textarea name="${name}" rows="3" maxlength="10000"${required ? " required" : ""}>${esc(value)}</textarea></label>`;
   const ratingField = (name, label, value) => `<div class="cocktailRatingField"><div class="reviewQuestionHead"><b>${esc(label)}</b><span data-cocktail-score-label>${value ? score(value) : ""}</span></div><input type="hidden" name="${esc(name)}" value="${value ?? ""}"><div class="cocktailScoreButtons" role="group" aria-label="${esc(label)} rating from 1 to 10">${Array.from({length:10},(_,i)=>`<button type="button" data-cocktail-action="score" data-value="${i+1}" aria-label="${esc(label)}: ${i+1} out of 10" aria-pressed="${Number(value)===i+1}">${i+1}</button>`).join("")}</div></div>`;
@@ -15,12 +17,13 @@ export function createCocktailJournal({ root, getData, save }) {
   function visitOptions(data,barId,visitId) {return '<option value="">No visit linked</option>' + (data.bars.find(bar=>bar.id===barId)?.visits || []).map(visit=>`<option value="${esc(visit.id)}"${visit.id===visitId?' selected':''}>${esc(visit.visitedAt)} · ${score(visit.overallRating)}</option>`).join('');}
   const types = (value = "") => `<label>Base / style<select name="base"><option value="">Choose a style</option>${COCKTAIL_TYPES.map(type => `<option${type === value ? " selected" : ""}>${esc(type)}</option>`).join("")}</select></label>`;
   const action = (label, kind, id = "", extra = "") => `<button class="btn" type="button" data-cocktail-action="${kind}" data-id="${esc(id)}" ${extra}>${label}</button>`;
-  function setTab(next) { if (tabs[next]) tab = next; editing = null; visitBar = null; editorOpen = false; }
+  function setTab(next) { generation++; clearTimeout(searchTimer);searchController?.abort();prefill=null;if (tabs[next]) tab = next; editing = null; visitBar = null; editorOpen = false; }
   function render() {
     const data = getData();
     const rows = data[tab] || [];
     const stats = summarizeCocktailCollection(rows, { visits: tab === "bars" });
-    root.innerHTML = `<section class="hero cocktailHero"><div class="heroIn"><div class="eyebrow">Your drinks journal</div><h2><span class="cocktailMark">${COCKTAIL_ICON}</span> Cocktails &amp; Bars</h2><p>Great places, memorable drinks, and cocktails worth making at home.</p></div></section><section class="content-panel cocktailJournal"><nav class="cocktailTabs" aria-label="Cocktails and bars categories">${Object.entries(tabs).map(([key,label]) => `<button type="button" data-cocktail-tab="${key}" aria-pressed="${tab === key}">${label}</button>`).join("")}</nav><div class="sectionTitle"><div><div class="sectionKicker">${rows.length} saved · ${stats.favoriteCount} favorites</div><h3>${tabs[tab]}</h3></div>${action(tab === "bars" ? "＋ Add a Bar" : tab === "drinks" ? "＋ Rate a Drink" : "＋ Add a Home Cocktail", "new")}</div><p class="hint">${tab === "bars" ? "Rate the visit. Add the drinks." : tab === "drinks" ? "Your drinks, linked to bars and visits." : "Import a recipe or add your own."}</p><p class="cocktailAverage">${score(stats.averageRating)} <small>${stats.ratedCount ? `average across ${stats.ratedCount} ${tab === "bars" ? "rated visits" : "rated entries"}` : "Add a rating when you’re ready"}</small></p><label class="cocktailSearch">Search ${tabs[tab].toLowerCase()}<input id="cocktail-search" type="search" placeholder="Search name, style, venue, or notes"></label><p id="cocktail-search-count" class="hint" aria-live="polite">${rows.length} entries</p>${editorOpen ? renderEditor(data) : ""}<div class="cocktailCards">${rows.slice().sort((a,b) => Number(Boolean(b.favorite))-Number(Boolean(a.favorite)) || a.name.localeCompare(b.name)).map(item => renderCard(item,data)).join("") || `<p class="empty">Your ${tabs[tab].toLowerCase()} journal starts here. Add your first entry above.</p>`}</div><p class="hint">Private to your account. Ratings in this section never change your restaurant, recipe, or frozen-pizza scores.</p></section>`;
+    root.innerHTML = `<section class="hero cocktailHero"><div class="heroIn"><div class="eyebrow">Your drinks journal</div><h2><span class="cocktailMark">${COCKTAIL_ICON}</span> Cocktails &amp; Bars</h2><p>Great places, memorable drinks, and cocktails worth making at home.</p></div></section><section class="content-panel cocktailJournal"><nav class="cocktailTabs" aria-label="Cocktails and bars categories">${Object.entries(tabs).map(([key,label]) => `<button type="button" data-cocktail-tab="${key}" aria-pressed="${tab === key}">${label}</button>`).join("")}</nav><div class="sectionTitle"><div><div class="sectionKicker">${rows.length} saved · ${stats.favoriteCount} favorites</div><h3>${tabs[tab]}</h3></div>${action(tab === "bars" ? "＋ Add a Bar" : tab === "drinks" ? "＋ Rate a Drink" : "＋ Add a Cocktail", "new")}</div><p class="hint">${tab === "bars" ? "Rate the visit. Add the drinks." : tab === "drinks" ? "Your drinks, linked to bars and visits." : "Import a recipe or add your own."}</p><p class="cocktailAverage">${score(stats.averageRating)} <small>${stats.ratedCount ? `average across ${stats.ratedCount} ${tab === "bars" ? "rated visits" : "rated entries"}` : "Add a rating when you’re ready"}</small></p><label class="cocktailSearch">Search ${tabs[tab].toLowerCase()}<input id="cocktail-search" type="search" placeholder="Search name, style, venue, or notes"></label><p id="cocktail-search-count" class="hint" aria-live="polite">${rows.length} entries</p>${tab === "bars" && !editorOpen ? `<section class="barDiscovery"><details><summary>Around Me</summary><p class="hint" data-bars-nearby-status>${esc(nearbyMessage || "Finding nearby bars…")}</p>${action("Use my location","locate-bars")}<div data-bars-nearby>${barResults(nearby,"nearby")}</div></details></section>` : ""}${editorOpen ? renderEditor(data) : ""}<div class="cocktailCards">${rows.slice().sort((a,b) => (tab === "drinks" ? (b.overallRating ?? -1) - (a.overallRating ?? -1) : 0) || Number(Boolean(b.favorite))-Number(Boolean(a.favorite)) || a.name.localeCompare(b.name)).map(item => renderCard(item,data)).join("") || `<p class="empty">Your ${tabs[tab].toLowerCase()} journal starts here. Add your first entry above.</p>`}</div><p class="hint">Private to your account. Ratings in this section never change your restaurant, recipe, or frozen-pizza scores.</p></section>`;
+    if(tab === "bars" && !nearbyLoaded) void loadNearby();
     root.querySelector("#cocktail-search").addEventListener("input", event => {
       const query = event.target.value.trim().toLocaleLowerCase(); let count = 0;
       root.querySelectorAll("[data-cocktail-search]").forEach(card => { card.hidden = !card.dataset.cocktailSearch.includes(query); if (!card.hidden) count++; });
@@ -28,7 +31,25 @@ export function createCocktailJournal({ root, getData, save }) {
     });
     root.querySelector("#cocktail-editor")?.addEventListener("submit", submit);
     root.querySelector('[name="barId"]')?.addEventListener("change", event=> { root.querySelector('[name="visitId"]').innerHTML=visitOptions(getData(),event.target.value,""); });
+    const nameInput=root.querySelector('#cocktail-editor [name="name"]');
+    if(tab === 'bars' && nameInput) nameInput.addEventListener('input',()=>{
+      clearTimeout(searchTimer);searchController?.abort();const query=nameInput.value.trim(),version=++generation;
+      const status=root.querySelector('[data-bar-search-status]'),results=root.querySelector('[data-bar-search-results]');
+      results.innerHTML='';if(query.length<2){status.textContent='';return;}
+      status.textContent='Searching…';searchTimer=setTimeout(async()=>{
+        searchController=new AbortController();
+        try {const found=await lookupBars({query,location,signal:searchController.signal});if(version!==generation || !nameInput.isConnected)return;searchResults=found.places;status.textContent=searchResults.length?'Select a match.':'No match. Enter details below.';results.innerHTML=barResults(searchResults,'search');}
+        catch(error){if(error.name!=='AbortError' && version===generation && nameInput.isConnected)status.textContent='Search unavailable. Enter details below.';}
+      },350);
+    });
     root.querySelector("#cocktail-editor input")?.focus({preventScroll:true});
+  }
+  function barResults(places,source) {return places.map((place,index)=>`<button type="button" class="barMatch" data-cocktail-action="choose-bar" data-source="${source}" data-index="${index}"><strong>${esc(place.name)}</strong><small>${esc([place.address,place.distance == null ? '' : `${(place.distance/1609.34).toFixed(1)} mi`].filter(Boolean).join(' · '))}</small></button>`).join('');}
+  async function loadNearby() {
+    nearbyLoaded=true;
+    try {const found=await lookupBars({location});nearby=found.places;location=found.location;nearbyMessage=nearby.length ? (location?.source==='device' ? 'Nearby bars & pubs.' : 'Approximate area. Use location for closer results.') : 'No nearby bars found. Search by name when adding a spot.';}
+    catch(error){nearbyMessage='Nearby lookup unavailable. Search by name or add a spot.';nearby=[];}
+    const status=root.querySelector('[data-bars-nearby-status]'),list=root.querySelector('[data-bars-nearby]');if(status)status.textContent=nearbyMessage;if(list)list.innerHTML=barResults(nearby,'nearby');
   }
   function renderCard(item,data) {
     const bar = data.bars?.find(bar => bar.id === item.barId);
@@ -37,16 +58,16 @@ export function createCocktailJournal({ root, getData, save }) {
     return `<article class="readOnlyItem cocktailCard" id="cocktail-${esc(item.id)}" data-cocktail-search="${esc(JSON.stringify([item,bar?.name]).toLocaleLowerCase())}"><div class="recipeCardHeader"><div><h3>${item.favorite ? '<span aria-label="Favorite">★</span> ' : ""}${esc(item.name)}</h3><span class="cocktailRating">${score(stats ? stats.averageRating : item.overallRating)}</span>${stats ? `<small>${stats.visitCount} visits · ${stats.ratedCount} rated</small><small>Drink quality · ${score(summarizeCocktailCollection(data.drinks.filter(drink=>drink.barId===item.id)).averageRating)}</small>` : ""}</div><div class="recipeCardActions"><details class="cardOptions"><summary class="cardOptionsTrigger" aria-label="Options for ${esc(item.name)}" title="Options"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary><div class="cardOptionsList">${action("Edit","edit",item.id)}${tab === "bars" ? action("＋ Rate a visit","visit",item.id) : ""}</div></details></div></div><details><summary>${tab === "bars" ? "Venue details & visit history" : tab === "cocktailRecipes" ? "View cocktail recipe" : "Drink details"}</summary>${details}${item.notes ? `<p class="cocktailNotes">${esc(item.notes)}</p>` : ""}</details></article>`;
   }
   function renderEditor(data) {
-    const item = editing ? data[tab].find(row=>row.id===editing) : null;
+    const item = editing ? data[tab].find(row=>row.id===editing) : prefill;
     const bar = visitBar ? data.bars.find(row=>row.id===visitBar) : null;
     const visit = bar?.visits?.find(row=>row.id===editingVisit);
     let content;
-    if (bar) content = `<details class="entryDetails"><summary>Change visit date</summary>${field("visitedAt","Visit date",visit?.visitedAt || today(),'type="date" required')}</details>${scale}${ratingField("overallRating","Venue rating",visit?.overallRating)}<details class="entryDetails"><summary>Service, atmosphere &amp; value</summary>${ratingField("service","Service",visit?.service)}${ratingField("atmosphere","Atmosphere",visit?.atmosphere)}${ratingField("value","Value",visit?.value)}</details><section class="visitDrinks"><h4>Drinks</h4><p class="hint">Also appears in Drink Ratings.</p><div data-visit-drinks>${visit ? drinksForVisit(data,bar.id,visit.id).map(drinkRow).join('') : ''}</div>${action("＋ Add a drink","add-drink")}</section>${notesField("notes","Visit notes",visit?.notes)}`;
+    if (bar) content = `<details class="entryDetails"><summary>Change visit date</summary>${field("visitedAt","Visit date",visit?.visitedAt || today(),'type="date" required')}</details>${scale}${ratingField("overallRating","Venue rating",visit?.overallRating)}<details class="entryDetails"><summary>Service, atmosphere &amp; value</summary>${ratingField("service","Service",visit?.service)}${ratingField("atmosphere","Atmosphere",visit?.atmosphere)}${ratingField("value","Value",visit?.value)}</details><section class="visitDrinks"><h4>Drinks</h4><p class="hint">Also appears in Top Drinks.</p><div data-visit-drinks>${visit ? drinksForVisit(data,bar.id,visit.id).map(drinkRow).join('') : ''}</div>${action("＋ Add a drink","add-drink")}</section>${notesField("notes","Visit notes",visit?.notes)}`;
 
     else {
       content = tab === "cocktailRecipes" ? `<section class="cocktailImport"><label>Recipe URL<input name="importUrl" type="url" placeholder="https://"></label>${action("Import URL","import-url")}<details class="entryDetails"><summary>Paste recipe text</summary>${area("importText","Recipe text","",false)}${action("Use recipe text","import-text")}</details><p class="hint" data-import-feedback role="status" aria-live="polite">Review before saving.</p></section>` : "";
       content += field("name",tab === "bars" ? "Venue name" : "Cocktail name",item?.name,'required maxlength="180"');
-      if(tab === "bars") content += field("address","Address",item?.address,'maxlength="300"') + field("website","Website",item?.website,'type="url" maxlength="2000" placeholder="https://"');
+      if(tab === "bars") content += `<p class="hint" data-bar-search-status role="status" aria-live="polite"></p><div data-bar-search-results></div>` + field("address","Address",item?.address,'maxlength="300"') + field("website","Website",item?.website,'type="url" maxlength="2000" placeholder="https://"');
       else {
         content += types(item?.base) + scale + ratingField("overallRating","Overall rating",item?.overallRating);
         if(tab === "drinks") content += `<label>Venue <small>Optional</small><select name="barId"><option value="">No venue / other</option>${data.bars.map(bar=>`<option value="${esc(bar.id)}"${item?.barId===bar.id?' selected':''}>${esc(bar.name)}</option>`).join("")}</select></label><label>Visit <small>Optional</small><select name="visitId">${visitOptions(data,item?.barId,item?.visitId)}</select></label><div class="cocktailFormGrid"><details class="entryDetails"><summary>Change date</summary>${field("triedAt","Date tried",item?.triedAt || today(),'type="date"')}</details>${field("price","Price ($)",item?.price,'type="number" min="0" step="0.01" inputmode="decimal"')}</div>`;
@@ -54,14 +75,14 @@ export function createCocktailJournal({ root, getData, save }) {
       }
       content += notesField("notes","Notes",item?.notes) + `<label class="inlineCheck"><input name="favorite" type="checkbox"${item?.favorite?' checked':''}> Favorite</label>`;
     }
-    return `<form id="cocktail-editor" class="cocktailEditor"><h3>${bar ? `${visit ? "Edit visit to" : "Rate a visit to"} ${esc(bar.name)}` : `${item ? "Edit" : "Add"} ${tab === "bars" ? "a venue" : tab === "drinks" ? "a drink rating" : "a home cocktail"}`}</h3>${content}<div class="actions">${action("Cancel","cancel")}<button class="btn primary" type="submit">Save ${bar ? "visit" : "entry"}</button>${(item || visit) ? action("Delete",visit ? "delete-visit" : "delete",item?.id || bar.id,visit ? `data-visit-id="${esc(visit.id)}"` : "") : ""}</div><p class="edit-status" role="status" aria-live="polite"></p></form>`;
+    return `<form id="cocktail-editor" class="cocktailEditor"><h3>${bar ? `${visit ? "Edit visit to" : "Rate a visit to"} ${esc(bar.name)}` : `${editing ? "Edit" : "Add"} ${tab === "bars" ? "a venue" : tab === "drinks" ? "a drink rating" : "a home cocktail"}`}</h3>${content}<div class="actions">${action("Cancel","cancel")}${tab === "bars" && !bar ? `<button class="btn" type="submit">Save &amp; Review Later</button><button class="btn primary" type="submit" data-review-now="true">Review Now</button>` : `<button class="btn primary" type="submit">Save ${bar ? "visit" : "entry"}</button>`}${(editing || visit) ? action("Delete",visit ? "delete-visit" : "delete",item?.id || bar.id,visit ? `data-visit-id="${esc(visit.id)}"` : "") : ""}</div><p class="edit-status" role="status" aria-live="polite"></p></form>`;
   }
   async function submit(event) {
     event.preventDefault(); const form=event.currentTarget, button=form.querySelector('[type="submit"]'), feedback=form.querySelector('[role="status"]');
     const values=new FormData(form), value=key=>String(values.get(key)||"").trim(), now=new Date().toISOString();
     button.disabled=true;
     try {
-      const data=getData(); let next;
+      const data=getData(); let next, savedVenueId;
       if(visitBar) {
         const bar=data.bars.find(row=>row.id===visitBar); if(!bar) throw new Error("This venue is no longer available. Reload before saving.");
         const existing=bar.visits.find(row=>row.id===editingVisit);
@@ -76,7 +97,7 @@ export function createCocktailJournal({ root, getData, save }) {
         const existing=editing ? data[tab].find(row=>row.id===editing) : null;
         if(editing && !existing) throw new Error("This entry is no longer available. Reload before saving.");
         const item={...existing,id:existing?.id || crypto.randomUUID(),name:value("name"),notes:value("notes"),favorite:values.has("favorite"),createdAt:existing?.createdAt || now,updatedAt:now};
-        if(tab === "bars") Object.assign(item,{address:value("address"),website:value("website"),visits:existing?.visits || []});
+        if(tab === "bars") { savedVenueId=item.id; Object.assign(item,{address:value("address"),website:value("website"),visits:existing?.visits || []}); }
         else Object.assign(item,{base:value("base"),overallRating:optionalRating(value("overallRating"))});
         if(tab === "drinks") Object.assign(item,{barId:value("barId"),visitId:value("visitId"),triedAt:value("triedAt"),price:value("price")===""?null:Number(value("price"))});
         if(tab === "drinks" && item.visitId) {
@@ -88,7 +109,7 @@ export function createCocktailJournal({ root, getData, save }) {
         for(const key of ["website","source"]) if(item[key] && !safeWebUrl(item[key])) throw new Error("Use a complete http:// or https:// address.");
         next={...data,[tab]:existing ? data[tab].map(row=>row.id===existing.id?item:row) : [...data[tab],item]};
       }
-      await save(next); editorOpen=false;editing=null;visitBar=null;editingVisit=null;render();
+      await save(next); prefill=null;editing=null;editingVisit=null;visitBar=event.submitter?.dataset.reviewNow ? savedVenueId : null;editorOpen=Boolean(visitBar);render();
     } catch(error) { feedback.textContent=error.message || "Save failed. Your entry was not reported as saved.";button.disabled=false; }
   }
   async function handleClick(event) {
@@ -96,6 +117,20 @@ export function createCocktailJournal({ root, getData, save }) {
     if(tabButton){setTab(tabButton.dataset.cocktailTab);render();return true;}
     const button=event.target.closest('[data-cocktail-action]');if(!button)return false;
     const kind=button.dataset.cocktailAction,id=button.dataset.id;
+    if(kind==="locate-bars") {
+      if(!navigator.geolocation){root.querySelector('[data-bars-nearby-status]').textContent='Location unavailable.';return true;}
+      button.disabled=true;
+      navigator.geolocation.getCurrentPosition(position=>{location={lat:position.coords.latitude,lon:position.coords.longitude,source:'device'};void loadNearby().finally(()=>{if(button.isConnected)button.disabled=false;});},()=>{if(button.isConnected){button.disabled=false;root.querySelector('[data-bars-nearby-status]').textContent='Location unavailable. Showing approximate results.';}},{timeout:8000,maximumAge:300000});return true;
+    }
+    if(kind==="choose-bar") {
+      const place=(button.dataset.source==='nearby'?nearby:searchResults)[Number(button.dataset.index)];if(!place)return true;
+      generation++;clearTimeout(searchTimer);searchController?.abort();
+      const existing=getData().bars.find(bar=>bar.name.toLowerCase()===place.name.toLowerCase() && bar.address===place.address);
+      if(existing){editing=null;visitBar=existing.id;editingVisit=null;editorOpen=true;render();return true;}
+      if(editorOpen && tab==='bars' && !visitBar){const form=root.querySelector('#cocktail-editor');for(const key of ['name','address','website'])if(place[key])form.elements[key].value=place[key];root.querySelector('[data-bar-search-results]').innerHTML='';root.querySelector('[data-bar-search-status]').textContent='Details filled in.';}
+      else {prefill=place;editing=null;visitBar=null;editingVisit=null;editorOpen=true;render();root.querySelector('#cocktail-editor')?.scrollIntoView({block:'start',behavior:'smooth'});}
+      return true;
+    }
     if(kind==="score") {const group=button.closest('.cocktailRatingField');group.querySelector('input').value=button.dataset.value;group.querySelector('[data-cocktail-score-label]').textContent=score(button.dataset.value);group.querySelectorAll('button').forEach(item=>item.setAttribute('aria-pressed',String(item===button)));return true;}
     if(kind==="add-drink") {root.querySelector('[data-visit-drinks]').insertAdjacentHTML('beforeend',drinkRow());return true;}
     if(kind==="remove-drink") {button.closest('[data-visit-drink]').remove();return true;}
@@ -108,9 +143,9 @@ export function createCocktailJournal({ root, getData, save }) {
       finally {if(form.isConnected)button.disabled=false;}
       return true;
     }
-    if(kind==="cancel"){editorOpen=false;editing=null;visitBar=null;editingVisit=null;render();return true;}
+    if(kind==="cancel"){prefill=null;editorOpen=false;editing=null;visitBar=null;editingVisit=null;render();return true;}
     if(kind==="new" || kind==="edit" || kind==="visit" || kind==="edit-visit") {
-      editing=kind==="edit"?id:null;visitBar=kind.includes("visit")?id:null;editingVisit=kind==="edit-visit"?button.dataset.visitId:null;editorOpen=true;render();root.querySelector('#cocktail-editor')?.scrollIntoView({block:"start",behavior:"smooth"});return true;
+      prefill=null;editing=kind==="edit"?id:null;visitBar=kind.includes("visit")?id:null;editingVisit=kind==="edit-visit"?button.dataset.visitId:null;editorOpen=true;render();root.querySelector('#cocktail-editor')?.scrollIntoView({block:"start",behavior:"smooth"});return true;
     }
     if(kind==="delete" || kind==="delete-visit") {
       const data=getData();
