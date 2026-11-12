@@ -1,3 +1,4 @@
+import { sharedPosition } from "./features/device-location.mjs";
 import { mountCompactBrowse } from "./features/compact-browse.mjs";
 import { lookupBars } from "./features/bar-lookup.mjs";
 import { mountReviewPhotos } from "./features/review-photos.mjs";
@@ -393,7 +394,7 @@ function renderRestaurantRankings() {
 async function searchHomeBars() {
  const section=root.querySelector("#home-bars");if(!section)return;
  const status=section.querySelector("[data-bar-status]"),list=section.querySelector("[data-bar-results]");
- const location=await new Promise(resolve=>{if(!navigator.geolocation)return resolve(null);navigator.geolocation.getCurrentPosition(p=>resolve({lat:p.coords.latitude,lon:p.coords.longitude}),()=>resolve(null),{timeout:8000,maximumAge:300000});});
+ const location=await new Promise(resolve=>{if(!navigator.geolocation)return resolve(null);sharedPosition(p=>resolve({lat:p.coords.latitude,lon:p.coords.longitude}),()=>resolve(null),{timeout:8000,maximumAge:300000});});
  try{const found=await lookupBars({location});if(!section.isConnected)return;
  section.querySelector("summary").textContent=found.places.length?"Nearby bars ("+found.places.length+")":"Nearby bars · No results";
  status.textContent=found.cache?.stale?"Previously found nearby · Updating when available":found.places.length?"":"No nearby bars found.";
@@ -436,7 +437,7 @@ async function searchNearbyRestaurants() {
   };
   if (activeView==="home" && homeNearbyCache && Date.now()-homeNearbyCache.time<300000) {await search(null);return;}
   if (!navigator.geolocation) { await search(null); return; }
-  navigator.geolocation.getCurrentPosition(position => {
+  sharedPosition(position => {
     search({ lat: position.coords.latitude, lon: position.coords.longitude });
   }, () => { search(null); }, { enableHighAccuracy: false, timeout: 8000, maximumAge: 300000 });
 }
@@ -506,7 +507,7 @@ function requestDeviceRestaurantLocation() {
   const target = activeTarget();
   const statusLine = root.querySelector(`#${target.statusId}`);
   if (statusLine && !restaurantLookupLocation) statusLine.textContent = "Finding nearby matches using your device location…";
-  navigator.geolocation.getCurrentPosition(position => {
+  sharedPosition(position => {
     restaurantLookupLocation = { lat: position.coords.latitude, lon: position.coords.longitude, source: "device" };
     const current = activeTarget();
     const query = root.querySelector(`#${current.inputId}`)?.value || "";
