@@ -638,7 +638,7 @@ function renderList(title, eyebrow, items, kind) {
     const ingredients = Array.isArray(item.ingredients) ? item.ingredients : [];
     const directions = Array.isArray(item.directions) ? item.directions : [];
     const timeParts = isRecipe
-      ? [item.prepTime ? `Prep ${item.prepTime}` : "", item.cookTime ? `Cook ${item.cookTime}` : "", item.totalTime ? `Total ${item.totalTime}` : (!item.prepTime && !item.cookTime && !item.totalTime ? item.time : "")]
+      ? [item.prepTime ? `Prep ${formatRecipeDuration(item.prepTime)}` : "", item.cookTime ? `Cook ${formatRecipeDuration(item.cookTime)}` : "", item.totalTime ? `Total ${formatRecipeDuration(item.totalTime)}` : (!item.prepTime && !item.cookTime && !item.totalTime ? formatRecipeDuration(item.time) : "")]
       : [];
     const cleanStep = step => String(step ?? "").replace(/^(?:\s*(?:[•●▪‣-]\s*)|\s*\d+[.)]\s*)+/g, "").trim();
     const formatDateTime = value => {
