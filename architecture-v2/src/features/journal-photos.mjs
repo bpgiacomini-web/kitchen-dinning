@@ -56,6 +56,14 @@ export function createJournalPhotos({root,getData,save}) {
   return targets;
  }
  function enhance(){
+  for(const card of root.querySelectorAll('[data-review-photo-refs]')){
+   if(card.dataset.reviewPhotosMounted)continue;
+   card.dataset.reviewPhotosMounted='true';
+   let refs;try{refs=JSON.parse(card.dataset.reviewPhotoRefs);}catch{continue;}
+   if(!Array.isArray(refs)||!refs.length)continue;
+   const strip=document.createElement('div');strip.className='journalPhotoStrip';card.append(strip);
+   for(const ref of refs){if(typeof ref?.path!=='string')continue;void imageUrl(ref.path).then(src=>{if(!src||!strip.isConnected)return;const img=new window.Image();img.alt=ref.label||'Review photo';img.decoding='async';img.onload=()=>{if(strip.isConnected)strip.append(img);};img.src=src;}).catch(()=>{});}
+  }
   for(const [collection,id,editor] of editTargets()){
    if(!editor)continue;
    const item=getData()[collection]?.find(row=>String(row.id)===id);if(!item)continue;
