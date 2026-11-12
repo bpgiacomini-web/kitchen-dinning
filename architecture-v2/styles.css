@@ -819,3 +819,18 @@
 @media(max-width:760px){#app .insightGrid{grid-template-columns:repeat(2,minmax(0,1fr))}.nav button{font-size:12px;padding-inline:8px}}
 @media(max-width:520px){.bottomNav{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:2px;padding-inline:5px}.bottomNav button{min-width:0;width:100%;padding:5px 2px;font-size:10px;line-height:1.4;overflow-wrap:normal}.navCocktailIcon svg{width:17px;height:17px}#app .cocktailFormGrid{grid-template-columns:1fr}#app .cocktailEditor{padding:14px}#app .cocktailTabs{gap:5px}#app .cocktailTabs button{flex:1;padding-inline:8px;font-size:13px}}
 @media(prefers-reduced-motion:reduce){#app .insightLink{transition:none}}
+/* One compact arrow opens the actions on every journal card. */
+#app .readOnlyItem .recipeCardHeader{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
+#app .readOnlyItem .recipeCardHeader>strong,#app .readOnlyItem .recipeCardHeader>.restaurantNameGroup,#app .cocktailCard .recipeCardHeader>div:first-child{min-width:0;flex:1;overflow-wrap:anywhere}
+#app .readOnlyItem .recipeCardActions{flex:0 0 auto;margin:0;align-items:flex-start}
+#app details.cardOptions{position:relative;flex:0 0 auto}
+#app .cardOptions>summary.cardOptionsTrigger{display:flex;align-items:center;justify-content:center;list-style:none;width:44px;height:44px;min-height:44px;padding:0;margin:0;border:1px solid #34403f;border-radius:50%;background:transparent;color:#d6a85b;cursor:pointer;line-height:1}
+#app .cardOptions>summary.cardOptionsTrigger::-webkit-details-marker{display:none}
+#app .cardOptions>summary.cardOptionsTrigger::marker{content:""}
+#app .cardOptionsTrigger svg{display:block;transition:transform .15s}
+#app .cardOptions[open]>.cardOptionsTrigger svg{transform:rotate(180deg)}
+#app .cardOptionsTrigger:hover,#app .cardOptions[open]>.cardOptionsTrigger{background:#202721;border-color:#82704a}
+#app .cardOptionsTrigger:focus-visible{outline:2px solid #d6a85b;outline-offset:3px}
+#app .cardOptions>.cardOptionsList{position:absolute;right:0;top:calc(100% + 5px);z-index:30;display:grid;gap:6px;width:max-content;min-width:170px;max-width:calc(100vw - 56px);padding:8px;border:1px solid #34413e;border-radius:12px;background:#121819;box-shadow:0 12px 28px #0009}
+#app .cardOptionsList>.btn{width:100%;min-height:40px;margin:0;text-align:left;white-space:normal}
+@media(prefers-reduced-motion:reduce){#app .cardOptionsTrigger svg{transition:none}}
