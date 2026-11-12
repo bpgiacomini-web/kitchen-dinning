@@ -1,3 +1,5 @@
+import photoStorage from './_lib/journal-photos.cjs';
+import { consumeAccountRateLimit } from './_lib/rate-limit.js';
 import { randomUUID } from 'node:crypto';
 import journalValidation from './_lib/journal-validation.cjs';
 const { validCocktailCollections, validAward } = journalValidation;
@@ -78,7 +80,7 @@ export function createUserDataHandler({ authenticateUser: authenticate = authent
   res.setHeader('X-Content-Type-Options', 'nosniff');
   res.setHeader('Vary', 'Authorization');
 
-  if (!['GET', 'PUT'].includes(req.method)) {
+  if (!['GET', 'PUT'].includes(req.method) && !(req.method==='POST' && req.query?.mode==='photo-upload')) {
     res.setHeader('Allow', 'GET, PUT');
     return send(res, 405, { error: 'Method not allowed.' });
   }
@@ -90,6 +92,7 @@ export function createUserDataHandler({ authenticateUser: authenticate = authent
   try {
     sql = await makeSql();
     if (!sql) return send(res, 503, { error: 'Preview database is not configured.' });
+    if(['photo-usage','photo-read','photo-upload'].includes(req.query?.mode))return await photoStorage.handlePhotos(req,res,{userId:identity.userId,sql,limit:consumeAccountRateLimit});
     if (req.method === 'GET') {
       const rows = await sql`SELECT payload, revision FROM metro_eats_user_datasets WHERE user_id = ${identity.userId} LIMIT 1`;
       const recipes = await sql`SELECT payload FROM metro_eats_recipes WHERE user_id = ${identity.userId} ORDER BY updated_at DESC, id`;

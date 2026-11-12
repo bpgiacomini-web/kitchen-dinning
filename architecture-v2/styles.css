@@ -920,3 +920,46 @@
 #app .homeAppsDisclosure[open] .homeJournalChevron{transform:rotate(180deg)}
 #app .homeAppsDisclosure>summary:focus-visible{outline:3px solid #fff0cb;outline-offset:-4px}
 #app .homeAppsDisclosure .homeFeatureButtons{padding-top:14px}
+/* Personal journal: compact, quiet controls and real photos only. */
+#app .journalHighlights{padding:14px}
+#app .journalHighlights h3{font-size:16px;margin:0 0 8px}
+#app .recentEntry{display:block;width:100%;padding:10px 0;border:0;border-bottom:1px solid var(--line);background:none;color:var(--text);text-align:left;cursor:pointer;font:inherit}
+#app .recentEntry small,#app .recentEntry strong{display:block}
+#app .recentEntry small{font-size:11px;color:var(--muted)}
+#app .pickResult{display:block;width:100%;padding:14px 0 0;background:none;border:0;text-align:left;color:var(--text);font:inherit;cursor:pointer}
+#app .pickResult strong,#app .pickResult small{display:block}
+#app .pickResult strong{font-size:20px;color:#e0b96f}
+#app .pickResult small{font-size:12px;color:var(--muted);margin-top:5px}
+#app .tonightPick select{max-width:100%;padding:8px;border-radius:9px;background:#10151a;color:var(--text);border:1px solid var(--line)}
+#app .tonightPick .sectionTitle{margin-bottom:8px}
+#app .tonightPick .btn{min-height:44px;padding:8px 12px;font-size:13px}
+#app .recipeTitleToggle{text-decoration:underline;text-decoration-color:#6b5b3b;text-underline-offset:4px;font-size:19px}
+#app .advancedImport{margin-top:16px;font-size:13px}
+#app .compactCollectionTools{display:flex;gap:10px;align-items:end;margin:10px 0 18px;flex-wrap:wrap}
+#app .compactCollectionTools label{flex:1;min-width:130px;font-size:12px;color:var(--muted)}
+#app .compactCollectionTools input,#app .compactCollectionTools select{box-sizing:border-box;width:100%;min-height:44px;background:#10151a;border:1px solid var(--line);border-radius:10px;color:var(--text);padding:10px;font:inherit}
+#app .restaurantSortControl{font-size:12px}
+#app .reviewedRestaurant{border-left:3px solid #d6a85b}
+#app .restaurantNameGroup{flex-wrap:wrap}
+#app .reviewedBadge{font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:#d6a85b;flex-basis:100%}
+#app .collectionSearchToggle{min-width:44px;min-height:44px;margin:8px 0}
+#app .restaurantSearch[hidden]{display:none}
+#app .pizzaSavedDetails>summary{font-size:13px;min-height:44px;cursor:pointer;display:flex;align-items:center;color:#d6a85b}
+#app .pizzaRatingField{padding:12px}
+#app .pizzaScoreLine{font-size:12px;line-height:1.6}
+#app .groceryList{padding:10px 0;margin-bottom:10px}
+#app .groceryList summary{font-weight:700;cursor:pointer;padding:8px 0}
+#app .groceryList .inlineCheck{font-size:14px;margin:8px 0}
+#app .lookupMatch{display:grid;grid-template-columns:minmax(0,1fr) 44px;gap:8px;align-items:center;margin-top:8px}
+#app .lookupMatch .barMatch{margin:0}
+#app .lookupMatch .nearbyNavigationOptions{left:auto;right:0}
+#app .journalPhotoStrip:empty{display:none}
+#app .journalPhotoStrip{display:flex;gap:8px;overflow-x:auto;margin-top:12px}
+#app .journalPhotoStrip img{display:block;max-width:100%;width:220px;height:auto;max-height:220px;object-fit:cover;border-radius:12px;flex-shrink:0}
+#app .photoEditor{scroll-margin-top:100px;position:relative;border-color:#d6a85b}
+#app .photoEditor h3{font-size:18px}
+#app .photoRefList{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0}
+#app .photoEditor input[hidden],#app .newsThumbnail[hidden]{display:none!important}
+#app .photoEditor .btn{min-height:44px;font-size:14px;padding:10px 12px}
+#photo-storage-usage{font-size:12px;margin-top:10px}
+#photo-storage-usage progress{display:block;width:100%;height:8px;margin:8px 0}

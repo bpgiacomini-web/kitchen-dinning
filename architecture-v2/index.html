@@ -39,7 +39,7 @@
   <link rel="apple-touch-icon" href="../icon-180.png">
   <title>Metro Eats — Architecture Preview</title>
   <link rel="stylesheet" href="./base.css?v=1">
-  <link rel="stylesheet" href="./styles.css?v=33">
+  <link rel="stylesheet" href="./styles.css?v=34">
   <link rel="stylesheet" href="./pizza-theme.css?v=6">
 </head>
 <body>
@@ -90,7 +90,7 @@
     <p>Your account stays signed in on this device until you sign out or your session expires.</p>
     <button id="metroSignOut" type="button">Sign Out</button>
     <button id="metroRestorePoints" type="button">Restore a previous version</button>
-    <div id="metroRestorePanel" hidden></div>
+    <div id="metroRestorePanel" hidden></div><button type="button" data-action="export-journal">Export My Journal</button><button type="button" data-action="photo-usage">Photo Storage</button><div id="photo-storage-usage"></div>
     <button type="button" data-close>Close</button>
     <p id="metroAccountStatus" role="status" aria-live="polite"></p>
   </section>
@@ -190,7 +190,7 @@
         if (typeof client.signOut !== 'function') throw new Error('Sign out is not available in this authentication client.');
         const result = await client.signOut();
         if (result?.error) throw new Error(result.error.message || 'Sign out failed.');
-        accessToken = '';
+        accessToken = '';window.dispatchEvent(new CustomEvent('metro-signed-out'));
         showLogin('You have signed out. Sign in again to continue.');
         form.reset();
       } catch (error) {

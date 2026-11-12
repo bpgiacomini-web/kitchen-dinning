@@ -25,7 +25,7 @@ function validCocktailCollections({ bars = [], drinks = [], cocktailRecipes = []
     if (![bars, drinks, cocktailRecipes].every(rows => Array.isArray(rows) && rows.length <= 10000 && rows.every(named) && unique(rows))) return false;
     if (bars.some(row => !notes(row) || !favorite(row) || (row.address != null && !text(row.address, 300)) || (row.website && !safeWebUrl(row.website))
       || !Array.isArray(row.visits) || row.visits.length > 1000 || !unique(row.visits)
-      || row.visits.some(visit => !object(visit) || !text(visit.id, 200) || !visit.id.trim() || !date(visit.visitedAt) || !notes(visit) || !rating(visit.overallRating) || !rating(visit.service) || !rating(visit.atmosphere) || !rating(visit.value)))) return false;
+      || row.visits.some(visit => !object(visit) || !text(visit.id, 200) || !visit.id.trim() || !date(visit.visitedAt) || !notes(visit) || !rating(visit.overallRating) || !rating(visit.service) || !rating(visit.atmosphere) || !rating(visit.value) || !rating(visit.drinkQuality) || !rating(visit.bartenders) || !rating(visit.restrooms)))) return false;
     const barIds = new Set(bars.map(row => row.id));
     if (drinks.some(row => !notes(row) || !favorite(row) || !rating(row.overallRating) || !date(row.triedAt)
       || (row.barId && !barIds.has(row.barId)) || (row.visitId && (!text(row.visitId,200) || !bars.find(bar=>bar.id===row.barId)?.visits.some(visit=>visit.id===row.visitId))) || (row.base != null && !text(row.base, 100))
