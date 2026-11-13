@@ -28,10 +28,11 @@ export function validCocktailCollections({ bars = [], drinks = [], cocktailRecip
     const barIds = new Set(bars.map(row => row.id));
     if (drinks.some(row => !notes(row) || !favorite(row) || !rating(row.overallRating) || !date(row.triedAt)
       || (row.barId && !barIds.has(row.barId)) || (row.visitId && (!text(row.visitId,200) || !bars.find(bar=>bar.id===row.barId)?.visits.some(visit=>visit.id===row.visitId))) || (row.base != null && !text(row.base, 100))
+      || (row.drinkType != null && !text(row.drinkType,100)) || (row.recipeId != null && !text(row.recipeId,200))
       || (row.price != null && (!Number.isFinite(Number(row.price)) || Number(row.price) < 0)))) return false;
     return !cocktailRecipes.some(row => !notes(row) || !favorite(row) || !rating(row.overallRating)
       || ![row.ingredients, row.directions].every(lines => Array.isArray(lines) && lines.length > 0 && lines.length <= 200 && lines.every(line => text(line, 2000) && line.trim()))
-      || ["base", "glassware", "garnish"].some(key => row[key] != null && !text(row[key], 300))
+      || ["base", "drinkType", "glassware", "garnish"].some(key => row[key] != null && !text(row[key], 300))
       || (row.source && !safeWebUrl(row.source)));
   } catch { return false; }
 }

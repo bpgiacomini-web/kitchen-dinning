@@ -15,12 +15,13 @@
   </style>
 </head>
 <body>
-  <main><p class="meta">Metro Eats · Shared recipe</p><h1 id="title">Loading recipe…</h1><p id="description" class="meta"></p><section><h2>Ingredients</h2><ul id="ingredients"></ul></section><section><h2>Directions</h2><ol id="directions"></ol></section><div class="actions"><button id="print" type="button">Print / Save as PDF</button></div><p id="status" class="meta" role="status"></p></main>
+  <main><p class="meta">Metro Eats · Shared recipe</p><h1 id="title">Loading recipe…</h1><p id="description" class="meta"></p><section><h2>Ingredients</h2><ul id="ingredients"></ul></section><section><h2>Directions</h2><ol id="directions"></ol></section><div class="actions"><a id="save-copy" href="/architecture-v2/" style="color:#dfb969;padding:12px">Save to My Recipes</a><button id="print" type="button">Print / Save as PDF</button></div><p id="status" class="meta" role="status"></p></main>
   <script>
     const status=document.querySelector('#status');
     document.querySelector('#print').addEventListener('click',()=>window.print());
     (async()=>{
       const token=new URL(location.href).searchParams.get('token')||'';
+      document.querySelector('#save-copy').href='/architecture-v2/?sharedRecipe='+encodeURIComponent(token);
       if(!token){document.querySelector('#title').textContent='This shared recipe is unavailable.';return}
       try{
         const response=await fetch('/api/recipe-share?token='+encodeURIComponent(token),{cache:'no-store',headers:{Accept:'application/json'}});

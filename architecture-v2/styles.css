@@ -1164,3 +1164,10 @@
 #app .dashboardTabs button[aria-selected="true"]{background:#e0b96c;border-color:#edce91;color:#231b10;font-weight:800;box-shadow:0 2px 9px #d2a65724}
 #app .dashboardTabs button:hover:not([aria-selected="true"]){background:#202a31;border-color:#7b755f}
 @media(max-width:600px){#app .dashboardTabs{grid-template-columns:repeat(3,minmax(0,1fr))}}
+
+/* Readable, compact journal cards. */
+.restaurantCardRating{font-size:2rem;font-weight:800;color:var(--gold,#dfb969);line-height:1.2;margin:12px 0 6px}.restaurantCardRating small{font-size:1rem;margin-left:3px}.cocktailRating{font-size:1.8rem;font-weight:800}.cardOptionsTrigger{width:auto!important;min-width:64px!important;padding:10px 12px!important;font-size:16px!important;border-radius:14px!important}.collapseBottom{display:block;margin:18px 0 4px}.reviewLaterChip{margin:10px 0 16px}.reviewLaterChip[aria-pressed="true"]{background:#dfb969;color:#111}.hero h2{display:flex;align-items:center;gap:12px}.hero .pizzaHeadingIcon{position:static!important;transform:none!important;flex:0 0 42px;width:42px;height:42px;margin:0!important}
+
+.sectionHeadingIcon{display:inline-flex;flex:0 0 38px;width:38px;height:38px;color:#dfb969}.sectionHeadingIcon svg{width:100%;height:100%}
+
+.groceryItem{display:flex;align-items:flex-start;gap:12px;padding:12px 0;border-bottom:1px solid #323a40}.groceryItem input{width:22px;height:22px;flex:0 0 22px;margin-top:4px}.groceryItem small{display:block;font-size:15px;color:#aab2bc}.groceryItem.purchased span{text-decoration:line-through;opacity:.55}.groceryPlanner section h3{color:#dfb969;margin:24px 0 6px}
