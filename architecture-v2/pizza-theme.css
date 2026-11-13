@@ -170,3 +170,13 @@
 }
 
 .bottomNav button[data-view]::before{width:36px!important;height:36px!important;flex-basis:36px!important}
+/* Frozen section accents: icy white/blue on the existing dark surfaces. */
+#app.pizzaSection{--accent:#d9eff8;--section-accent:#d9eff8;--section-accent-soft:#17232c;--section-line:#526d7a}
+#app.pizzaSection>.hero{background:linear-gradient(125deg,#1d2931,#121b22 65%,#152027);border-color:#526d7a}
+#app.pizzaSection .pizzaHeadingIcon,#app.pizzaSection .sectionHeadingIcon,#app.pizzaSection .sectionKicker,#app.pizzaSection .recipeFavoriteStar,#app.pizzaSection .cardOptionsTrigger,#app.pizzaSection .requiredMark{color:#d9eff8}
+#app.pizzaSection .btn.primary,#app.pizzaSection .pizzaRatingField .reviewScore button.active{background:#d9eff8;border-color:#ebf8ff;color:#14212b;box-shadow:0 4px 16px #b9e4f012}
+#app.pizzaSection .btn.primary:hover,#app.pizzaSection .pizzaRatingField .reviewScore button.active:hover{background:#ecf9ff}
+#app.pizzaSection .pizzaSavedSummary>strong,#app.pizzaSection .pizzaLiveScore strong,#app.pizzaSection .pizzaSavedSummary>span,#app.pizzaSection .pizzaLiveScore>span{color:#d9eff8}
+#app.pizzaSection .pizzaLiveSummary{border-color:#526d7a;background:linear-gradient(120deg,#1c2b35,#10171d)}
+#app.pizzaSection .pizzaRatingProgress progress,#app.pizzaSection input[type=checkbox]{accent-color:#d9eff8}
+#app.pizzaSection input:focus-visible,#app.pizzaSection textarea:focus-visible,#app.pizzaSection select:focus-visible,#app.pizzaSection button:focus-visible,#app.pizzaSection summary:focus-visible{outline-color:#d9eff8;border-color:#b9dce9}
