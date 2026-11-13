@@ -313,7 +313,7 @@ function renderRestaurants(items) {
       const dishRows = foodItems.filter(item => item?.name).map(item => `<li><strong>${escapeHtml(item.name)}</strong>${Number(item.rating) > 0 ? ` · ${escapeHtml(item.rating)}/10` : ""}${item.notes ? `<span>${escapeHtml(item.notes)}</span>` : ""}</li>`).join("");
       return `<article class="savedReview" data-review-photo-refs="${escapeHtml(JSON.stringify(review.photoRefs || []))}"><div class="savedReviewHeading"><strong>${dateText ? escapeHtml(dateText) : `Visit ${reviews.length - index}`}</strong><button class="btn" type="button" data-action="edit-restaurant-review" data-restaurant-id="${escapeHtml(restaurant.id)}" data-review-index="${reviewIndex}">Edit review</button>${scores ? `<div class="reviewScores">${scores}</div>` : ""}</div>${additionalScores ? `<div class="reviewScores reviewAdditionalScores">${additionalScores}</div>` : ""}${review.order || review.ordered ? `<p><strong>What you ordered:</strong> ${escapeHtml(review.order || review.ordered)}</p>` : ""}${dishRows ? `<div class="savedReviewDishes"><strong>Food &amp; drink ratings</strong><ul>${dishRows}</ul></div>` : ""}${review.orderAgain ? `<p><strong>Order again:</strong> ${escapeHtml(review.orderAgain)}</p>` : ""}${review.notes ? `<p class="savedReviewNotes">${escapeHtml(review.notes)}</p>` : ""}</article>`;
     }).join("");
-    const details = [["Cuisine", restaurant.cuisine], ["Address", restaurant.address], ["Website", restaurant.website], ["Menu", restaurant.menuUrl], ["Notes", restaurant.notes], ["Favorite", restaurant.favorite ? "Yes" : ""]]
+    const details = [["Cuisine", restaurant.cuisine], ["Address", restaurant.address], ["Website", restaurant.website], ["Menu", restaurant.menuUrl], ["Notes", restaurant.notes]]
       .filter(([, value]) => value != null && value !== "")
       .map(([label, value]) => `<div><dt>${label}</dt><dd>${["Website", "Menu"].includes(label) && /^https?:\/\//i.test(String(value)) ? `<a href="${escapeHtml(value)}" target="_blank" rel="noopener noreferrer">${escapeHtml(value)}</a>` : escapeHtml(value)}</dd></div>`).join("");
     const bestDishes = topReviewFoods(restaurant);
@@ -1702,6 +1702,8 @@ async function refreshDataset() {
       setStatus(hasRecords ? "Preview records loaded · cloud storage unavailable" : "Cloud storage is not ready", "warn");
     }
     render();
+    const sharedToken=new URL(location.href).searchParams.get("sharedRecipe");
+    if(cloudReady&&sharedToken&&!sharedRecipeOpened){sharedRecipeOpened=true;activeView="add-recipe";render();const feedback=root.querySelector("#import-feedback");try{const response=await fetch("/api/recipe-share?token="+encodeURIComponent(sharedToken),{cache:"no-store"});const result=await response.json();if(!response.ok||!result.recipe)throw new Error("This shared recipe is unavailable.");renderImportPreview(result.recipe);if(feedback)feedback.textContent="Shared recipe · review and save your own copy.";}catch(error){if(feedback)feedback.textContent=error.message;}}
 
   } catch (error) {
     cloudReady = false;
