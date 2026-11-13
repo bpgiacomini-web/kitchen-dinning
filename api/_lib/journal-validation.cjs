@@ -69,6 +69,14 @@ function saveBarVisit(data, barId, visit, drinks) {
     drinks:[...data.drinks.filter(row=>!oldIds.has(row.id)), ...linked] };
 }
 
+function barVisitRatingStatus(visit = {}) {
+ const count=['atmosphere','drinkQuality','bartenders','restrooms'].filter(key=>{try{return optionalRating(visit[key])!=null;}catch{return false;}}).length;
+ if(count===4)return 'Rated';
+ if(count)return count+' of 4 rated';
+ try{if(optionalRating(visit.overallRating)!=null)return 'Rated';}catch{}
+ return 'Unrated';
+}
+
 const AWARD_LEVELS = ["Local", "Regional", "National", "International"];
 // Discovery links do not claim a restaurant has won an award. Every recognition
 // must be checked against its source and explicitly approved by the account owner.

@@ -67,3 +67,11 @@ export function saveBarVisit(data, barId, visit, drinks) {
   return { ...data, bars:data.bars.map(row=>row.id===barId ? {...row, updatedAt:visit.updatedAt, visits:row.visits.some(item=>item.id===visit.id) ? row.visits.map(item=>item.id===visit.id?visit:item) : [...row.visits,visit]} : row),
     drinks:[...data.drinks.filter(row=>!oldIds.has(row.id)), ...linked] };
 }
+
+export function barVisitRatingStatus(visit = {}) {
+ const count=['atmosphere','drinkQuality','bartenders','restrooms'].filter(key=>{try{return optionalRating(visit[key])!=null;}catch{return false;}}).length;
+ if(count===4)return 'Rated';
+ if(count)return count+' of 4 rated';
+ try{if(optionalRating(visit.overallRating)!=null)return 'Rated';}catch{}
+ return 'Unrated';
+}
