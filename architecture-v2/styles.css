@@ -1247,3 +1247,13 @@
 #app .pizzaSavedSummary>strong small{display:inline;white-space:nowrap}
 /* The main landmark receives focus after navigation; outline individual controls, not the entire page. */
 #app:focus{outline:none}
+/* Compact frozen-pizza collection controls without reducing reading size. */
+#app.pizzaSection>.hero .heroIn{padding:12px 16px}
+#app.pizzaSection>.hero h2{margin:0}
+#app.pizzaSection .sectionTitle:has([data-action="new-pizza"]){display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:10px;margin:0 0 12px}
+#app.pizzaSection .sectionTitle:has([data-action="new-pizza"]) h3{margin:0;font-size:25px;line-height:1.2}
+#app.pizzaSection [data-action="new-pizza"]{margin:0;padding:10px 12px;min-height:46px;line-height:1.3;white-space:nowrap}
+#app.pizzaSection .compactCollectionTools{margin:0;gap:10px}
+#app.pizzaSection .compactCollectionTools label{display:grid;gap:4px;margin:0}
+#app.pizzaSection .compactCollectionTools input,#app.pizzaSection .compactCollectionTools select{margin:0;min-height:46px;padding-top:9px;padding-bottom:9px}
+#app.pizzaSection .compactCollectionTools+.inlineCheck{margin:8px 0;min-height:44px}
