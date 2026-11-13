@@ -180,3 +180,5 @@
 #app.pizzaSection .pizzaLiveSummary{border-color:#526d7a;background:linear-gradient(120deg,#1c2b35,#10171d)}
 #app.pizzaSection .pizzaRatingProgress progress,#app.pizzaSection input[type=checkbox]{accent-color:#d9eff8}
 #app.pizzaSection input:focus-visible,#app.pizzaSection textarea:focus-visible,#app.pizzaSection select:focus-visible,#app.pizzaSection button:focus-visible,#app.pizzaSection summary:focus-visible{outline-color:#d9eff8;border-color:#b9dce9}
+#app.pizzaSection .pizzaHeadingIcon svg{color:#d9eff8;stroke:#d9eff8}
+#app.pizzaSection .pizzaCard .cardOptionsTrigger,#app.pizzaSection .pizzaSavedSummary small{color:#d9eff8}
