@@ -1239,3 +1239,9 @@
 #app .cocktailSort select{display:block;width:100%;min-height:46px;padding:10px 38px 10px 12px;background-color:#10151a;color:#f4f1ea;border:1px solid #555063;border-radius:10px;font:inherit}
 
 #app select:not([multiple]){padding-right:38px;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23bdc5cb' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;background-size:16px}
+#app .pizzaNameToggle{flex:1;min-width:0;padding:0;border:0;background:none;color:var(--text);font:inherit;font-size:22px;font-weight:800;line-height:1.35;text-align:left;overflow-wrap:anywhere;cursor:pointer}
+#app .pizzaNameToggle:hover,#app .pizzaNameToggle[aria-expanded=true]{text-decoration:underline;text-decoration-color:#d9eff8;text-underline-offset:5px}
+#app .pizzaNameToggle:focus-visible{outline:2px solid #d9eff8;outline-offset:4px}
+#app .pizzaSavedDetails>summary[hidden]{display:none!important}
+#app .pizzaSavedDetails>.collapseBottom{margin-top:12px;color:#d9eff8;border-color:#526d7a}
+#app .pizzaSavedSummary>strong small{display:inline;white-space:nowrap}
