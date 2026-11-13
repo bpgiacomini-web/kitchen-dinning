@@ -1,3 +1,5 @@
+import {filterHiddenPlaces,hiddenPlaceDescriptor} from "./domain/hidden-places.mjs";
+import {createHiddenPlaces} from "./features/hidden-places.mjs";
 import {nearbyPersonalRating,matchingSavedRestaurants} from "./domain/nearby-personal-rating.mjs";
 import {captureReturnPosition,restoreReturnPosition} from "./features/return-position.mjs";
 import { mountJourney } from "./features/journey-map.mjs";
@@ -30,7 +32,7 @@ const personalNearbyScore=place=>{const rating=nearbyPersonalRating(place,cloudD
 const root = document.querySelector("#app");
 const status = document.querySelector("#previewNotice");
 document.querySelectorAll(".navCocktailIcon").forEach(icon => { icon.innerHTML = COCKTAIL_ICON; });
-let dataset = { recipes: [], restaurants: [], pizzas: [], bars: [], drinks: [], cocktailRecipes: [], cats: [] };
+let dataset = { recipes: [], restaurants: [], pizzas: [], bars: [], drinks: [], cocktailRecipes: [], hiddenPlaces: [], cats: [] };
 let cloudDataset = { recipes: [], restaurants: [], pizzas: [], bars: [], drinks: [], cocktailRecipes: [], cats: [] };
 let cloudRevision = 0;
 let cloudClient = null;
@@ -78,6 +80,7 @@ async function saveCloudDataset(nextDataset) {
 mountCompactBrowse(root);
 const photoController=createJournalPhotos({root,getData:()=>cloudDataset,save:saveCloudDataset});
 root.addEventListener("metro-photo-saved",()=>render());
+const hiddenPlacesController=createHiddenPlaces({root,getData:()=>cloudDataset,save:saveCloudDataset,refresh:()=>render()});
 const cocktailJournal = createCocktailJournal({ root, getData: () => cloudDataset, save: saveCloudDataset, onCancel:()=>returnFromEditor() });
 let lastNewsSignature = null;
 let cachedNewsPayload=null,newsFetchedAt=0,newsInFlight=null,homeNearbyCache=null;
@@ -405,10 +408,10 @@ async function searchHomeBars() {
  const section=root.querySelector("#home-bars");if(!section)return;
  const status=section.querySelector("[data-bar-status]"),list=section.querySelector("[data-bar-results]");
  const location=await new Promise(resolve=>{if(!navigator.geolocation)return resolve(null);sharedPosition(p=>resolve({lat:p.coords.latitude,lon:p.coords.longitude}),()=>resolve(null),{timeout:8000,maximumAge:300000});});
- try{const found=await lookupBars({location});if(!section.isConnected)return;
+ try{const result=await lookupBars({location});if(!section.isConnected)return;const found={...result,places:filterHiddenPlaces(result.places,cloudDataset.hiddenPlaces)};
  section.querySelector("summary").textContent=found.places.length?"Nearby bars ("+found.places.length+")":"Nearby bars · No results";
  status.textContent=found.cache?.stale?"Previously found nearby · Updating when available":found.places.length?"":"No nearby bars found.";
- list.innerHTML=found.places.map(place=>`<article class="nearbyPlace"><div><strong>${escapeHtml(place.name)}</strong><small>${escapeHtml([place.address,place.distance==null?"":(place.distance/1609.34).toFixed(1)+" mi"].filter(Boolean).join(" · "))}</small></div><div class="nearbyPlaceActions">${mapMenuMarkup(place)}</div></article>`).join("");
+ list.innerHTML=found.places.map(place=>`<article class="nearbyPlace" data-hidden-place="${escapeHtml(JSON.stringify(hiddenPlaceDescriptor(place)))}"><div><strong>${escapeHtml(place.name)}</strong><small>${escapeHtml([place.address,place.distance==null?"":(place.distance/1609.34).toFixed(1)+" mi"].filter(Boolean).join(" · "))}</small></div><div class="nearbyPlaceActions">${mapMenuMarkup(place)}</div></article>`).join("");
  }catch{if(section.isConnected){section.querySelector("summary").textContent="Nearby bars · Unavailable";status.textContent="Map provider unavailable. Try again shortly.";}}
 }
 async function searchNearbyRestaurants() {
@@ -423,8 +426,9 @@ async function searchNearbyRestaurants() {
   const search = async location => {
     statusLine.textContent = "Searching nearby restaurants…";
     try {
-      const response = activeView==="home" && homeNearbyCache && Date.now()-homeNearbyCache.time<300000 ? homeNearbyCache.response : await lookupNearbyRestaurants({ location });
-      if(activeView==="home" && !response.partial)homeNearbyCache={response,time:Date.now()};
+      const rawResponse = activeView==="home" && homeNearbyCache && Date.now()-homeNearbyCache.time<300000 ? homeNearbyCache.response : await lookupNearbyRestaurants({ location });
+      const response={...rawResponse,places:filterHiddenPlaces(rawResponse.places,cloudDataset.hiddenPlaces)};
+      if(activeView==="home" && !rawResponse.partial)homeNearbyCache={response:rawResponse,time:Date.now()};
       restaurantLookupLocation = response.location || location;
       if (!response.places.length) {
         statusLine.textContent = "No named restaurants appeared within about twenty miles. Try the name search below.";
@@ -897,6 +901,7 @@ function render() {
     if (active) button.setAttribute("aria-current", "page"); else button.removeAttribute("aria-current");
   });
   if (activeView === "recipes") renderList("My Recipes", "Your kitchen", dataset.recipes, "recipes");
+  else if (activeView === "hidden-places") hiddenPlacesController.render();
   else if (activeView === "groceries") groceryPlanner.render(root,dataset.recipes);
   else if (activeView === "add-recipe") renderAddRecipe();
   else if (activeView === "edit-recipe") renderRecipeEditor(activeRecipeId);
@@ -1016,6 +1021,7 @@ document.addEventListener("click", async event => {
     event.preventDefault();
     releaseRecipeWakeLock();
     activeView = viewButton.dataset.view;
+    if(activeView==="hidden-places"){document.querySelector("#metroAccountPanel").hidden=true;document.querySelector("#metroAccountButton").setAttribute("aria-expanded","false");}
     if (activeView === "cocktails") cocktailJournal.setTab(viewButton.dataset.cocktailCategory || "bars");
     render();
     if (activeView === "dining") searchNearbyRestaurants();

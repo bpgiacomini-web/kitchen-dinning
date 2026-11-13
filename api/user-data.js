@@ -2,7 +2,7 @@ import photoStorage from './_lib/journal-photos.cjs';
 import { consumeAccountRateLimit } from './_lib/rate-limit.js';
 import { randomUUID } from 'node:crypto';
 import journalValidation from './_lib/journal-validation.cjs';
-const { validCocktailCollections, validAward } = journalValidation;
+const { validCocktailCollections, validAward, validHiddenPlaces } = journalValidation;
 
 const MAX_BODY_BYTES = 1_500_000;
 const EMPTY_DATASET = { recipes: [], restaurants: [], pizzas: [], cats: [] };
@@ -39,7 +39,7 @@ export async function authenticatedUser(req) {
 function validDataset(value) {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
   if (!Array.isArray(value.recipes) || !Array.isArray(value.restaurants)) return false;
-  if (!validCocktailCollections(value)) return false;
+  if (!validCocktailCollections(value) || !validHiddenPlaces(value.hiddenPlaces)) return false;
   if (value.restaurants.some(row => row?.awards != null && (!Array.isArray(row.awards) || row.awards.length > 100 || !row.awards.every(validAward) || new Set(row.awards.map(award => award.id)).size !== row.awards.length))) return false;
   if (value.pizzas != null && !Array.isArray(value.pizzas)) return false;
   if (value.cats != null && !Array.isArray(value.cats) && (typeof value.cats !== 'object' || value.cats === null)) return false;

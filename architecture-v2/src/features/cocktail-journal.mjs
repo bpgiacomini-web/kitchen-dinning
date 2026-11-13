@@ -1,3 +1,4 @@
+import {isHiddenPlace,hiddenPlaceDescriptor} from "../domain/hidden-places.mjs";
 import { matchesReviewFilter } from "../domain/personal-journey.mjs";
 import { sharedPosition } from "./device-location.mjs";
 import { mapMenuMarkup } from "./map-menu.mjs";
@@ -59,7 +60,7 @@ export function createCocktailJournal({ root, getData, save, onCancel }) {
     });
     root.querySelector("#cocktail-editor input")?.focus({preventScroll:true});
   }
-  function barResults(places,source) {return places.map((place,index)=>`<div class="lookupMatch"><button type="button" class="barMatch" data-cocktail-action="choose-bar" data-source="${source}" data-index="${index}"><strong>${esc(place.name)}</strong><small>${esc([place.address,place.distance == null ? '' : `${(place.distance/1609.34).toFixed(1)} mi`].filter(Boolean).join(' · '))}</small></button>${mapMenuMarkup(place)}</div>`).join('');}
+  function barResults(places,source) {return places.map((place,index)=>source==="nearby"&&isHiddenPlace(place,getData().hiddenPlaces)?"":`<div class="lookupMatch"${source==="nearby"?` data-hidden-place="${esc(JSON.stringify(hiddenPlaceDescriptor(place)))}"`:""}><button type="button" class="barMatch" data-cocktail-action="choose-bar" data-source="${source}" data-index="${index}"><strong>${esc(place.name)}</strong><small>${esc([place.address,place.distance == null ? '' : `${(place.distance/1609.34).toFixed(1)} mi`].filter(Boolean).join(' · '))}</small></button>${mapMenuMarkup(place)}</div>`).join('');}
   async function loadNearby() {
     nearbyLoaded=true;
     try {const found=await lookupBars({location});nearby=found.places;location=found.location;nearbyMessage=nearby.length ? (location?.source==='device' ? 'Nearby bars & pubs.' : `Approximate area${location?.city ? ` · ${location.city}` : ''}. Use location for closer results.`) : 'No nearby bars found. Search by name when adding a spot.';}

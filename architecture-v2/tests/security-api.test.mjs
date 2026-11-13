@@ -16,6 +16,23 @@ function responseRecorder() {
 const dataset = title => ({ recipes: [{ id: 'r1', title, ingredients: ['1 cup flour'], directions: ['Mix'] }], restaurants: [], cats: [] });
 const account = userId => async () => ({ userId });
 
+test('hidden places are saved in the owner snapshot without changing reviews',async()=>{
+ const hidden={id:'hidden-1',name:'Closed Cafe',address:'123 Main Street, Alton, IL',reason:'closed',hiddenAt:'2026-11-13T15:00:00.000Z'};
+ const restaurant={id:'kept-review',name:'Closed Cafe',reviewHistory:[{id:'v1',overall:8,ratingScale:10}],photos:['original.jpg']};
+ let saved;
+ const sql=Object.assign(taggedSql(async()=>[]),{transaction:async queries=>{saved=JSON.parse(queries[0].values.find(value=>typeof value==='string'&&value.includes('hidden-1')));return [[{revision:1}]];}});
+ const handler=createUserDataHandler({authenticateUser:account('account-A'),makeSql:()=>sql});
+ const res=responseRecorder();await handler({method:'PUT',headers:{},body:{expectedRevision:0,data:{...dataset('kept recipe'),restaurants:[restaurant],hiddenPlaces:[hidden]}}},res);
+ assert.equal(res.statusCode,200);assert.deepEqual(saved.hiddenPlaces,[hidden]);assert.deepEqual(saved.restaurants,[restaurant]);assert.equal(saved.recipes[0].title,'kept recipe');
+ const invalid=responseRecorder();await handler({method:'PUT',headers:{},body:{expectedRevision:1,data:{...dataset('kept'),hiddenPlaces:[{...hidden,address:''}]}}},invalid);assert.equal(invalid.statusCode,400);
+});
+
+test('one account cannot read another account hidden-place list',async()=>{
+ const hidden={id:'hidden-1',name:'Closed Cafe',address:'123 Main Street, Alton, IL',reason:'closed',hiddenAt:'2026-11-13T15:00:00.000Z'};
+ const sql=taggedSql(async(query,values)=>query.includes('metro_eats_user_datasets')?[{payload:{...dataset('recipe'),hiddenPlaces:values[0]==='account-A'?[hidden]:[]},revision:1}]:[]);
+ for(const owner of ['account-A','account-B']){const handler=createUserDataHandler({authenticateUser:account(owner),makeSql:()=>sql}),res=responseRecorder();await handler({method:'GET',headers:{}},res);assert.equal(res.statusCode,200);assert.equal(res.body.data.hiddenPlaces.length,owner==='account-A'?1:0);}
+});
+
 function taggedSql(execute) {
   const sql = (strings, ...values) => {
     const query = { text: strings.join(' '), values };

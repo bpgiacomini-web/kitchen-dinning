@@ -1,3 +1,4 @@
+import {validHiddenPlaces} from "./hidden-places.mjs";
 /**
  * Pure structural checks for the next data-contract migration.
  * These checks are not authentication or authorization and must be repeated
@@ -40,5 +41,6 @@ export function validateDatasetEnvelope(value) {
   checkCollection("restaurants", value.restaurants, errors);
   if (value.pizzas != null) checkCollection("pizzas", value.pizzas, errors);
   for (const name of ["bars", "drinks", "cocktailRecipes"]) if (value[name] != null) checkCollection(name, value[name], errors);
+  if(!validHiddenPlaces(value.hiddenPlaces))errors.push("hiddenPlaces must contain valid, unique venue locations");
   return { valid: errors.length === 0, errors };
 }
