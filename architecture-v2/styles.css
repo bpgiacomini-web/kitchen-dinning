@@ -1230,3 +1230,6 @@
 #app .barDiscovery>details>summary::marker{content:''}
 #app .barDiscovery>details>summary::-webkit-details-marker{display:none}
 @media(max-width:600px){#app .heroIn{padding:16px}#app .content-panel{padding:14px}#app .cocktailJournal>.sectionTitle h3{font-size:25px}#app .cocktailJournal>.sectionTitle .btn{max-width:160px}}
+#app .restaurantNameGroup{display:grid;grid-template-columns:34px minmax(0,1fr);align-items:start;gap:6px 9px}
+#app .restaurantNameGroup>.reviewedBadge{grid-column:1/-1}
+#app .restaurantNameGroup>.restaurantNameLink{width:100%;min-width:0}
