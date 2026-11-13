@@ -17,7 +17,18 @@ export function mountCompactBrowse(root){
   const search=root.querySelector('.cocktailSearch');
   if(search && !search.closest('.compactBrowseMenu'))wrap([search,root.querySelector('.cocktailSort'),root.querySelector('.barGamingFilter'),root.querySelector('.barReviewFilter'),root.querySelector('#cocktail-favorites-only')?.closest('label')],'Search & Filters');
  };
- const collapse=event=>{const panel=event.target;if(!(panel instanceof HTMLDetailsElement)||!panel.open||panel.classList.contains('cardOptions'))return;requestAnimationFrame(()=>{if(!panel.isConnected||!panel.open||panel.scrollHeight<450||panel.querySelector(':scope > .collapseBottom'))return;const button=document.createElement('button');button.type='button';button.className='btn collapseBottom';button.textContent='↑ Collapse';button.addEventListener('click',()=>{panel.open=false;panel.querySelector('summary')?.scrollIntoView({block:'nearest',behavior:'smooth'});});panel.append(button);});};
+ const collapse=event=>{const panel=event.target;if(!(panel instanceof HTMLDetailsElement)||!panel.open||panel.classList.contains('cardOptions'))return;requestAnimationFrame(()=>{if(!panel.isConnected||!panel.open||panel.scrollHeight<450||panel.querySelector(':scope > .collapseBottom'))return;const button=document.createElement('button');button.type='button';button.className='collapseBottom';button.setAttribute('aria-label','Collapse '+(panel.querySelector(':scope > summary')?.textContent.replace(/[▸▾▼▶]/g,'').trim()||'section'));button.title='Collapse';button.innerHTML='<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 15 6-6 6 6"/></svg>';button.addEventListener('click',()=>collapseInPlace(panel,button));panel.append(button);});};
  root.addEventListener('toggle',collapse,true);
  const observer=new MutationObserver(enhance);observer.observe(root,{childList:true,subtree:true});enhance();return ()=>{observer.disconnect();root.removeEventListener('toggle',collapse,true);};
+}
+
+/** Keep the closed heading at the collapse control's screen position, without a smooth trip through removed content. */
+export function collapseInPlace(panel,button){
+ const summary=panel.querySelector(':scope > summary');if(!summary){panel.open=false;return;}
+ const anchorTop=button.getBoundingClientRect().top;
+ const page=document.documentElement,previousAnchor=page.style.overflowAnchor,previousBehavior=page.style.scrollBehavior;
+ page.style.overflowAnchor='none';page.style.scrollBehavior='auto';
+ panel.open=false;summary.focus({preventScroll:true});
+ const align=()=>window.scrollTo({top:Math.max(0,window.scrollY+summary.getBoundingClientRect().top-anchorTop),behavior:'auto'});
+ align();requestAnimationFrame(()=>{align();page.style.overflowAnchor=previousAnchor;page.style.scrollBehavior=previousBehavior;});
 }

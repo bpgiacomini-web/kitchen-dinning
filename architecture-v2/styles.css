@@ -1173,3 +1173,5 @@
 .groceryItem{display:flex;align-items:flex-start;gap:12px;padding:12px 0;border-bottom:1px solid #323a40}.groceryItem input{width:22px;height:22px;flex:0 0 22px;margin-top:4px}.groceryItem small{display:block;font-size:15px;color:#aab2bc}.groceryItem.purchased span{text-decoration:line-through;opacity:.55}.groceryPlanner section h3{color:#dfb969;margin:24px 0 6px}
 
 #app .restaurantCardRating small{display:inline!important}#app .barCardRating{font-size:1.8rem;font-weight:800;color:#e2a7cf;line-height:1.3;margin-top:10px}#app .barCardRating small{display:block;font-size:15px;font-weight:500;color:#aab2bc}
+
+#app .collapseBottom{display:flex;align-items:center;justify-content:center;width:44px;height:44px;min-height:44px;margin:8px 0 0;padding:0;border:0;border-radius:50%;background:transparent;box-shadow:none;color:#9abcb1;cursor:pointer}#app .collapseBottom:hover{background:#ffffff08}#app .collapseBottom:focus-visible{outline:2px solid #dfb969;outline-offset:2px}
