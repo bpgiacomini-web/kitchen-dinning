@@ -11,6 +11,25 @@ function responseRecorder() {
   };
 }
 
+test('a sparse live response cannot replace a larger cached bar directory',async()=>{
+ const known=Array.from({length:30},(_,i)=>({name:'Saved Pub '+i,lat:40+i*.001,lon:-100,amenity:'pub'}));let stored,options;
+ const handler=createRestaurantLookupHandler({cacheLookup:async()=>({places:known,skipRefresh:false,fresh:false,save:async(rows,settings)=>{stored=rows;options=settings;}}),fetcher:async value=>({ok:true,json:async()=>String(value).includes('photon')?{features:known.slice(0,8).map(place=>({properties:{name:place.name,osm_key:'amenity',osm_value:'pub'},geometry:{coordinates:[place.lon,place.lat]}}))}:{elements:[]}})});
+ const res=responseRecorder();await handler({method:'POST',headers:{},body:{mode:'bar-nearby',location:{lat:40,lon:-100}}},res);
+ assert.equal(res.body.places.length,30);assert.equal(stored.length,30);assert.equal(options.partial,true);assert.equal(res.body.cache.stale,true);
+});
+test('previous cache versions and local fallback supplement a thin fresh list',async()=>{
+ const known=Array.from({length:30},(_,i)=>({name:'Saved Pub '+i,lat:40+i*.001,lon:-100,amenity:'pub'}));let stored;
+ const handler=createRestaurantLookupHandler({cacheLookup:async()=>({places:known.slice(0,8),previousPlaces:known,fresh:true,skipRefresh:true,save:async rows=>{stored=rows;}}),fetcher:async()=>{throw Error('must not fetch while fresh');}});
+ const res=responseRecorder();await handler({method:'POST',headers:{},body:{mode:'bar-nearby',location:{lat:40,lon:-100}}},res);
+ assert.equal(res.body.places.length,30);assert.equal(stored.length,30);assert.equal(res.body.cache.stale,true);
+});
+test('explicit upstream closures are not resurrected by cached records',async()=>{
+ let stored;
+ const handler=createRestaurantLookupHandler({cacheLookup:async()=>({places:[{name:'Closed Pub',lat:40,lon:-100,amenity:'pub'}],fresh:false,skipRefresh:false,save:async rows=>{stored=rows;}}),fetcher:async value=>({ok:true,json:async()=>String(value).includes('photon')?{features:[]}:{elements:[{lat:40,lon:-100,tags:{name:'Closed Pub',amenity:'pub',closed:'yes'}},{lat:40.01,lon:-100,tags:{name:'Open Pub',amenity:'pub'}}]}})});
+ const res=responseRecorder();await handler({method:'POST',headers:{},body:{mode:'bar-nearby',location:{lat:40,lon:-100}}},res);
+ assert.deepEqual(res.body.places.map(place=>place.name),['Open Pub']);assert.ok(stored.some(place=>place.name==='Closed Pub'&&place.closed));
+});
+
 test('nearby lookup carries public phone numbers and excludes explicit closure flags',async()=>{
  for(const source of ['photon','overpass']){
   const handler=createRestaurantLookupHandler({cacheLookup:async()=>null,fetcher:async value=>{
@@ -251,8 +270,8 @@ test('cached nearby businesses remain available during provider outages',async()
  assert.equal(res.statusCode,200);assert.equal(res.body.places[0].name,'Saved Pub');assert.equal(res.body.places[0].distance,0);assert.equal(res.body.cache.stale,true);
 });
 test('fresh shared area cache avoids external provider calls',async()=>{
- const handler=createRestaurantLookupHandler({cacheLookup:async()=>({places:[{name:'Fresh Pub',lat:38.93,lon:-90.19}],fresh:true,skipRefresh:true}),fetcher:async()=>{throw Error('should not fetch')}});
- const res=responseRecorder();await handler({method:'POST',headers:{},body:{mode:'bar-nearby',location:{lat:38.93,lon:-90.19}}},res);assert.equal(res.statusCode,200);assert.equal(res.body.cache.stale,false);
+ const handler=createRestaurantLookupHandler({cacheLookup:async()=>({places:[{name:'Fresh Pub',lat:40,lon:-100}],fresh:true,skipRefresh:true}),fetcher:async()=>{throw Error('should not fetch')}});
+ const res=responseRecorder();await handler({method:'POST',headers:{},body:{mode:'bar-nearby',location:{lat:40,lon:-100}}},res);assert.equal(res.statusCode,200);assert.equal(res.body.cache.stale,false);
 });
 
 test('dated local directory keeps restaurant and bar lists useful during an outage',async()=>{

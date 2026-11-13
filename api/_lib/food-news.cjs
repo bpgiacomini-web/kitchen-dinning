@@ -1,5 +1,6 @@
+const liveNews=require("./live-local-news.cjs");
 const publisherNews=require('./publisher-news.cjs');
-// Preview reads one fixed public feed. Never proxy caller-supplied URLs or
+// Preview merges the fixed published feed with cached, allowlisted local RSS. Never proxy caller-supplied URLs or
 // forward account credentials. This runs inside the existing lookup function.
 async function readFoodNews(fetchImpl) {
   const response = await fetchImpl('https://bpgiacomini-web.github.io/kitchen-dinning/news.json', {
@@ -10,8 +11,9 @@ async function readFoodNews(fetchImpl) {
   if (text.length > 250000) throw new Error('Feed too large');
   const payload = JSON.parse(text);
   if (!Array.isArray(payload.items)) throw new Error('Invalid feed');
-  let pictures=[];try{pictures=await publisherNews.readPublisherPhotos(fetchImpl);}catch{}
-  return { updated: payload.updated, items: mergeStories(payload.items,pictures) };
+  const extras=await Promise.allSettled([publisherNews.readPublisherPhotos(fetchImpl),liveNews.readLiveLocalNews(fetchImpl)]);
+  const pictures=extras[0].status==="fulfilled"?extras[0].value:[],live=extras[1].status==="fulfilled"?extras[1].value:null;
+  return { updated:live?.items.length?live.checkedAt:payload.updated, items: mergeStories([...payload.items,...(live?.items||[])],pictures) };
 }
 function mergeStories(items,pictures){
  const merged=new Map();
