@@ -1153,7 +1153,7 @@
 #app .dashboardSubtabs button{background:#171e23;border:1px solid #3d464d;border-radius:20px;color:#bdc6cd;font:inherit;font-size:16px;min-height:42px;padding:8px 18px;cursor:pointer}
 #app .dashboardSubtabs [aria-pressed="true"]{background:#e0b96c;color:#211a10;border-color:#e0b96c;font-weight:750}
 #app .journeyMap{background:#161d23}
-#app .journeyMap .leaflet-tile-pane{filter:invert(100%) hue-rotate(180deg) brightness(.8) contrast(.95) saturate(.55)}
+#app .journeyMap .leaflet-tile-pane{filter:invert(90%) hue-rotate(180deg) brightness(1.1) contrast(.9) saturate(.45)}
 #app .journeyMap .leaflet-control-zoom a{background:#202930;color:#f3e8cc;border-color:#4c5962}
 #app .journeyMap .leaflet-control-attribution{background:#172027e8;color:#c7cfd5}
 #app .journeyMap .leaflet-control-attribution a{color:#e5c789}
