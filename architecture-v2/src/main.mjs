@@ -19,7 +19,7 @@ import { averageRestaurantVisitRating, createRestaurantReview, RESTAURANT_REVIEW
 import { restaurantDishSuggestions } from "./domain/restaurant-dish-suggestions.mjs";
 import { restaurantNavigationOptions } from "./domain/restaurant-directions.mjs";
 import { sortRestaurantItems } from "./domain/restaurant-sort.mjs";
-import { searchNearbyRestaurants as lookupNearbyRestaurants, searchRestaurantNames } from "./domain/restaurant-lookup.mjs";
+import { searchNearbyRestaurants as lookupNearbyRestaurants, searchRestaurantNames, fillRestaurantWebsite } from "./domain/restaurant-lookup.mjs";
 import { LOCAL_RESTAURANT_OVERRIDES } from "./domain/local-restaurant-overrides.mjs";
 import { renderJournalInsights, mountDashboard } from "./features/journal-insights.mjs";
 import { createCocktailJournal } from "./features/cocktail-journal.mjs";
@@ -341,6 +341,7 @@ function renderRestaurantEditor(restaurantId = null) {
   const restaurant = restaurantId ? cloudDataset.restaurants.find(item => String(item.id) === String(restaurantId)) : restaurantDraft || newRestaurantPrefill;
   if (restaurantId && !restaurant) { activeView = "dining"; render(); return; }
   root.innerHTML = `<section class="hero"><div class="heroIn"><div class="eyebrow">Your dining journal</div><h2>${restaurantId ? "Edit Restaurant" : "Add a Restaurant"}</h2><p>${restaurantId ? "Update the details or continue straight to a new visit review." : "Save a spot or review your visit."}</p></div></section><section class="content-panel restaurantEditorPage"><div class="restaurantEditPanel"><label>Restaurant name<input id="restaurant-name" required maxlength="180" value="${escapeHtml(restaurant?.name || "")}" placeholder="Start typing a restaurant name" autocomplete="organization"></label><div class="restaurantLookupTools"><p class="hint">Search fills in available details.</p></div><div id="restaurant-lookup-status" role="status" aria-live="polite" class="restaurantLookupStatus"></div><div id="restaurant-lookup-results" class="restaurantLookupResults"></div><div class="restaurantEditorGrid">${cuisineFields(restaurant?.cuisine || restaurant?.type || "")}<label>Website<input id="restaurant-website" type="url" maxlength="500" value="${escapeHtml(restaurant?.website || "")}" placeholder="Filled automatically when available"></label></div><label>Menu link<input id="restaurant-menu" type="url" maxlength="500" value="${escapeHtml(restaurant?.menuUrl || "")}" placeholder="https://"></label><label>Address<input id="restaurant-address" maxlength="300" value="${escapeHtml(restaurant?.address || "")}" placeholder="Street, city"></label><label>Notes<textarea id="restaurant-notes" rows="3" maxlength="5000" placeholder="Anything you want to remember">${escapeHtml(restaurant?.notes || "")}</textarea></label><label class="inlineCheck"><input id="restaurant-want" type="checkbox"${restaurant?.wantToTry?" checked":""}> Want to Try</label><label class="inlineCheck"><input id="restaurant-favorite" type="checkbox"${restaurant?.favorite ? " checked" : ""}> Favorite</label><div class="recipeEditActions"><button class="btn" type="button" data-action="cancel-restaurant-edit">Cancel</button>${restaurantId ? `<button class="btn danger restaurantDeleteInEdit" type="button" data-action="delete-restaurant" data-restaurant-id="${escapeHtml(restaurant.id)}">Delete Restaurant</button>` : ""}<button class="btn" type="button" data-action="save-restaurant" data-restaurant-id="${escapeHtml(restaurant?.id || "")}">${restaurantId ? "Save Details Only" : "Save &amp; Review Later"}</button><button class="btn primary" type="button" data-action="start-restaurant-review" data-restaurant-id="${escapeHtml(restaurant?.id || "")}">Review Now</button></div><p class="edit-status" role="status" aria-live="polite"></p></div></section>`;
+  if (restaurant) void fillRestaurantWebsite(root, restaurant);
   if (!restaurantLookupLocation || restaurantLookupLocation.source !== "device") requestDeviceRestaurantLocation();
 }
 function reviewDishMarkup(dish, restaurant, rating = 0, itemId = crypto.randomUUID()) {
@@ -1177,6 +1178,7 @@ document.addEventListener("click", async event => {
     const fields = [["restaurant-name", place.name], ["restaurant-address", place.address], ["restaurant-website", place.website]];
     fields.forEach(([id, value]) => { const field = root.querySelector(`#${id}`); if (field && value) field.value = value; });
     if (place.cuisine) setCuisineFields(place.cuisine);
+    void fillRestaurantWebsite(root, place);
     restaurantLookupRequest += 1;
     clearTimeout(restaurantLookupTimer);
     restaurantLookupResults = [];

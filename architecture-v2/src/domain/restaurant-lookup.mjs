@@ -1,5 +1,29 @@
 import { isExcludedRestaurantName, LOCAL_RESTAURANT_OVERRIDES } from "./local-restaurant-overrides.mjs";
 
+// Optional enrichment of the selected editor; manual entries always win.
+const websiteRequests = new WeakMap();
+export async function fillRestaurantWebsite(root, place, { fetcher = fetch } = {}) {
+  const field = root.querySelector('#restaurant-website');
+  const name = root.querySelector('#restaurant-name'), address = root.querySelector('#restaurant-address');
+  if (!field || field.value || !name || !address || !place?.name || place.lat == null || place.lon == null) return;
+  const token = {}, selectedName = name.value, selectedAddress = address.value;
+  websiteRequests.set(field, token);
+  let edited = false;
+  const onInput = () => { edited = true; };
+  field.addEventListener('input', onInput);
+  try {
+    const response = await fetcher('/api/restaurant-lookup', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ mode: 'website', place: { name: place.name, lat: place.lat, lon: place.lon } })
+    });
+    if (!response.ok) return;
+    const payload = await response.json();
+    const website = websiteFromProperties({ website: payload?.website });
+    if (website && field.isConnected && websiteRequests.get(field) === token && !edited && !field.value && name.value === selectedName && address.value === selectedAddress) field.value = website;
+  } catch { /* Missing details must never interrupt editing or saving. */ }
+  finally { field.removeEventListener('input', onInput); }
+}
+
 const FOOD_AMENITIES = new Set(["restaurant", "fast_food", "cafe", "bar", "pub"]);
 const KNOWN_LOCAL_WEBSITES = LOCAL_RESTAURANT_OVERRIDES.map(place => ({ ...place, displayName: place.name }));
 

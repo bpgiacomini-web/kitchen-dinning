@@ -196,6 +196,7 @@ async function fetchJson(fetcher, url, options, timeoutMs = 9000) {
 }
 
 export function createRestaurantLookupHandler({ fetcher = fetch, authenticate = authenticatedUser, limitRequests = consumeAccountRateLimit, cacheLookup = nearbyCache } = {}) {
+  const websiteCache = new Map(); // Bounded public metadata; no new storage service.
   return async function handler(req, res) {
     res.setHeader("Cache-Control", "no-store, max-age=0");
     res.setHeader("X-Content-Type-Options", "nosniff");
@@ -242,6 +243,44 @@ export function createRestaurantLookupHandler({ fetcher = fetch, authenticate = 
         console.error("Metro Eats UPC lookup failed", String(error?.message || "upstream_error").slice(0, 80));
         return res.status(502).json({ error: "Product lookup is temporarily unavailable. You can enter the brand and pizza name yourself." });
       } finally { clearTimeout(timeout); }
+    }
+    if (mode === "website") {
+      const identity = await authenticate(req);
+      if (identity.error) return res.status(identity.status || 503).json({ error: identity.error });
+      const place = body.place || {};
+      const lat = finiteCoordinate(place.lat, -90, 90), lon = finiteCoordinate(place.lon, -180, 180);
+      const name = typeof place.name === "string" ? place.name.trim() : "";
+      if (!name || name.length > 180 || lat == null || lon == null) return res.status(400).json({ error: "Select a restaurant with a map location." });
+      const keyName = value => String(value || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+      const key = `${keyName(name)}:${lat.toFixed(5)}:${lon.toFixed(5)}`;
+      const cached = websiteCache.get(key);
+      if (cached && cached.expires > Date.now()) return res.status(200).json({ website: cached.website });
+      try {
+        const allowance = await limitRequests({ scope: "restaurant-website", accountId: identity.userId, limit: 30, windowSeconds: 60 });
+        if (!allowance.allowed) return sendRateLimitResponse(res, allowance.retryAfterSeconds);
+        const point = { lat, lon };
+        const safeWebsite = value => {
+          if (!value || String(value).length > 500) return "";
+          try { const url = new URL(/^https?:\/\//i.test(value) ? value : `https://${value}`); return ["http:", "https:"].includes(url.protocol) && !url.username && !url.password ? url.href : ""; } catch { return ""; }
+        };
+        const known = LOCAL_RESTAURANT_OVERRIDES.find(item => item.aliases.some(alias => keyName(alias) === keyName(name)) && distanceMeters(point, item.lat, item.lon) <= 250);
+        let website = safeWebsite(known?.website);
+        if (!website) {
+          const query = `[out:json][timeout:5];nwr["amenity"~"^(restaurant|fast_food|cafe|bar|pub)$"]["name"](around:250,${lat},${lon});out center tags;`;
+          for (const endpoint of OVERPASS_URLS) {
+            try {
+              const url = new URL(endpoint); url.searchParams.set("data", query);
+              const payload = await fetchJson(fetcher, url, { headers: { Accept: "application/json" } }, 3500);
+              const matches = normalizeNearby((payload.elements || []).filter(item => keyName(item?.tags?.name) === keyName(name) && distanceMeters(point, item.lat ?? item.center?.lat, item.lon ?? item.center?.lon) <= 250), point).filter(item => item.distance != null && item.distance <= 250).sort((a,b) => a.distance-b.distance);
+              website = safeWebsite(matches[0]?.website);
+              break; // A successful empty result is valid; avoid duplicate provider requests.
+            } catch { /* Try the existing backup; review remains usable if both fail. */ }
+          }
+        }
+        if (websiteCache.size >= 128) websiteCache.delete(websiteCache.keys().next().value);
+        websiteCache.set(key, { website, expires: Date.now() + (website ? 86400000 : 900000) });
+        return res.status(200).json({ website });
+      } catch { return res.status(503).json({ error: "Website lookup is temporarily unavailable." }); }
     }
     const location = requestLocation(req, body.location);
     if (mode === "name" || mode === "bar-name") {
