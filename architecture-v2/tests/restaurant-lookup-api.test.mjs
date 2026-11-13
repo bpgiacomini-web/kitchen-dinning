@@ -11,6 +11,27 @@ function responseRecorder() {
   };
 }
 
+test('restaurants and bars include places beyond five miles, exclude beyond twenty, and sort by distance',async()=>{
+ for(const mode of ['nearby','bar-nearby']){
+  const calls=[];
+  const handler=createRestaurantLookupHandler({cacheLookup:async()=>null,fetcher:async value=>{
+   const url=new URL(value);calls.push(url);
+   if(url.hostname==='photon.komoot.io')return {ok:true,json:async()=>({features:[]})};
+   return {ok:true,json:async()=>({elements:[
+    {type:'node',lat:40.2,lon:-100,tags:{name:'Farther',amenity:mode==='nearby'?'restaurant':'bar'}},
+    {type:'node',lat:40.4,lon:-100,tags:{name:'Outside radius',amenity:mode==='nearby'?'restaurant':'bar'}},
+    {type:'node',lat:40.01,lon:-100,tags:{name:'Closest',amenity:mode==='nearby'?'restaurant':'bar'}}
+   ]})};
+  }});
+  const res=responseRecorder();await handler({method:'POST',headers:{},body:{mode,location:{lat:40,lon:-100}}},res);
+  assert.equal(res.statusCode,200);
+  assert.deepEqual(res.body.places.map(place=>place.name),['Closest','Farther']);
+  assert.ok(res.body.places[1].distance>8047&&res.body.places[1].distance<32187);
+  assert.equal(calls[0].searchParams.get('radius'),'32.187');
+  assert.match(calls[1].searchParams.get('data'),/around:32187,40,-100/);
+ }
+});
+
 test("same-origin name lookup applies Vercel's approximate location as a search bias", async () => {
   let requested;
   const handler = createRestaurantLookupHandler({ fetcher: async url => {
@@ -113,7 +134,7 @@ test("nearby lookup falls back to approximate network location and returns close
     "x-vercel-ip-latitude": "38.89", "x-vercel-ip-longitude": "-90.18", "x-vercel-ip-city": "Alton"
   } }, res);
   assert.equal(res.statusCode, 200);
-  assert.match(requested.searchParams.get("data"), /around:8047,38\.89,-90\.18/);
+  assert.match(requested.searchParams.get("data"), /around:32187,38\.89,-90\.18/);
   assert.equal(res.body.places.find(place => place.name === "Nearby Cafe").distance, 1112);
   for (const name of ["Mac's Downtown", "Fast Eddie's Bon Air", "Roper's Regal Beagle", "Arandas MX Cocina"]) {
     assert.ok(res.body.places.some(place => place.name === name));
@@ -209,5 +230,5 @@ test('fresh shared area cache avoids external provider calls',async()=>{
 
 test('dated local directory keeps restaurant and bar lists useful during an outage',async()=>{
  const handler=createRestaurantLookupHandler({cacheLookup:async()=>null,fetcher:async()=>{throw Error('offline')}});
- for(const mode of ['nearby','bar-nearby']){const res=responseRecorder();await handler({method:'POST',headers:{},body:{mode,location:{lat:38.93,lon:-90.19}}},res);assert.equal(res.statusCode,200);assert.ok(res.body.places.length>5);assert.equal(res.body.source,'directory-fallback');assert.equal(res.body.cache.stale,true);assert.ok(res.body.places.every(place=>place.distance<=8047));if(mode==='bar-nearby')assert.ok(res.body.places.every(place=>['bar','pub'].includes(place.amenity)));}
+ for(const mode of ['nearby','bar-nearby']){const res=responseRecorder();await handler({method:'POST',headers:{},body:{mode,location:{lat:38.93,lon:-90.19}}},res);assert.equal(res.statusCode,200);assert.ok(res.body.places.length>5);assert.equal(res.body.source,'directory-fallback');assert.equal(res.body.cache.stale,true);assert.ok(res.body.places.every(place=>place.distance<=32187));if(mode==='bar-nearby')assert.ok(res.body.places.every(place=>['bar','pub'].includes(place.amenity)));}
 });

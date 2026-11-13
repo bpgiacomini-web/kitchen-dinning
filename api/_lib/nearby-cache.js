@@ -2,7 +2,7 @@ import {createHash} from 'node:crypto';
 const DAY=86400000;
 let ready;
 export function areaIdentity(location,kind){
- const key=`${kind}:${Math.floor(location.lat/.02)}:${Math.floor(location.lon/.02)}`;
+ const key=`20mi-v2:${kind}:${Math.floor(location.lat/.02)}:${Math.floor(location.lon/.02)}`;
  // Fixed slots bound storage even when many different areas are requested.
  return {key,slot:createHash('sha256').update(key).digest().readUInt16BE(0)%512};
 }

@@ -424,7 +424,7 @@ async function searchNearbyRestaurants() {
       if(activeView==="home" && !response.partial)homeNearbyCache={response,time:Date.now()};
       restaurantLookupLocation = response.location || location;
       if (!response.places.length) {
-        statusLine.textContent = "No named restaurants appeared within about five miles. Try the name search below.";
+        statusLine.textContent = "No named restaurants appeared within about twenty miles. Try the name search below.";
         return;
       }
       if (disclosure) { disclosure.hidden = false; }
