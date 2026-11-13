@@ -11,7 +11,7 @@ export function dashboardCategory(data,key){
   count=s.placeCount;unit='visited';chartTitle='Your cuisine trail';
   for(const item of items){const visits=restaurantReviewRecords(item).length;if(visits){const cuisine=item.cuisine||'Other';groups.set(cuisine,(groups.get(cuisine)||0)+visits);}}
   rows=[...groups].sort((a,b)=>b[1]-a[1]).slice(0,4).map(([label,value])=>({label,value,suffix:value===1?'visit':'visits'}));
-  const ranked=items.map(item=>({item,value:averageRestaurantVisitRating(item)})).filter(row=>number(row.value)!=null).sort((a,b)=>b.value-a.value);
+  const ranked=items.map(item=>({item,value:averageRestaurantVisitRating(restaurantReviewRecords(item))})).filter(row=>number(row.value)!=null).sort((a,b)=>b.value-a.value);
   return {count,unit,second,secondLabel,favorites:s.favoriteCount,rows,chartTitle,chartMax:Math.max(1,...rows.map(row=>row.value)),standout:ranked[0],standoutLabel:'YOUR TOP TABLE',detail:s.topDish?`Standout dish · ${s.topDish.name} · ${s.topDish.rating.toFixed(1)}/10`:s.visitCount+' visits logged',collection:key};
  }
  if(key==='bars'){
