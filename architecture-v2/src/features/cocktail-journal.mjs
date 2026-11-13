@@ -8,7 +8,7 @@ const esc = value => String(value ?? "").replace(/[&<>"']/g, char => ({ "&": "&a
 const today = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`; };
 const score = value => value == null ? "Unrated" : `${Number(value).toFixed(1)}/10`;
 const tabs = { bars: "The Barstool", drinks: "Top Drinks", cocktailRecipes: "My Cocktails" };
-export function createCocktailJournal({ root, getData, save }) {
+export function createCocktailJournal({ root, getData, save, onCancel }) {
   let tab = "bars", editing = null, visitBar = null, editingVisit = null, editorOpen = false;
   let favoritesOnly=false,gamingFilter="all",reviewFilter="all", sortBy="highest", searchQuery="";
   let nearby = [], nearbyLoaded = false, nearbyMessage = '', searchResults = [], location = null, searchTimer, searchController, prefill = null, generation = 0;
@@ -160,7 +160,7 @@ export function createCocktailJournal({ root, getData, save }) {
       finally {if(form.isConnected)button.disabled=false;}
       return true;
     }
-    if(kind==="cancel"){prefill=null;editorOpen=false;editing=null;visitBar=null;editingVisit=null;render();return true;}
+    if(kind==="cancel"){prefill=null;editorOpen=false;editing=null;visitBar=null;editingVisit=null;if(!onCancel?.())render();return true;}
     if(kind==="new" || kind==="edit" || kind==="visit" || kind==="edit-visit") {
       prefill=null;editing=kind==="edit"?id:null;visitBar=kind.includes("visit")?id:null;editingVisit=kind==="edit-visit"?button.dataset.visitId:null;editorOpen=true;render();root.querySelector('#cocktail-editor')?.scrollIntoView({block:"start",behavior:"smooth"});return true;
     }
@@ -179,5 +179,5 @@ export function createCocktailJournal({ root, getData, save }) {
     }
     return true;
   }
-  return {render,handleClick,setTab};
+  return {render,handleClick,setTab,getTab:()=>tab};
 }

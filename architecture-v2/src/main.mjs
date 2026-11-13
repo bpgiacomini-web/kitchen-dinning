@@ -1,3 +1,4 @@
+import {captureReturnPosition,restoreReturnPosition} from "./features/return-position.mjs";
 import { mountJourney } from "./features/journey-map.mjs";
 import { matchesReviewFilter } from "./domain/personal-journey.mjs";
 import { sharedPosition } from "./features/device-location.mjs";
@@ -75,7 +76,7 @@ async function saveCloudDataset(nextDataset) {
 mountCompactBrowse(root);
 const photoController=createJournalPhotos({root,getData:()=>cloudDataset,save:saveCloudDataset});
 root.addEventListener("metro-photo-saved",()=>render());
-const cocktailJournal = createCocktailJournal({ root, getData: () => cloudDataset, save: saveCloudDataset });
+const cocktailJournal = createCocktailJournal({ root, getData: () => cloudDataset, save: saveCloudDataset, onCancel:()=>returnFromEditor() });
 let lastNewsSignature = null;
 let cachedNewsPayload=null,newsFetchedAt=0,newsInFlight=null,homeNearbyCache=null;
 
@@ -383,7 +384,7 @@ function renderRestaurantReviewForm(restaurantId) {
         <label>What else did you order? <span class="optionalMark">Optional</span><input id="review-order" maxlength="500" value="${escapeHtml(editingReview?.order || editingReview?.ordered || "")}" placeholder="For example, shared plates or drinks"></label>
         <fieldset class="orderAgainChoice"><legend>Order again? <span class="requiredMark" aria-label="required">*</span></legend><input id="review-order-again" type="hidden" value="${escapeHtml(editingReview?.orderAgain || "")}"><div role="group" aria-label="Order again?">${["Yes", "No"].map(answer => `<button class="btn" type="button" data-action="set-order-again" data-answer="${answer}" aria-pressed="${editingReview?.orderAgain === answer}">${answer}</button>`).join("")}</div></fieldset>
         <details class="entryDetails"><summary>Visit notes</summary><label class="sr-only" for="review-notes">Visit notes</label><textarea id="review-notes" rows="3" maxlength="5000" placeholder="Anything to remember?">${escapeHtml(editingReview?.notes || "")}</textarea></details>
-        <div class="recipeEditActions"><button class="btn" type="button" data-action="back-to-restaurant-details">Back to details</button><button class="btn primary" type="button" data-action="save-restaurant-review" data-restaurant-id="${escapeHtml(restaurantId || "")}">${editingReview ? "Save Review Changes" : restaurantId ? "Save Visit Review" : "Save Restaurant & Visit Review"}</button></div>
+        <div class="recipeEditActions"><button class="btn" type="button" data-action="cancel-restaurant-edit">Cancel</button><button class="btn" type="button" data-action="back-to-restaurant-details">Back to details</button><button class="btn primary" type="button" data-action="save-restaurant-review" data-restaurant-id="${escapeHtml(restaurantId || "")}">${editingReview ? "Save Review Changes" : restaurantId ? "Save Visit Review" : "Save Restaurant & Visit Review"}</button></div>
         <p class="edit-status" role="status" aria-live="polite"></p>
       </div>
     </section>`;
@@ -794,7 +795,7 @@ function renderRecipeEditor(recipeId) {
       <label>Overall rating<input data-edit-field="overallRating" type="number" min="1" max="10" step="1" inputmode="numeric" value="${recipe.overallRating == null ? "" : escapeHtml(recipe.overallRating)}" placeholder="Optional · 1–10"></label>
       <label>Ingredients, one per line<textarea data-edit-field="ingredients" rows="8" required>${escapeHtml(ingredients.join("\n"))}</textarea></label>
       <label>Directions, one step per line<textarea data-edit-field="directions" rows="8" required>${escapeHtml(directions.join("\n"))}</textarea></label>
-      <div class="recipeEditActions"><button class="btn" type="button" data-view="recipes">Cancel</button><button class="btn primary" type="button" data-action="save-recipe-edit" data-recipe-id="${escapeHtml(recipe.id)}">Save Changes</button><button class="btn danger" type="button" data-action="delete-recipe" data-recipe-id="${escapeHtml(recipe.id)}">Delete Recipe</button></div><p class="edit-status" role="status" aria-live="polite"></p>
+      <div class="recipeEditActions"><button class="btn" type="button" data-action="cancel-recipe-edit">Cancel</button><button class="btn primary" type="button" data-action="save-recipe-edit" data-recipe-id="${escapeHtml(recipe.id)}">Save Changes</button><button class="btn danger" type="button" data-action="delete-recipe" data-recipe-id="${escapeHtml(recipe.id)}">Delete Recipe</button></div><p class="edit-status" role="status" aria-live="polite"></p>
     </form></section>`;
 }
 function renderAddRecipe() {
@@ -979,6 +980,24 @@ function syncImportMode(mode = importMode) {
   if (source) source.placeholder = mode === "jsonld" ? "Paste webpage HTML containing Recipe JSON-LD…" : "Paste a recipe with Ingredients and Directions sections…";
 }
 
+let editorOrigin=null,stopReturnRestore=null;
+function returnFromEditor(){
+ if(!editorOrigin)return false;
+ const origin=editorOrigin;editorOrigin=null;stopReturnRestore?.();
+ activeRestaurantId=null;activeReviewIndex=null;restaurantDraft=null;newRestaurantPrefill=null;activeRecipeId=null;activePizzaId=null;pizzaEditorOpen=false;
+ activeView=origin.view;if(activeView==='cocktails')cocktailJournal.setTab(origin.cocktailTab);
+ render();stopReturnRestore=restoreReturnPosition(root,origin.position);return true;
+}
+document.addEventListener('click',event=>{
+ stopReturnRestore?.();stopReturnRestore=null;
+ if(!root.contains(event.target))return;
+ const button=event.target.closest('[data-action],[data-cocktail-action],[data-view]');if(!button)return;
+ const action=button.dataset.action,kind=button.dataset.cocktailAction;
+ const entering=['new-restaurant','edit-restaurant','add-restaurant-review','edit-restaurant-review','use-nearby','select-restaurant-lookup','open-picked-restaurant','open-recipe-edit','new-pizza','edit-pizza'].includes(action)||['new','edit','visit','edit-visit','edit-linked-drink','choose-bar'].includes(kind)||['add-recipe','restaurant-edit','restaurant-review','edit-recipe'].includes(button.dataset.view);
+ const editing=['restaurant-edit','restaurant-review','edit-recipe','add-recipe'].includes(activeView)||root.querySelector('#cocktail-editor,.pizzaEditorPanel');
+ if(entering&&!editing)editorOrigin={view:activeView,cocktailTab:cocktailJournal.getTab(),position:captureReturnPosition(root)};
+ else if(button.dataset.view&&!entering)editorOrigin=null;
+},true);
 document.addEventListener("click", async event => {
   if (activeView === "cocktails" && await cocktailJournal.handleClick(event)) return;
   const importModeButton = event.target.closest("[data-import-mode]");
@@ -1012,7 +1031,7 @@ document.addEventListener("click", async event => {
     const candidates=pickCandidates(cloudDataset,pickFilter,homeNearbyCache?.response?.places||[]);const choices=candidates.filter(item=>item.id!==chosenPickId);const pool=choices.length?choices:candidates;
     const id=pool[Math.floor(Math.random()*pool.length)]?.id||null;
     await new Promise(resolve=>setTimeout(resolve,window.matchMedia?.('(prefers-reduced-motion: reduce)').matches?0:850));chosenPickId=id;
-    if(actionButton.isConnected && activeView==='home'){render();if(!id)root.querySelector('.pickReveal').textContent='Save a place or load nearby spots first.';}return;
+    if(actionButton.isConnected && activeView==='home'){render();if(!id)root.querySelector('.pickReveal').textContent='Load nearby restaurants to flip a pick.';}return;
   }
   if(actionButton.dataset.action === "open-picked-restaurant") {
     const item=pickCandidates(cloudDataset,pickFilter,homeNearbyCache?.response?.places||[]).find(item=>item.id===actionButton.dataset.itemId);if(!item)return;
@@ -1285,7 +1304,9 @@ document.addEventListener("click", async event => {
     window.scrollTo({ top: 0, left: 0, behavior: "instant" });
     return;
   }
+  if(actionButton.dataset.action === "cancel-recipe-edit"){if(!returnFromEditor()){activeView="recipes";render();}return;}
   if (actionButton.dataset.action === "cancel-restaurant-edit") {
+    if(returnFromEditor())return;
     activeRestaurantId = null;
     activeReviewIndex = null;
     newRestaurantPrefill = null;
@@ -1455,6 +1476,7 @@ document.addEventListener("click", async event => {
     return;
   }
   if (actionButton.dataset.action === "cancel-pizza-edit") {
+    if(returnFromEditor()){stopPizzaScanner();return;}
     stopPizzaScanner();pizzaEditorOpen=false;
     activePizzaId = null;pizzaEditorOpen=false;
     render();
