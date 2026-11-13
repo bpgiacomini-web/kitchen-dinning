@@ -11,6 +11,24 @@ function responseRecorder() {
   };
 }
 
+test('nearby lookup carries public phone numbers and excludes explicit closure flags',async()=>{
+ for(const source of ['photon','overpass']){
+  const handler=createRestaurantLookupHandler({cacheLookup:async()=>null,fetcher:async value=>{
+   const photon=new URL(value).hostname==='photon.komoot.io';
+   return {ok:true,json:async()=>photon?{features:source==='photon'?[
+    {properties:{name:'Open Cafe',osm_key:'amenity',osm_value:'restaurant',extra:{'contact:phone':'+1 618 555 0123'}},geometry:{coordinates:[-100,40]}},
+    {properties:{name:'Closed Cafe',osm_key:'amenity',osm_value:'restaurant',extra:{closed:'yes'}},geometry:{coordinates:[-100,40]}}
+   ]:[]}:{elements:source==='overpass'?[
+    {lat:40,lon:-100,tags:{name:'Open Cafe',amenity:'restaurant','contact:phone':'+1 618 555 0123'}},
+    {lat:40,lon:-100,tags:{name:'Closed Cafe',amenity:'restaurant','disused:amenity':'restaurant'}}
+   ]:[]}};
+  }});
+  const res=responseRecorder();await handler({method:'POST',headers:{},body:{mode:'nearby',location:{lat:40,lon:-100}}},res);
+  assert.deepEqual(res.body.places.map(place=>place.name),['Open Cafe']);
+  assert.equal(res.body.places[0].phone,'+1 618 555 0123');
+ }
+});
+
 test('nearby searches retain more than twenty results for incremental display',async()=>{
  for(const mode of ['nearby','bar-nearby']){
   const handler=createRestaurantLookupHandler({cacheLookup:async()=>null,fetcher:async value=>({ok:true,json:async()=>new URL(value).hostname==='photon.komoot.io'?{features:[]}:{elements:Array.from({length:45},(_,index)=>({type:'node',lat:40+(44-index)*.001,lon:-100,tags:{name:'Place '+index,amenity:mode==='nearby'?'restaurant':'bar'}}))}})});

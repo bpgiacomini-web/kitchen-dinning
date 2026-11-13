@@ -1,4 +1,4 @@
-import {nearbyPersonalRating} from "./domain/nearby-personal-rating.mjs";
+import {nearbyPersonalRating,matchingSavedRestaurants} from "./domain/nearby-personal-rating.mjs";
 import {captureReturnPosition,restoreReturnPosition} from "./features/return-position.mjs";
 import { mountJourney } from "./features/journey-map.mjs";
 import { matchesReviewFilter } from "./domain/personal-journey.mjs";
@@ -26,7 +26,7 @@ import { normalizeScannedUpc } from "./domain/pizza-barcode.mjs";
 
 import { createGroceryPlanner } from "./features/grocery-planner.mjs";
 const groceryPlanner=createGroceryPlanner();
-const personalNearbyScore=place=>{const rating=nearbyPersonalRating(place,cloudDataset.restaurants);return rating==null?"":`<span class="nearbyPersonalRating">Your rating · ${rating.toFixed(1)}/10</span>`;};
+const personalNearbyScore=place=>{const rating=nearbyPersonalRating(place,cloudDataset.restaurants),favorite=matchingSavedRestaurants(place,cloudDataset.restaurants).some(item=>item.favorite===true);return rating==null&&!favorite?"":`<span class="nearbyPersonalRating">${favorite?'<span class="nearbyFavorite" aria-label="Favorite">★</span> ':''}${rating==null?"":`Your rating · ${rating.toFixed(1)}/10`}</span>`;};
 const root = document.querySelector("#app");
 const status = document.querySelector("#previewNotice");
 document.querySelectorAll(".navCocktailIcon").forEach(icon => { icon.innerHTML = COCKTAIL_ICON; });

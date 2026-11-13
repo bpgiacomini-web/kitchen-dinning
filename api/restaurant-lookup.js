@@ -47,7 +47,7 @@ function distanceMeters(origin, lat, lon) {
 
 function normalizeNearby(elements, location, { filter = () => true, limit = 100 } = {}) {
   const seen = new Set();
-  return (Array.isArray(elements) ? elements : []).map(item => {
+  return (Array.isArray(elements) ? elements : []).filter(item=>{const tags=item?.tags||{};return !["disused:amenity","abandoned:amenity","demolished:amenity"].some(key=>tags[key]) && ![tags.disused,tags.abandoned,tags.closed].some(value=>String(value).toLowerCase()==="yes") && !/^(closed|permanently_closed|ceased)$/i.test(String(tags["business:status"]||"")) && !/^closed$/i.test(String(tags.opening_hours||""));}).map(item => {
     const tags = item?.tags || {};
     const lat = finiteCoordinate(item?.lat ?? item?.center?.lat, -90, 90);
     const lon = finiteCoordinate(item?.lon ?? item?.center?.lon, -180, 180);
@@ -57,6 +57,7 @@ function normalizeNearby(elements, location, { filter = () => true, limit = 100 
       name: String(tags.name || "").trim(),
       cuisine: String(tags.cuisine || "").replaceAll("_", " "),
       address,
+      phone: String(tags.phone || tags["contact:phone"] || "").slice(0,80),
       website: String(tags.website || tags["contact:website"] || tags["website:en"] || ""),
       lat, lon,
       distance: lat != null && lon != null ? distanceMeters(location, lat, lon) : null,
@@ -82,6 +83,11 @@ function normalizePhotonNearby(features, location) {
         name: props.name,
         amenity: props.osm_key === "amenity" ? props.osm_value : "",
         cuisine: props.cuisine || props.extra?.cuisine || "",
+        phone: props.phone || props["contact:phone"] || props.extra?.phone || props.extra?.["contact:phone"] || props.extra?.contact?.phone || "",
+        disused:props.disused||props.extra?.disused,abandoned:props.abandoned||props.extra?.abandoned,closed:props.closed||props.extra?.closed,
+        "disused:amenity":props["disused:amenity"]||props.extra?.["disused:amenity"],
+        "business:status":props["business:status"]||props.extra?.["business:status"],
+        opening_hours:props.opening_hours||props.extra?.opening_hours,
         website: props.website || props["contact:website"] || props.contact_website || props.extra?.website || props.extra?.contact?.website || "",
         "addr:housenumber": props.housenumber,
         "addr:street": props.street,
