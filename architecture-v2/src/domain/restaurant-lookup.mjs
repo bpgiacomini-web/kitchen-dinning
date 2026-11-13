@@ -2,7 +2,7 @@ import { isExcludedRestaurantName, LOCAL_RESTAURANT_OVERRIDES } from "./local-re
 
 // Optional enrichment of the selected editor; manual entries always win.
 const websiteRequests = new WeakMap();
-export async function fillRestaurantWebsite(root, place, { fetcher = fetch } = {}) {
+export async function fillRestaurantWebsite(root, place, { fetcher = fetch, getToken = () => globalThis.metroGetAccessToken?.() } = {}) {
   const field = root.querySelector('#restaurant-website');
   const name = root.querySelector('#restaurant-name'), address = root.querySelector('#restaurant-address');
   if (!field || field.value || !name || !address || !place?.name || place.lat == null || place.lon == null) return;
@@ -12,8 +12,10 @@ export async function fillRestaurantWebsite(root, place, { fetcher = fetch } = {
   const onInput = () => { edited = true; };
   field.addEventListener('input', onInput);
   try {
+    const accessToken = await getToken();
+    if (!accessToken) return;
     const response = await fetcher('/api/restaurant-lookup', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
       body: JSON.stringify({ mode: 'website', place: { name: place.name, lat: place.lat, lon: place.lon } })
     });
     if (!response.ok) return;

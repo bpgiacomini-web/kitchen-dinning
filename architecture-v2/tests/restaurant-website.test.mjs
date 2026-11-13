@@ -25,7 +25,8 @@ test('website lookup uses backup on outage, tolerates missing data, validates lo
 function editor(){const fields=Object.fromEntries(['website','name','address'].map(key=>[key,{value:key==='name'?place.name:key==='address'?'123 Main St':'',isConnected:true,listeners:new Map(),addEventListener(type,fn){this.listeners.set(type,fn);},removeEventListener(type){this.listeners.delete(type);}}]));return {fields,querySelector:selector=>fields[selector.replace('#restaurant-','')]};}
 test('website enrichment fills blank field but preserves manual edits, navigation and changed selection',async()=>{
  for(const action of ['fill','manual','leave','selection','clear-manual']){
- const root=editor();let resolve;const pending=fillRestaurantWebsite(root,place,{fetcher:()=>new Promise(done=>{resolve=done;})});
+ const root=editor();let resolve;const pending=fillRestaurantWebsite(root,place,{getToken:async()=>'test-token',fetcher:(url,options)=>{assert.equal(options.headers.Authorization,'Bearer test-token');return new Promise(done=>{resolve=done;});}});
+ await Promise.resolve();
  if(action==='manual'){root.fields.website.value='https://mine.example';root.fields.website.listeners.get('input')();}
  if(action==='clear-manual'){root.fields.website.listeners.get('input')();}
  if(action==='leave')root.fields.website.isConnected=false;
@@ -33,5 +34,5 @@ test('website enrichment fills blank field but preserves manual edits, navigatio
  resolve({ok:true,json:async()=>({website:'qa-cafe.example'})});await pending;
  assert.equal(root.fields.website.value,action==='fill'?'https://qa-cafe.example/':action==='manual'?'https://mine.example':'');
  }
- const root=editor();root.fields.website.value='https://existing.example';await fillRestaurantWebsite(root,place,{fetcher:()=>{throw Error('should not fetch');}});assert.equal(root.fields.website.value,'https://existing.example');
+ const root=editor();root.fields.website.value='https://existing.example';await fillRestaurantWebsite(root,place,{getToken:async()=>'test-token',fetcher:()=>{throw Error('should not fetch');}});assert.equal(root.fields.website.value,'https://existing.example');
 });
