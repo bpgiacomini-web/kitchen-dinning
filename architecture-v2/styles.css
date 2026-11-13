@@ -1142,3 +1142,8 @@
 #app .journeyMap .leaflet-popup-content small{font-size:15px;color:#43515a}
 @media(max-width:600px){#app .dashboardTabs{grid-template-columns:repeat(3,minmax(0,1fr));gap:1px;margin-bottom:20px}#app .dashboardHeading h2{font-size:30px}#app .dashboardMetrics strong{font-size:33px}#app .dashboardMetrics>div{padding:0 10px}#app .dashboardMetrics span{font-size:15px}#app .dashboardStoryGrid{grid-template-columns:1fr;gap:12px}#app .dashboardStandout,#app .dashboardChart{padding:20px}#app .dashboardStarName{font-size:29px}#app .dashboardStandout{min-height:230px}#app .dashboardChart h3{font-size:21px;margin-bottom:20px}#app .embeddedJourney .journeyMap{height:300px}}
 #app .mapCredit,#app .mapCredit a{font-size:12px!important;text-decoration:none;color:#a6afb5}
+/* Leaflet wraps popup content: lay out the inner card, not only its wrapper. */
+#app .journeyPopup{display:flex;flex-direction:column;align-items:stretch;gap:10px;min-width:0;padding:2px 12px 2px 0}
+#app .journeyPopup>strong{display:block;white-space:normal;overflow-wrap:anywhere;margin:0}
+#app .journeyPopup>small{display:block;line-height:1.45;margin:0}
+#app .journeyPopup>.btn{display:block;position:static;align-self:flex-start;min-height:44px;margin:2px 0 0;padding:10px 14px;line-height:1.3;white-space:normal}
