@@ -1199,3 +1199,5 @@
 #app .pickInfo>.placeMoreMenu{width:fit-content;margin-top:8px}#app .pickInfo .placeMoreMenu .cardOptionsList{left:0;right:auto;max-width:calc(100vw - 48px)}
 
 #metroAccountPanel{box-sizing:border-box;max-height:calc(100dvh - 24px);overflow-y:auto}
+
+#app .nearbyPlaceActions .placeMoreMenu .cardOptionsList{left:0;right:auto}
