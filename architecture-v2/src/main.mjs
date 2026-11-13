@@ -17,7 +17,7 @@ import { restaurantNavigationOptions } from "./domain/restaurant-directions.mjs"
 import { sortRestaurantItems } from "./domain/restaurant-sort.mjs";
 import { searchNearbyRestaurants as lookupNearbyRestaurants, searchRestaurantNames } from "./domain/restaurant-lookup.mjs";
 import { LOCAL_RESTAURANT_OVERRIDES } from "./domain/local-restaurant-overrides.mjs";
-import { renderJournalInsights } from "./features/journal-insights.mjs";
+import { renderJournalInsights, mountDashboard } from "./features/journal-insights.mjs";
 import { createCocktailJournal } from "./features/cocktail-journal.mjs";
 import { COCKTAIL_ICON } from "./domain/cocktails.mjs";
 import { normalizeScannedUpc } from "./domain/pizza-barcode.mjs";
@@ -583,6 +583,7 @@ function renderHome() {
   root.querySelector(".localNewsPanel")?.insertAdjacentHTML("afterend", '<section class="content-panel homeRestaurantFinder"><div class="homeFinderHeading"><h3>Around Me</h3><button class="btn homeSearchToggle" type="button" data-action="toggle-home-search" aria-label="Search restaurants" aria-expanded="false" aria-controls="home-name-search"><svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="10" cy="10" r="6"/><path d="m15 15 6 6"/></svg></button></div><div class="homeNameSearch" id="home-name-search" hidden><label class="sr-only" for="home-restaurant-search">Search restaurants</label><input id="home-restaurant-search" class="restaurantSearch" type="search" placeholder="Restaurant name" autocomplete="off"><p class="edit-status" id="home-restaurant-search-status" role="status" aria-live="polite"></p><div id="home-restaurant-search-results" class="restaurantLookupResults"></div></div><p class="edit-status" id="nearby-status" role="status" aria-live="polite">Finding nearby spots…</p><details class="nearbyDisclosure" id="nearby-disclosure" hidden><summary id="nearby-summary">Nearby restaurants</summary><div class="nearbyResults" id="nearby-results"></div></details><details class="nearbyDisclosure" id="home-bars"><summary>Nearby bars</summary><p class="hint" data-bar-status>Finding nearby bars…</p><div class="nearbyResults" data-bar-results></div></details></section>');
   root.querySelector(".homeFeatureButtons")?.insertAdjacentHTML("beforeend", `<button class="homeFeatureButton cocktailButton" data-view="cocktails"><span class="homeFeatureIcon cocktailMark">${COCKTAIL_ICON}</span><span><strong>Cocktails &amp; Bars</strong><small>Good drinks, great places</small></span><span class="homeFeatureArrow">→</span></button>`);
   root.querySelector(".homePrivacyNote")?.insertAdjacentHTML("afterend", renderHomeInsights());
+  const dashboard=root.querySelector(".insightsDashboard");if(dashboard){mountDashboard(dashboard);destroyJourney=mountJourney(dashboard.querySelector(".dashboardMap"),cloudDataset,{embedded:true});}
   root.querySelector("#refresh-local-news")?.addEventListener("click", () => { void loadLocalFoodNews(true); });
   const privacyNote=[...root.querySelectorAll("p")].find(node=>node.textContent==="Your recipes, reviews, and ratings are private to your account.");if(privacyNote)root.append(privacyNote);
   void loadLocalFoodNews();void searchNearbyRestaurants();void searchHomeBars();
