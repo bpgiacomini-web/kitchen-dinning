@@ -1,5 +1,6 @@
 const esc=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 export function groceryAisle(line){
+ if(/\b(pepper flakes|red pepper flakes|crushed red pepper|ground pepper|black pepper|cayenne|chili powder|paprika|cumin|oregano|seasoning|cinnamon|nutmeg|turmeric|allspice|cloves)\b|\b(dried|ground)\s+(basil|parsley|cilantro|ginger|mustard|coriander|thyme|rosemary)\b/i.test(line))return 'Spices & Seasonings';
  if(/\b(paste|bouillon|powder|ground pepper|black pepper|cayenne|chili powder|canned|dried|paprika|cumin|oregano|seasoning)\b/i.test(line))return 'Pantry & Other';
  if(/\b(milk|cream|cheese|butter|yogurt|eggs?)\b/i.test(line))return 'Dairy & Eggs';
  if(/\b(chicken|beef|ground chuck|chorizo|pork|bacon|sausage|shrimp|salmon|tuna|turkey|fish)\b/i.test(line))return 'Meat & Seafood';
