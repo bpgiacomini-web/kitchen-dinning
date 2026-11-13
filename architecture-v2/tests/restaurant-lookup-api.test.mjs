@@ -11,6 +11,15 @@ function responseRecorder() {
   };
 }
 
+test('nearby searches retain more than twenty results for incremental display',async()=>{
+ for(const mode of ['nearby','bar-nearby']){
+  const handler=createRestaurantLookupHandler({cacheLookup:async()=>null,fetcher:async value=>({ok:true,json:async()=>new URL(value).hostname==='photon.komoot.io'?{features:[]}:{elements:Array.from({length:45},(_,index)=>({type:'node',lat:40+(44-index)*.001,lon:-100,tags:{name:'Place '+index,amenity:mode==='nearby'?'restaurant':'bar'}}))}})});
+  const res=responseRecorder();await handler({method:'POST',headers:{},body:{mode,location:{lat:40,lon:-100}}},res);
+  assert.equal(res.body.places.length,45);
+  assert.ok(res.body.places.every((place,index,list)=>!index||place.distance>=list[index-1].distance));
+ }
+});
+
 test('restaurants and bars include places beyond five miles, exclude beyond twenty, and sort by distance',async()=>{
  for(const mode of ['nearby','bar-nearby']){
   const calls=[];
