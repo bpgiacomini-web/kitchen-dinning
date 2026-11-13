@@ -1245,3 +1245,5 @@
 #app .pizzaSavedDetails>summary[hidden]{display:none!important}
 #app .pizzaSavedDetails>.collapseBottom{margin-top:12px;color:#d9eff8;border-color:#526d7a}
 #app .pizzaSavedSummary>strong small{display:inline;white-space:nowrap}
+/* The main landmark receives focus after navigation; outline individual controls, not the entire page. */
+#app:focus{outline:none}
