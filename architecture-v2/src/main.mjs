@@ -9,7 +9,7 @@ import { sharedPosition } from "./features/device-location.mjs";
 import { mountCompactBrowse } from "./features/compact-browse.mjs";
 import { lookupBars } from "./features/bar-lookup.mjs";
 import { mountReviewPhotos } from "./features/review-photos.mjs";
-import { mapMenuMarkup } from "./features/map-menu.mjs";
+import { mapMenuMarkup, mountMenuDismissal } from "./features/map-menu.mjs";
 import { createJournalPhotos } from "./features/journal-photos.mjs";
 import { renderRecentActivity, renderTonightPick, pickCandidates } from "./features/personal-home.mjs";
 import { createUserDatasetClient } from "./data/user-dataset-client.mjs";
@@ -79,6 +79,7 @@ async function saveCloudDataset(nextDataset) {
 }
 
 mountCompactBrowse(root);
+mountMenuDismissal(root);
 const photoController=createJournalPhotos({root,getData:()=>cloudDataset,save:saveCloudDataset});
 root.addEventListener("metro-photo-saved",()=>render());
 const hiddenPlacesController=createHiddenPlaces({root,getData:()=>cloudDataset,save:saveCloudDataset,refresh:()=>render()});
