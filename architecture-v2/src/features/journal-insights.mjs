@@ -1,6 +1,6 @@
 import {summarizeMetroEatsInsights} from '../domain/restaurant-insights.mjs';
 import {restaurantReviewRecords,averageRestaurantVisitRating} from '../domain/restaurant-review.mjs';
-export const DASHBOARD_GROUPS=[['restaurants','Restaurants',['restaurants']],['bars','Bars',['bars']],['food','Recipes & Pizza',['recipes','pizzas']],['drinksGroup','Drinks & Cocktails',['drinks','cocktailRecipes']]];
+export const DASHBOARD_GROUPS=[['restaurants','Restaurants',['restaurants']],['recipes','Recipes',['recipes']],['pizzas','Pizza',['pizzas']],['bars','Bars',['bars']],['drinks','Drinks',['drinks']],['cocktailRecipes','Cocktails',['cocktailRecipes']]];
 const esc=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 export const DASHBOARD_CATEGORIES=[['restaurants','Restaurants','dining'],['recipes','Recipes','recipes'],['pizzas','Pizza','pizzas'],['bars','Bars','cocktails'],['drinks','Drinks','cocktails'],['cocktailRecipes','Cocktails','cocktails']];
 const number=value=>typeof value==='number'&&Number.isFinite(value)?value:null;

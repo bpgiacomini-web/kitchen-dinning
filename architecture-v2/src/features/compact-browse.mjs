@@ -8,7 +8,7 @@ export function mountCompactBrowse(root){
   (before||controls[0]).before(details);controls.forEach(node=>body.append(node));
  };
  const enhance=()=>{
-  for(const panel of root.querySelectorAll(".nearbyPanel,.homeRestaurantFinder,.barDiscovery")){if(!panel.querySelector("[data-map-credit]")){const credit=document.createElement("small");credit.dataset.mapCredit="";credit.className="mapCredit";const link=document.createElement("a");link.href="https://www.openstreetmap.org/copyright";link.target="_blank";link.rel="noopener noreferrer";link.textContent="Map data © OpenStreetMap";credit.append(link);panel.append(credit);}}
+  for(const host of root.querySelectorAll(".nearbyPanel,.homeRestaurantFinder,.barDiscovery"))for(const panel of host.querySelectorAll(":scope > details")){if(!panel.querySelector("[data-map-credit]")){const credit=document.createElement("small");credit.dataset.mapCredit="";credit.className="mapCredit";const link=document.createElement("a");link.href="https://www.openstreetmap.org/copyright";link.target="_blank";link.rel="noopener noreferrer";link.textContent="Map data © OpenStreetMap";credit.append(link);panel.append(credit);}}
   const recipes=root.querySelector('.recipeBrowseTools');
   if(recipes && !recipes.closest('.compactBrowseMenu'))wrap([recipes,root.querySelector('#recipe-favorites-only')?.closest('label')],'Search & Filters');
   const sort=root.querySelector('.restaurantSortControl');

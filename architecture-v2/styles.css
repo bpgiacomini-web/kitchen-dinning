@@ -1158,3 +1158,9 @@
 #app .journeyMap .leaflet-control-attribution{background:#172027e8;color:#c7cfd5}
 #app .journeyMap .leaflet-control-attribution a{color:#e5c789}
 @media(max-width:600px){#app .dashboardTabs{grid-template-columns:repeat(2,minmax(0,1fr))}#app .dashboardTabs button{min-height:48px;font-size:16px;padding:10px 7px}}
+/* Explicit category buttons make selection clear without relying on an underline. */
+#app .dashboardTabs{grid-template-columns:repeat(6,minmax(0,1fr));gap:8px;border:0}
+#app .dashboardTabs button{border:1px solid #3b444c;border-radius:10px;background:#151c21;color:#c1cad1;padding:11px 7px;min-height:48px}
+#app .dashboardTabs button[aria-selected="true"]{background:#e0b96c;border-color:#edce91;color:#231b10;font-weight:800;box-shadow:0 2px 9px #d2a65724}
+#app .dashboardTabs button:hover:not([aria-selected="true"]){background:#202a31;border-color:#7b755f}
+@media(max-width:600px){#app .dashboardTabs{grid-template-columns:repeat(3,minmax(0,1fr))}}
