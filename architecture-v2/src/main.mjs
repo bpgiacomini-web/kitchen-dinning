@@ -1,4 +1,5 @@
-import {revealEntry} from "./features/entry-navigation.mjs";
+import {revealEntry,stopEntryAlignment} from "./features/entry-navigation.mjs";
+import {mountViewHistory} from "./features/view-history.mjs";
 import {filterHiddenPlaces,hiddenPlaceDescriptor} from "./domain/hidden-places.mjs";
 import {createHiddenPlaces} from "./features/hidden-places.mjs";
 import {nearbyPersonalRating,matchingSavedRestaurants} from "./domain/nearby-personal-rating.mjs";
@@ -991,6 +992,18 @@ function syncImportMode(mode = importMode) {
 }
 
 let editorOrigin=null,stopReturnRestore=null;
+const viewHistory=mountViewHistory({
+ root,enabled:()=>cloudReady,
+ key:()=>[activeView,activeView==='cocktails'?JSON.stringify(cocktailJournal.captureView()):'',activeRestaurantId,activeRecipeId,activePizzaId,pizzaEditorOpen].join('|'),
+ capture:()=>({view:activeView,position:captureReturnPosition(root),cocktail:cocktailJournal.captureView(),activeRestaurantId,activeReviewIndex,activeRecipeId,activePizzaId,pizzaEditorOpen,pizzaSort,pizzaQuery,pizzaFavoritesOnly,recipeSort,recipeFavoritesOnly,restaurantSort,restaurantFavoritesOnly,restaurantReviewFilter,chosenPickId}),
+ restore:snapshot=>{
+  if(!['home','dining','restaurant-rankings','recipes','pizzas','cocktails','groceries','journey','hidden-places','restaurant-edit','restaurant-review','edit-recipe','add-recipe'].includes(snapshot.view)||!snapshot.position)return;
+  stopReturnRestore?.();stopReturnRestore=null;stopEntryAlignment();releaseRecipeWakeLock();editorOrigin=null;
+  activeView=snapshot.view;
+  ({activeRestaurantId,activeReviewIndex,activeRecipeId,activePizzaId,pizzaEditorOpen,pizzaSort,pizzaQuery,pizzaFavoritesOnly,recipeSort,recipeFavoritesOnly,restaurantSort,restaurantFavoritesOnly,restaurantReviewFilter,chosenPickId}=snapshot);
+  cocktailJournal.restoreView(snapshot.cocktail);render();stopReturnRestore=restoreReturnPosition(root,snapshot.position);root.focus({preventScroll:true});
+ }
+});
 function returnFromEditor(){
  if(!editorOrigin)return false;
  const origin=editorOrigin;editorOrigin=null;stopReturnRestore?.();
@@ -1740,6 +1753,7 @@ async function refreshDataset() {
       setStatus(hasRecords ? "Preview records loaded · cloud storage unavailable" : "Cloud storage is not ready", "warn");
     }
     render();
+    viewHistory.resume();
     const sharedToken=new URL(location.href).searchParams.get("sharedRecipe");
     if(cloudReady&&sharedToken&&!sharedRecipeOpened){sharedRecipeOpened=true;activeView="add-recipe";render();const feedback=root.querySelector("#import-feedback");try{const response=await fetch("/api/recipe-share?token="+encodeURIComponent(sharedToken),{cache:"no-store"});const result=await response.json();if(!response.ok||!result.recipe)throw new Error("This shared recipe is unavailable.");renderImportPreview(result.recipe);if(feedback)feedback.textContent="Shared recipe · review and save your own copy.";}catch(error){if(feedback)feedback.textContent=error.message;}}
 

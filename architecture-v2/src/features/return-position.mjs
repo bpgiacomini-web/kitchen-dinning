@@ -10,16 +10,20 @@ export function captureReturnPosition(root){
   open:new Set([...root.querySelectorAll('details[open]')].filter(node=>!node.classList.contains('cardOptions')).map(detailKey)),
   fields:[...root.querySelectorAll('input[id],select[id]')].filter(node=>node.type==='search'||node.tagName==='SELECT').map(node=>({id:node.id,value:node.value,hidden:node.hidden})),
   tabs:[...root.querySelectorAll('[role="tab"][aria-selected="true"]')].map(node=>node.textContent.trim()),
+  journey:root.querySelector('[data-journey-filter][aria-pressed="true"]')?.dataset.journeyFilter,
   nearby:[...root.querySelectorAll('#nearby-results,[data-bar-results],[data-bars-nearby]')].map(node=>({selector:node.id?'#'+node.id:node.hasAttribute('data-bar-results')?'[data-bar-results]':'[data-bars-nearby]',visible:node.querySelectorAll(':scope > article:not([hidden]),:scope > .lookupMatch:not([hidden])').length}))};
 }
 export function restoreReturnPosition(root,state){
+ if(!(state.open instanceof Set))state={...state,open:new Set(state.open||[])};
  for(const name of state.tabs){const tab=[...root.querySelectorAll('[role="tab"]')].find(node=>node.textContent.trim()===name);if(tab?.getAttribute('aria-selected')!=='true')tab?.click();}
  for(const field of state.fields){const node=document.getElementById(field.id);if(node){node.value=field.value;node.hidden=field.hidden;}}
  root.querySelector('input[type="search"]')?.dispatchEvent(new Event('input',{bubbles:true}));
+ const journey=state.journey&&root.querySelector('[data-journey-filter="'+state.journey+'"]');if(journey?.getAttribute('aria-pressed')!=='true')journey?.click();
  let stopped=false;
  const apply=()=>{
   if(stopped)return;
   for(const detail of root.querySelectorAll('details'))if(state.open.has(detailKey(detail)))detail.open=true;
+  root.querySelectorAll('.restaurantNameLink,.pizzaNameToggle,.recipeTitleToggle').forEach(button=>{const details=button.closest('article')?.querySelector('.restaurantRecap,.pizzaSavedDetails,[data-recipe-details]');if(details)button.setAttribute('aria-expanded',String(details.open));});
   for(const list of state.nearby){const container=root.querySelector(list.selector);if(!container)continue;let more=container.querySelector('.nearbyShowMore');while(more&&container.querySelectorAll(':scope > article:not([hidden]),:scope > .lookupMatch:not([hidden])').length<list.visible){more.click();more=container.querySelector('.nearbyShowMore');}}
   window.scrollTo({top:state.scrollY,left:0,behavior:'instant'});
  };

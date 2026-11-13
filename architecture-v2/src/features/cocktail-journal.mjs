@@ -181,5 +181,8 @@ export function createCocktailJournal({ root, getData, save, onCancel }) {
     }
     return true;
   }
-  return {render,handleClick,setTab,getTab:()=>tab};
+  return {render,handleClick,setTab,getTab:()=>tab,
+    captureView:()=>({tab,favoritesOnly,gamingFilter,reviewFilter,sortBy,searchQuery,editing,visitBar,editingVisit,editorOpen}),
+    restoreView:state=>{if(!state||!tabs[state.tab])return;generation++;clearTimeout(searchTimer);searchController?.abort();({tab,favoritesOnly,gamingFilter,reviewFilter,sortBy,searchQuery,editing,visitBar,editingVisit,editorOpen}=state);}
+  };
 }

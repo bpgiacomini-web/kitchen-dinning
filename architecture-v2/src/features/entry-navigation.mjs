@@ -1,4 +1,5 @@
 let stopAlignment;
+export function stopEntryAlignment(){stopAlignment?.();}
 
 /** Align the whole entry below a pinned header, including delayed layout changes. */
 export function revealEntry(card) {
