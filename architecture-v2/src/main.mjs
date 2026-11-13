@@ -1,5 +1,6 @@
 import {revealEntry,stopEntryAlignment} from "./features/entry-navigation.mjs";
 import {mountViewHistory} from "./features/view-history.mjs";
+import {mountKeyboardNavigation} from "./features/keyboard-navigation.mjs";
 import {filterHiddenPlaces,hiddenPlaceDescriptor} from "./domain/hidden-places.mjs";
 import {createHiddenPlaces} from "./features/hidden-places.mjs";
 import {nearbyPersonalRating,matchingSavedRestaurants} from "./domain/nearby-personal-rating.mjs";
@@ -80,6 +81,7 @@ async function saveCloudDataset(nextDataset) {
 }
 
 mountCompactBrowse(root);
+mountKeyboardNavigation();
 mountMenuDismissal(root);
 const photoController=createJournalPhotos({root,getData:()=>cloudDataset,save:saveCloudDataset});
 root.addEventListener("metro-photo-saved",()=>render());

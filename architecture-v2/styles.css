@@ -1259,3 +1259,5 @@
 #app.pizzaSection .compactCollectionTools+.inlineCheck{margin:8px 0;min-height:44px}
 #app button.restaurantRanking{width:100%;text-align:left;color:var(--text);font:inherit;cursor:pointer}
 #app button.restaurantRanking:hover{border-color:#a6c9b8}
+/* Keep only editor controls above the software keyboard. */
+body.metro-keyboard-open .bottomNav{display:none!important}
