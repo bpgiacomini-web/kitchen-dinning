@@ -7,17 +7,19 @@ const record=()=>({headers:{},setHeader(k,v){this.headers[k]=v},status(code){thi
 const webp=(width=1200,height=800)=>{const bytes=Buffer.alloc(32);bytes.write('RIFF');bytes.write('WEBP',8);bytes.write('VP8 ',12);bytes[23]=0x9d;bytes[24]=1;bytes[25]=0x2a;bytes.writeUInt16LE(width,26);bytes.writeUInt16LE(height,28);return bytes;};
 const sql=async()=>[{payload:{recipes:[{id:'r',title:'Soup'}]}}];
 const allowed=async()=>({allowed:true});
+const usage={reserve:async bytes=>bytes,getUsage:async()=>0};
 test('photo uploads validate bytes, dimensions, ownership, and private storage references',async()=>{
  let writes=0;const sdk={list:async()=>({blobs:[],hasMore:false}),put:async(path,bytes,options)=>{writes++;assert.equal(options.access,'private');assert.ok(path.startsWith(photos.ownerPrefix('owner')));return {pathname:path,url:'https://store.private.blob.vercel-storage.com/'+path}}};
  const req={method:'POST',query:{mode:'photo-upload'},body:{collection:'recipes',id:'r',image:webp().toString('base64'),width:1200,height:800}},res=record();
- await photos.handlePhotos(req,res,{userId:'owner',sql,limit:allowed,blob:sdk});assert.equal(res.code,200);assert.equal(res.body.photo.bytes,32);assert.equal(res.body.photo.path.startsWith(photos.ownerPrefix('owner')),true);assert.equal(res.body.photo.image,undefined);
+ await photos.handlePhotos(req,res,{userId:'owner',sql,limit:allowed,blob:sdk,usage});assert.equal(res.code,200);assert.equal(res.body.photo.bytes,32);assert.equal(res.body.photo.path.startsWith(photos.ownerPrefix('owner')),true);assert.equal(res.body.photo.image,undefined);
  for(const image of [Buffer.from('bad').toString('base64'),webp(1201).toString('base64'),Buffer.alloc(210000).toString('base64')]){const bad=record();await photos.handlePhotos({...req,body:{...req.body,image}},bad,{userId:'owner',sql,limit:allowed,blob:sdk});assert.equal(bad.code,400);}assert.equal(writes,1);
  const missing=record();await photos.handlePhotos({...req,body:{...req.body,id:'other'}},missing,{userId:'owner',sql,limit:allowed,blob:sdk});assert.equal(missing.code,404);
 });
 test('photos fail closed at storage and free-operation limits',async()=>{
  const req={method:'POST',query:{mode:'photo-upload'},body:{collection:'recipes',id:'r',image:webp().toString('base64')}};let written=false;
  const sdk={list:async()=>({blobs:[{size:photos.LIMIT_BYTES}],hasMore:false}),put:async()=>{written=true}};
- const full=record();await photos.handlePhotos(req,full,{userId:'owner',sql,limit:allowed,blob:sdk});assert.equal(full.code,413);assert.equal(written,false);
+ const {PhotoUsageError}=await import('../../api/_lib/photo-usage.cjs');
+ const full=record();await photos.handlePhotos(req,full,{userId:'owner',sql,limit:allowed,blob:sdk,usage:{reserve:async()=>{throw new PhotoUsageError('Storage full',413,0)}}});assert.equal(full.code,413);assert.equal(written,false);
  const limited=record();await photos.handlePhotos(req,limited,{userId:'owner',sql,limit:async()=>({allowed:false,retryAfterSeconds:20}),blob:sdk});assert.equal(limited.code,429);
  const denied=record();await photos.handlePhotos({method:'GET',query:{mode:'photo-read',path:photos.ownerPrefix('other')+'fake.webp'}},denied,{userId:'owner',sql,limit:allowed,blob:sdk});assert.equal(denied.code,404);
 });

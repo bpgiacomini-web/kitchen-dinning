@@ -74,6 +74,11 @@ export function createUserDataHandler({ authenticateUser: authenticate = authent
   if (!process.env.DATABASE_URL) return null;
   const { neon } = await import('@neondatabase/serverless');
   return neon(process.env.DATABASE_URL);
+}, makePhotoSql = async () => {
+  const databaseUrl = process.env.PHOTO_STORAGE_DATABASE_URL || process.env.DATABASE_URL;
+  if (!databaseUrl) return null;
+  const { neon } = await import('@neondatabase/serverless');
+  return neon(databaseUrl);
 } } = {}) {
  return async function handler(req, res) {
   res.setHeader('Cache-Control', 'no-store, max-age=0');
@@ -92,7 +97,14 @@ export function createUserDataHandler({ authenticateUser: authenticate = authent
   try {
     sql = await makeSql();
     if (!sql) return send(res, 503, { error: 'Preview database is not configured.' });
-    if(['photo-usage','photo-read','photo-upload'].includes(req.query?.mode))return await photoStorage.handlePhotos(req,res,{userId:identity.userId,sql,limit:consumeAccountRateLimit});
+    if(['photo-usage','photo-read','photo-upload'].includes(req.query?.mode)){
+      // All writers of a shared Blob store must share accounting and quotas,
+      // even when their journal datasets live on separate database branches.
+      const photoSql=await makePhotoSql();
+      if(req.query.mode!=='photo-read' && !photoSql)return send(res,503,{error:'Photo storage accounting is not configured.'});
+      return await photoStorage.handlePhotos(req,res,{userId:identity.userId,sql,usageSql:photoSql,
+        limit:options=>consumeAccountRateLimit({...options,sql:photoSql})});
+    }
     if (req.method === 'GET') {
       const rows = await sql`SELECT payload, revision FROM metro_eats_user_datasets WHERE user_id = ${identity.userId} LIMIT 1`;
       const recipes = await sql`SELECT payload FROM metro_eats_recipes WHERE user_id = ${identity.userId} ORDER BY updated_at DESC, id`;

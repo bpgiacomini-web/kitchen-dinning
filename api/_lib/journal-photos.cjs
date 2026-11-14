@@ -1,4 +1,5 @@
 const {createHash,randomUUID}=require('node:crypto');
+const {createPhotoUsage,PhotoUsageError}=require('./photo-usage.cjs');
 const LIMIT_BYTES=900_000_000,MAX_PHOTO_BYTES=200_000,MONTH=30*24*60*60;
 function ownerPrefix(userId){return 'journal-photos/'+createHash('sha256').update(userId).digest('hex')+'/';}
 function validWebp(bytes){
@@ -24,14 +25,16 @@ function validJpeg(bytes){
  }
  return false;
 }
-async function handlePhotos(req,res,{userId,sql,limit,blob}) {
+async function runPhotos(req,res,{userId,sql,limit,blob,usage,usageSql,storeId}) {
  const mode=req.query?.mode;
  const sdk=blob || await import('@vercel/blob');
  const quota=async(scope,count)=>{const result=await limit({scope,accountId:'metro-eats-photo-store',limit:count,windowSeconds:MONTH});if(!result.allowed){res.setHeader('Retry-After',String(result.retryAfterSeconds));res.status(429).json({error:'Free photo allowance reached. Try again after the allowance resets.'});return false;}return true;};
- const inventory=async()=>{const result=await sdk.list({limit:1000});if(result.hasMore)throw Error('Storage inventory is too large to verify safely.');return result.blobs.reduce((total,item)=>total+item.size,0);};
+ const accounting=()=>usage || createPhotoUsage({db:usageSql || sql,storeId:storeId || process.env.PHOTO_STORAGE_STORE_ID,list:options=>sdk.list(options),beforeList:async()=>{
+  const result=await limit({scope:'photo-inventory',accountId:'metro-eats-photo-store',limit:200,windowSeconds:MONTH});
+  if(!result.allowed)throw new PhotoUsageError('Free photo allowance reached. Try again after the allowance resets.',429,result.retryAfterSeconds);
+ }});
  if(mode==='photo-usage' && req.method==='GET'){
-  if(!await quota('photo-inventory',200))return;
-  const used=await inventory();return res.status(200).json({used,limit:LIMIT_BYTES,maxPhotoBytes:MAX_PHOTO_BYTES,warning:used>=LIMIT_BYTES*.8,uploadLimitPerMonth:200});
+  const used=await accounting().getUsage();return res.status(200).json({used,limit:LIMIT_BYTES,maxPhotoBytes:MAX_PHOTO_BYTES,warning:used>=LIMIT_BYTES*.8,uploadLimitPerMonth:200,conservative:true});
  }
  if(mode==='photo-read' && req.method==='GET'){
   const path=String(req.query.path||'');if(!path.startsWith(ownerPrefix(userId)) || !/^journal-photos\/[a-f0-9]{64}\/[a-f0-9-]+\.(?:webp|jpg)$/.test(path))return res.status(404).json({error:'Photo not found.'});
@@ -49,12 +52,21 @@ async function handlePhotos(req,res,{userId,sql,limit,blob}) {
   if(typeof body.image!=='string' || body.image.length>270000 || !/^[A-Za-z0-9+/]+={0,2}$/.test(body.image))return res.status(400).json({error:'Choose a valid optimized photograph.'});
   const bytes=Buffer.from(body.image,'base64'),format=validWebp(bytes)?'webp':validJpeg(bytes)?'jpg':null;if(bytes.length>MAX_PHOTO_BYTES || !format)return res.status(400).json({error:'Use a compressed photo up to 1,200 pixels and 200 KB.'});
   if(!await quota('photo-uploads',200))return;
-  const used=await inventory();if(used+bytes.length>LIMIT_BYTES)return res.status(413).json({error:'Photo storage is full. Upload stopped to keep Metro Eats free.'});
+  // Reserve atomically BEFORE writing. Keep the reservation on failure: a
+  // timeout may still have created the blob. Never undercount ambiguous writes.
+  const used=await accounting().reserve(bytes.length,LIMIT_BYTES);
   const path=ownerPrefix(userId)+randomUUID()+'.'+format;
   const result=await sdk.put(path,bytes,{access:'private',contentType:format==='jpg'?'image/jpeg':'image/webp',addRandomSuffix:false});
   if(!result.url?.includes('.private.blob.vercel-storage.com/'))throw Error('Private storage required.');
-  return res.status(200).json({photo:{path:result.pathname,bytes:bytes.length,width:body.width,height:body.height},used:used+bytes.length,limit:LIMIT_BYTES});
+  return res.status(200).json({photo:{path:result.pathname,bytes:bytes.length,width:body.width,height:body.height},used,limit:LIMIT_BYTES});
  }
  return res.status(405).json({error:'Unsupported photo action.'});
+}
+async function handlePhotos(req,res,dependencies){
+ try{return await runPhotos(req,res,dependencies);}catch(error){
+  if(!(error instanceof PhotoUsageError))throw error;
+  if(error.retryAfterSeconds>0)res.setHeader('Retry-After',String(error.retryAfterSeconds));
+  return res.status(error.status).json({error:error.message});
+ }
 }
 module.exports={handlePhotos,validWebp,validJpeg,ownerPrefix,LIMIT_BYTES};

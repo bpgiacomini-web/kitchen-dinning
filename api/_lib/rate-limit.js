@@ -6,11 +6,14 @@ function bucketKey(scope, accountId) {
 }
 
 /** Atomically consume one request from a durable, fixed-window account limit. */
-export async function consumeAccountRateLimit({ scope, accountId, limit, windowSeconds }) {
-  if (!process.env.DATABASE_URL) throw new Error('Rate limit database is not configured.');
+export async function consumeAccountRateLimit({ scope, accountId, limit, windowSeconds, sql: providedSql }) {
+  if (!providedSql && !process.env.DATABASE_URL) throw new Error('Rate limit database is not configured.');
   const key = bucketKey(scope, accountId);
-  const { neon } = await import('@neondatabase/serverless');
-  const sql = neon(process.env.DATABASE_URL);
+  let sql = providedSql;
+  if (!sql) {
+    const { neon } = await import('@neondatabase/serverless');
+    sql = neon(process.env.DATABASE_URL);
+  }
   const rows = await sql`
     INSERT INTO metro_eats_rate_limits AS current_limit
       (bucket_key, window_started_at, request_count, expires_at)

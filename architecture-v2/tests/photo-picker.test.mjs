@@ -17,6 +17,6 @@ test('coin picker starts empty and only draws from nearby restaurants',()=>{
 test('unsaved restaurant photo drafts remain private without creating a journal record',async()=>{
  const bytes=Buffer.alloc(32);bytes.write('RIFF');bytes.write('WEBP',8);bytes.write('VP8 ',12);bytes[23]=0x9d;bytes[24]=1;bytes[25]=0x2a;bytes.writeUInt16LE(500,26);bytes.writeUInt16LE(400,28);
  let queried=false;const res={setHeader(){},status(code){this.code=code;return this},json(body){this.body=body;return this}};
- await storage.handlePhotos({method:'POST',query:{mode:'photo-upload'},body:{collection:'restaurants',id:'draft-00000000-0000-0000-0000-000000000000',draft:true,image:bytes.toString('base64')}},res,{userId:'owner',sql:async()=>{queried=true;return []},limit:async()=>({allowed:true}),blob:{list:async()=>({blobs:[],hasMore:false}),put:async path=>({pathname:path,url:'https://store.private.blob.vercel-storage.com/'+path})}});
+ await storage.handlePhotos({method:'POST',query:{mode:'photo-upload'},body:{collection:'restaurants',id:'draft-00000000-0000-0000-0000-000000000000',draft:true,image:bytes.toString('base64')}},res,{userId:'owner',sql:async()=>{queried=true;return []},limit:async()=>({allowed:true}),usage:{reserve:async size=>size},blob:{list:async()=>({blobs:[],hasMore:false}),put:async path=>({pathname:path,url:'https://store.private.blob.vercel-storage.com/'+path})}});
  assert.equal(res.code,200);assert.equal(queried,false);assert.ok(res.body.photo.path.startsWith(storage.ownerPrefix('owner')));
 });
