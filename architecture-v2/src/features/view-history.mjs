@@ -1,5 +1,5 @@
 /** Browser Back/Forward for app views; stores interface state, never journal records. */
-export function mountViewHistory({root,enabled,capture,restore,key}){
+export function mountViewHistory({root,enabled,capture,restore,key,account=()=>null}){
  const history=window.history;
  let ready=false,restoring=false,pending=false,timer,entry=0,currentEntry;
  const recent=new Map();
@@ -7,7 +7,7 @@ export function mountViewHistory({root,enabled,capture,restore,key}){
  const read=()=>history.state?.metroViewHistory;
  const write=(replace,snapshot)=>{
   const id=replace?(read()?.entry||++entry):++entry;entry=Math.max(entry,id);currentEntry=id;remember(id,snapshot);
-  const state={...(history.state||{}),metroViewHistory:{version:1,entry:id,snapshot}};
+  const state={...(history.state||{}),metroViewHistory:{version:1,account:account(),entry:id,snapshot}};
   history[replace?'replaceState':'pushState'](state,'');
  };
  const sync=()=>{if(!enabled()||restoring||pending)return;write(true,capture());ready=true;};
@@ -27,7 +27,7 @@ export function mountViewHistory({root,enabled,capture,restore,key}){
  };
  const pop=event=>{
   const saved=event.state?.metroViewHistory;
-  if(!enabled()||saved?.version!==1||!saved.snapshot)return;
+  if(!enabled()||saved?.version!==1||saved.account!==account()||!saved.snapshot)return;
   if(currentEntry!=null)remember(currentEntry,capture());
   currentEntry=saved.entry;entry=Math.max(entry,Number(saved.entry)||0);
   clearTimeout(timer);pending=false;restoring=true;
@@ -38,7 +38,7 @@ export function mountViewHistory({root,enabled,capture,restore,key}){
  window.addEventListener('scroll',schedule,{passive:true});window.addEventListener('popstate',pop);
  const previousScrollRestoration=history.scrollRestoration;history.scrollRestoration='manual';
  return {
-  resume(){if(ready||!enabled())return;const saved=read();if(saved?.version===1)pop({state:history.state});else sync();},
+  resume(){if(ready||!enabled())return;const saved=read();if(saved?.version===1&&saved.account===account())pop({state:history.state});else sync();},
   destroy(){clearTimeout(timer);document.removeEventListener('click',navigate,true);root.removeEventListener('input',schedule);root.removeEventListener('change',schedule);root.removeEventListener('toggle',schedule,true);window.removeEventListener('scroll',schedule);window.removeEventListener('popstate',pop);history.scrollRestoration=previousScrollRestoration;}
  };
 }

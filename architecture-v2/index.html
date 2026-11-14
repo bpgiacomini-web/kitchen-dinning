@@ -12,6 +12,10 @@
     #metroAuthPanel label { display:block; margin-top:14px; }
     #metroAuthPanel input { box-sizing:border-box; width:100%; padding:13px; margin-top:5px; border-radius:8px; border:1px solid #555d69; background:#0d1015; color:white; font:inherit; }
     #metroAuthPanel button { width:100%; margin-top:18px; padding:13px; border:0; border-radius:8px; background:#e8b66a; color:#171a20; font-weight:700; font:inherit; }
+    #metroAuthPanel [hidden] { display:none !important; }
+    #metroAuthPanel .authSecondary { background:transparent; border:1px solid #555d69; color:#f6f1e9; }
+    #metroAuthPanel button:disabled { opacity:.6; cursor:wait; }
+    #metroAuthPanel .authHint { font-size:14px; margin:8px 0 0; }
     #metroAuthStatus { min-height:24px; overflow-wrap:anywhere; }
     #metroAccountButton { position:absolute; top:calc(10px + env(safe-area-inset-top)); right:14px; z-index:120; display:grid; place-items:center; width:44px; height:44px; min-width:44px; min-height:44px; margin:0; padding:0; border:1px solid #39424d; border-radius:50%; background:#171c22; color:#f4f1ea; box-shadow:0 4px 16px #0005; }
     #metroAccountButton svg { width:21px; height:21px; display:block; }
@@ -46,12 +50,20 @@
 <body>
   <div id="metroAuthLoading" role="status" aria-live="polite"><p id="metroAuthLoadingStatus">Restoring your Metro Eats session…</p><button id="metroAuthContinue" type="button" hidden>Show sign-in form</button></div>
   <section id="metroAuthPanel" aria-labelledby="metroAuthTitle" hidden>
-    <h1 id="metroAuthTitle">Metro Eats</h1><p>Sign in to open the Architecture Preview.</p>
+    <h1 id="metroAuthTitle">Metro Eats</h1><p id="metroAuthDescription">Sign in to open your private journal.</p>
     <form id="metroAuthForm">
-      <label for="metroAuthEmail">Email</label><input id="metroAuthEmail" name="email" type="email" autocomplete="username" required>
+      <div id="metroAuthNameGroup" hidden><label for="metroAuthName">Your name</label><input id="metroAuthName" name="name" autocomplete="name" maxlength="100"></div>
+      <label for="metroAuthEmail">Email</label><input id="metroAuthEmail" name="email" type="email" autocomplete="username" maxlength="254" required>
       <label for="metroAuthPassword">Password</label><input id="metroAuthPassword" name="password" type="password" autocomplete="current-password" required>
-      <button id="metroAuthSubmit" type="submit">Sign in</button><p id="metroAuthStatus" role="status">Sign-in is loading. If this message remains, reload the page once.</p>
+      <div id="metroAuthConfirmGroup" hidden><p class="authHint">Choose a password with 8–128 characters.</p><label for="metroAuthConfirm">Confirm password</label><input id="metroAuthConfirm" name="confirmPassword" type="password" autocomplete="new-password" maxlength="128"></div>
+      <button id="metroAuthSubmit" type="submit" disabled>Sign in</button>
     </form>
+    <form id="metroVerifyForm" hidden>
+      <p id="metroVerifyEmail"></p><label for="metroVerifyCode">Verification code</label><input id="metroVerifyCode" name="code" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" required>
+      <button id="metroVerifySubmit" type="submit">Verify email</button><button id="metroVerifyResend" class="authSecondary" type="button">Send another verification email</button>
+    </form>
+    <button id="metroAuthToggle" class="authSecondary" type="button" disabled>Create account</button>
+    <p id="metroAuthStatus" role="status" aria-live="polite">Sign-in is loading. If this message remains, reload the page once.</p>
   </section>
   <div class="app">
     <header class="top">
@@ -97,7 +109,7 @@
     <p id="metroAccountStatus" role="status" aria-live="polite"></p>
   </section>
   <script src="./vendor/zxing-browser-0.2.1.min.js?v=1"></script>
-  <script type="module" src="./src/main.mjs?v=67"></script>
+  <script type="module" src="./src/main.mjs?v=68"></script>
   <script>
     const panel = document.getElementById('metroAuthPanel');
     const loading = document.getElementById('metroAuthLoading');
@@ -113,6 +125,7 @@
     const signOutButton = document.getElementById('metroSignOut');
     let client;
     let signInInProgress = false;
+    let authInteractionStarted = false;
     let accessToken = '';
     let sessionFallbackTimer;
     function clearSessionFallback() {
@@ -152,6 +165,7 @@
       return accessToken || null;
     };
     function showApp(user) {
+      window.metroAccountId = user?.id || null;
       clearSessionFallback();
       loading.hidden = true;
       document.body.classList.add('metro-authenticated');
@@ -192,9 +206,11 @@
         if (typeof client.signOut !== 'function') throw new Error('Sign out is not available in this authentication client.');
         const result = await client.signOut();
         if (result?.error) throw new Error(result.error.message || 'Sign out failed.');
-        accessToken = '';window.dispatchEvent(new CustomEvent('metro-signed-out'));
+        accessToken = '';window.metroAccountId = null;window.dispatchEvent(new CustomEvent('metro-signed-out'));
         showLogin('You have signed out. Sign in again to continue.');
         form.reset();
+        // A fresh document discards private drafts, pending requests and caches.
+        window.location.reload();
       } catch (error) {
         accountStatus.textContent = error?.message || 'Could not sign out. Please try again.';
       } finally {
@@ -252,35 +268,13 @@
         // Attach the sign-in handler BEFORE restoring a prior session. On mobile
         // Safari, getSession() can stall while cookies are being checked; that
         // must never leave a visible form with a dead Sign in button.
-        status.textContent = 'Sign-in is ready. Enter your email and password.';
-        form.addEventListener('submit', async (event) => {
-          event.preventDefault();
-          if (signInInProgress) return;
-          signInInProgress = true;
-          status.textContent = 'Signing in…';
-          submit.disabled = true;
-          try {
-            const result = await client.signIn.email({ email: document.getElementById('metroAuthEmail').value.trim(), password: document.getElementById('metroAuthPassword').value });
-            if (result?.error) throw new Error(result.error.message || 'Sign-in failed.');
-            let verified;
-            try {
-              verified = await client.getSession();
-            } catch (error) {
-              if (!result?.data?.session) throw error;
-            }
-            const session = verified?.data?.session || result?.data?.session;
-            const user = verified?.data?.user || session?.user || verified?.user || result?.data?.user;
-            if (!(session || user)) throw new Error('Sign-in did not return a verified session. Please try again.');
-            accessToken = typeof (session?.token || session?.access_token) === 'string' ? (session.token || session.access_token) : '';
-            resolveMetroAuthReady(true);
-            showApp(user);
-            window.dispatchEvent(new CustomEvent('metro-authenticated'));
-          } catch (error) {
-            resolveMetroAuthReady(false);
-            status.textContent = error?.message || 'Sign-in failed. Please try again.';
-          } finally {
-            signInInProgress = false;
-            submit.disabled = false;
+        const { mountAccountOnboarding } = await import('./src/features/account-onboarding.mjs?v=1');
+        mountAccountOnboarding({document,client,callbackURL:window.location.origin+window.location.pathname,
+          onBusy:busy=>{signInInProgress=busy;if(busy)authInteractionStarted=true;},
+          onError:()=>resolveMetroAuthReady(false),
+          onAuthenticated:({session,user})=>{
+            accessToken=typeof(session?.token||session?.access_token)==='string'?(session.token||session.access_token):'';
+            resolveMetroAuthReady(true);showApp(user);window.dispatchEvent(new CustomEvent('metro-authenticated'));
           }
         });
         sessionFallbackTimer = window.setTimeout(() => {
@@ -292,10 +286,10 @@
         // Restore an existing session in the background; never block form setup.
         try {
           const existing = await client.getSession();
-          if (signInInProgress) return;
+          if (signInInProgress || authInteractionStarted) return;
           const existingSession = existing?.data?.session;
           const existingUser = existing?.data?.user || existingSession?.user || existing?.user;
-          if (existingSession || existingUser) {
+          if (existingSession && typeof existingUser?.id === 'string' && existingUser.id) {
             accessToken = typeof (existingSession?.token || existingSession?.access_token) === 'string' ? (existingSession.token || existingSession.access_token) : '';
             resolveMetroAuthReady(true);
             showApp(existingUser);
@@ -305,7 +299,7 @@
             showLogin();
           }
         } catch (restoreError) {
-          if (!signInInProgress) {
+          if (!signInInProgress && !authInteractionStarted) {
             resolveMetroAuthReady(false);
             const statusCode = Number(restoreError?.status || restoreError?.response?.status);
             const statusDetail = Number.isInteger(statusCode) ? ' (HTTP ' + statusCode + ')' : '';

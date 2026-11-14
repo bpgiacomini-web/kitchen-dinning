@@ -1,5 +1,5 @@
 import {revealEntry,stopEntryAlignment} from "./features/entry-navigation.mjs";
-import {mountViewHistory} from "./features/view-history.mjs";
+import {mountViewHistory} from "./features/view-history.mjs?v=2";
 import {mountKeyboardNavigation} from "./features/keyboard-navigation.mjs";
 import {filterHiddenPlaces,hiddenPlaceDescriptor} from "./domain/hidden-places.mjs";
 import {createHiddenPlaces} from "./features/hidden-places.mjs";
@@ -995,7 +995,7 @@ function syncImportMode(mode = importMode) {
 
 let editorOrigin=null,stopReturnRestore=null;
 const viewHistory=mountViewHistory({
- root,enabled:()=>cloudReady,
+ root,enabled:()=>cloudReady,account:()=>window.metroAccountId||null,
  key:()=>[activeView,activeView==='cocktails'?JSON.stringify(cocktailJournal.captureView()):'',activeRestaurantId,activeRecipeId,activePizzaId,pizzaEditorOpen].join('|'),
  capture:()=>({view:activeView,position:captureReturnPosition(root),cocktail:cocktailJournal.captureView(),activeRestaurantId,activeReviewIndex,activeRecipeId,activePizzaId,pizzaEditorOpen,pizzaSort,pizzaQuery,pizzaFavoritesOnly,recipeSort,recipeFavoritesOnly,restaurantSort,restaurantFavoritesOnly,restaurantReviewFilter,chosenPickId}),
  restore:snapshot=>{

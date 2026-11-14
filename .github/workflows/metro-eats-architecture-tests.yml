@@ -8,6 +8,7 @@ on:
       - 'api/**'
       - 'scripts/build-journal-validation.mjs'
       - 'scripts/test-photo-usage-postgres.mjs'
+      - 'scripts/test-account-*.mjs'
       - 'test-tools/package.json'
       - '.github/workflows/metro-eats-architecture-tests.yml'
   pull_request:
@@ -16,6 +17,7 @@ on:
       - 'api/**'
       - 'scripts/build-journal-validation.mjs'
       - 'scripts/test-photo-usage-postgres.mjs'
+      - 'scripts/test-account-*.mjs'
       - 'test-tools/package.json'
       - '.github/workflows/metro-eats-architecture-tests.yml'
 jobs:
@@ -32,6 +34,8 @@ jobs:
       - run: npm test
       - run: npm install --prefix ../test-tools --ignore-scripts --no-package-lock --no-audit --no-fund
       - run: node ../scripts/test-photo-usage-postgres.mjs
+      - run: node ../scripts/test-account-onboarding-ui.mjs
+      - run: node ../scripts/test-account-isolation-postgres.mjs
       - run: node ../scripts/build-journal-validation.mjs --check
       - run: node --check src/main.mjs
       - run: node --check src/domain/normalize.mjs

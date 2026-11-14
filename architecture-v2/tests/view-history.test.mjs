@@ -21,3 +21,15 @@ test('browser navigation snapshots and restores views without treating ordinary 
  }finally{control.destroy();globalThis.window=previousWindow;globalThis.document=previousDocument;}
  assert.equal(win.history.scrollRestoration,'auto');
 });
+
+test('browser history never restores another account interface state',()=>{
+ const previousWindow=globalThis.window,previousDocument=globalThis.document;
+ const doc=target(),win=target(),root=target();let owner='A',current={view:'recipes',query:'private search'},restored=0;
+ win.history={state:null,scrollRestoration:'auto',replaceState(value){this.state=structuredClone(value)},pushState(value){this.state=structuredClone(value)}};
+ globalThis.window=win;globalThis.document=doc;
+ const options={root,enabled:()=>true,account:()=>owner,capture:()=>current,restore:value=>{current=value;restored++},key:()=>current.view};
+ const first=mountViewHistory(options);first.resume();const old=structuredClone(win.history.state);first.destroy();
+ owner='B';current={view:'home',query:''};const second=mountViewHistory(options);
+ try{second.resume();assert.equal(restored,0);win.fire('popstate',{state:old});assert.equal(restored,0);assert.equal(current.query,'');assert.equal(win.history.state.metroViewHistory.account,'B');}
+ finally{second.destroy();globalThis.window=previousWindow;globalThis.document=previousDocument;}
+});
