@@ -1,11 +1,15 @@
-name: Metro Eats architecture preview tests
+name: Metro Eats release tests
 on:
   push:
     branches:
       - architecture/metro-eats-clean-rebuild-2026-10-25
+      - main
     paths:
       - 'architecture-v2/**'
       - 'api/**'
+      - 'middleware.js'
+      - 'package.json'
+      - 'vercel.json'
       - 'scripts/build-journal-validation.mjs'
       - 'scripts/test-photo-usage-postgres.mjs'
       - 'scripts/test-account-*.mjs'
@@ -15,6 +19,9 @@ on:
     paths:
       - 'architecture-v2/**'
       - 'api/**'
+      - 'middleware.js'
+      - 'package.json'
+      - 'vercel.json'
       - 'scripts/build-journal-validation.mjs'
       - 'scripts/test-photo-usage-postgres.mjs'
       - 'scripts/test-account-*.mjs'
@@ -30,7 +37,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 24
       - run: npm test
       - run: npm install --prefix ../test-tools --ignore-scripts --no-package-lock --no-audit --no-fund
       - run: node ../scripts/test-photo-usage-postgres.mjs
