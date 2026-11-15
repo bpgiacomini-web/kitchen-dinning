@@ -6,7 +6,7 @@ Released baseline: d77c871d2e2a83fbb2d356f98ebe6275aa585419, live deployment 4Sf
 
 Production is live at https://kitchen-dinning.vercel.app/. The architecture Preview alias still shares the owner production resources. Do not use it for test writes until isolated settings are deployed and verified. The old document claiming main is the current production source was stale: main still needs release alignment. News updates and automatic production-domain assignment remain paused.
 
-The new local development branch is development/isolated-preview. It is not pushed until test-resource mapping is safe. Development setup changes do not alter the current immutable production deployment.
+The new local development branch is metro-eats-isolated-development. It is not pushed until test-resource mapping is safe. Development setup changes do not alter the current immutable production deployment.
 
 ## Resource boundaries
 

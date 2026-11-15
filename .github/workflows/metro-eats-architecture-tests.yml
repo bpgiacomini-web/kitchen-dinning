@@ -5,6 +5,7 @@ on:
       - architecture/metro-eats-clean-rebuild-2026-10-25
       - main
       - 'development/**'
+      - metro-eats-isolated-development
     paths:
       - 'architecture-v2/**'
       - 'api/**'
