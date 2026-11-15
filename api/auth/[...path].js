@@ -50,6 +50,10 @@ export default async function handler(req, res) {
     const chunks = [];
     for await (const chunk of req) chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
     if (chunks.length) body = Buffer.concat(chunks);
+    // Some local runtimes consume the stream before invoking a re-exported
+    // handler. Preserve their parsed body when no raw bytes remain.
+    else if (Buffer.isBuffer(req.body) || typeof req.body === "string") body = req.body;
+    else if (req.body && typeof req.body === "object") body = JSON.stringify(req.body);
   }
 
   try {

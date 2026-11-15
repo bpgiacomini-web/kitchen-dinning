@@ -1,42 +1,35 @@
 # Metro Eats environments
 
-Released baseline: d77c871d2e2a83fbb2d356f98ebe6275aa585419, live deployment 4Sf2HNWqEBBugHSm9FZeaFfzkVVX.
+Production: https://kitchen-dinning.vercel.app/ . Released commit d77c871, deployment 4Sf2HNWqEBBugHSm9FZeaFfzkVVX. This setup does not promote a deployment or replace the public domain.
 
-## Current transition status
-
-Production is live at https://kitchen-dinning.vercel.app/. The architecture Preview alias still shares the owner production resources. Do not use it for test writes until isolated settings are deployed and verified. The old document claiming main is the current production source was stale: main still needs release alignment. News updates and automatic production-domain assignment remain paused.
-
-The new local development branch is metro-eats-isolated-development. It is not pushed until test-resource mapping is safe. Development setup changes do not alter the current immutable production deployment.
+Test Preview: https://kitchen-dinning-git-metro-eats-isola-ac80c8-usdrinkingclub-8582.vercel.app/architecture-v2/ . Branch metro-eats-isolated-development. November 15 verified separate test signup, empty initial journal, saved restaurant/review and synthetic photo after reload. Deployment CVBPZcPnvWzL4KuKw39cErVdHEFv used 621d736.
 
 ## Resource boundaries
 
-| Environment | Database/auth | Photos | Data |
-| --- | --- | --- | --- |
-| Production | Existing owner branch br-purple-morning-b7ja7rws, historical name metro-eats-preview; ep-proud-wildflower-b70u7a8q | store_Qqch1rwiTtBYtvWr | Existing real journal |
-| Preview/Development target | New schema-only metro-eats-development, br-fragrant-heart-b7y41jle; ep-silent-lab-b70m9zcz | Separate private test store, pending | Synthetic/disposable test entries only |
+| Environment | Database and sign-in | Private photos |
+| --- | --- | --- |
+| Production | br-purple-morning-b7ja7rws, ep-proud-wildflower-b70u7a8q; historical branch name metro-eats-preview | store_Qqch1rwiTtBYtvWr |
+| Preview and Development | br-fragrant-heart-b7y41jle, ep-silent-lab-b70m9zcz; metro-eats-development | store_KDOPFGyHwpIErI5Q |
 
-Do not reset or repurpose the owner branch because its name contains preview. Do not use temporary recovery resources as development. The new branch copied schema only; live rows were not requested for the copy. Independent emptiness verification remains pending.
+The test database was created schema-only. All 17 copied app/auth tables were independently empty before setup; no owner rows copied. Test Neon Auth is separately provisioned, with test-only managed-service permission repairs. Disposable data now exists in its test journal.
 
-## Local setup gate
+The old Neon automatic Preview connection was removed. Explicit default Preview DATABASE_URL, auth base/JWKS/client URLs, photo accounting store and environment marker now identify the shared test resources. Production entries remain separate. Both Blob connections use OIDC scoped to their respective environments; no static Blob token is required.
 
-1. Finish isolated database/auth/photo provisioning and confirm exact Vercel Preview/Development scopes.
-2. Link the checkout to the intended Vercel project before pulling environment configuration.
-3. Copy .env.example to .env.local and enter only isolated test values. Vercel Preview/Production Secret values are write-only and cannot be recovered by env pull; do not attempt to pull Production credentials.
-4. Run npm run check:dev-env. It rejects the known owner database/auth endpoint and photo store, mismatched photo/accounting IDs, missing values and mixed auth URLs. It prints variable names/errors, never values.
-5. Only after linking, credentials and schema are independently verified should a local API-capable server be configured and started. A static file server alone does not implement these Vercel /api routes.
+The old architecture branch overrides also identify test resources for future builds. Existing deployments retain their original settings: do not use historical deployment URLs or the old architecture alias for test writes, since it may target the released Production deployment.
 
-The checker is a setup guard, not a complete runtime access control. Run it explicitly before local work. Hosted environment isolation still requires correct Vercel resource scoping, separate credentials and live tests. No local server is configured or certified yet.
+## Local setup
 
-## Development and release workflow
+1. Install the official Vercel CLI and sign in with `vercel login`. Install the declared application packages with `pnpm install` before starting the local API server.
+2. From this checkout, run `vercel link --yes --scope usdrinkingclub-8582 --project kitchen-dinning` and `vercel project inspect --non-interactive`. Confirm project prj_lxfy0zZNVbB6mT6FSV8xG2qkKcgE and team team_IeUCXxDoAFPT7NhMb2OmP3qE.
+3. Pull Development only: `vercel env pull .env.local --environment=development`. If the test DATABASE_URL Secret is omitted, obtain it directly from metro-eats-development. Never pull or copy Production credentials.
+4. Run `node scripts/check-development-environment.mjs .env.local`. It rejects known owner DB/auth/photo resources, missing values and inconsistent test mappings, without printing values.
+5. Set METRO_VERCEL_CLI in the local environment to the installed official CLI JavaScript entry point. If the CLI uses a custom configuration directory, set METRO_VERCEL_GLOBAL_CONFIG to that directory. On Windows, set NODE_USE_SYSTEM_CA=1 when the CLI needs the Windows trust store. Run `node scripts/start-development.mjs` (or `pnpm run dev:local`). It repeats resource checks, verifies the exact project/team link, and starts only `vercel dev --listen 127.0.0.1:3000`.
+6. Open http://localhost:3000/architecture-v2/ using a test account. Test localhost auth allows local sign-in. Verify sign-in and save/reload, and synthetic photo upload when needed. A static frontend server does not verify API behavior.
 
-Work on development/* or feature branches with isolated Preview resources. Test with separate test accounts. Review changes before integrating into main. Production deploys are staged and manually promoted after validation and release approval. Never reenable scheduled news on a main branch that contains legacy code with production credentials.
+Local bootstrap remains incomplete until CLI sign-in, linking, environment pull and live checks are recorded. The startup command stops when setup is missing; do not bypass it to run with owner credentials. This checker is a setup guard, not a provider authorization boundary. Test Blob OIDC also requires valid local Vercel sign-in.
 
-Before declaring separation complete: verify new auth users are empty, app tables empty, test upload goes only to test store, test edits do not change owner data, and the public production site still loads its original journal/photos. Keep monthly Blob operations in mind; local mocked tests cover most iterations without provider calls.
+## Feature branches
 
-## Provisioning status — November 15
+New feature branches inherit shared test resources. Add their exact Preview origins to test Neon Auth trusted domains when required; do not widen the Production auth domain list. Use synthetic accounts and disposable entries. Pushes create unique Preview deployments.
 
-- Created schema-only root branch br-fragrant-heart-b7y41jle (metro-eats-development), endpoint ep-silent-lab-b70m9zcz, database neondb, no expiry, default0.25CU. Independent count of all17 public/neon_auth tables showed zero rows.
-- Neon Auth activation initially rejected copied empty neon_auth schema. Removed only its nine empty tables with a transaction that locks each table and aborts if any contains rows. Public app tables preserved. Subsequent activation returns permission denied for database neondb.
-- Verified neondb_owner owns the test database; owner/neon_superuser have CREATE. A temporary CREATE grant to test role neon_auth did not resolve managed provisioning and was revoked. No permission changes made on the owner production branch. Auth provisioning remains incomplete; do not connect Preview to this branch yet.
-- Created private IAD1 Blob store metro-eats-development: store_KDOPFGyHwpIErI5Q. It is empty and NOT connected to any project. Original production Blob connection remains untouched. Vercel optional2FA reminder dismissed with user's explicit approval; existing sign-in settings unchanged.
-- Main alignment, Preview/Development env switching, auth trusted domains, test user creation and end-to-end isolation tests remain pending. No development branch push or Preview deployment performed.
+See RELEASE-WORKFLOW.md for review and release. Main still needs integration of the rebuilt app. News automation remains disabled and automatic Production domain assignment OFF until integration is reviewed. Promotion is a separate release action.

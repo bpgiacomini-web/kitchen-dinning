@@ -7,6 +7,7 @@
     "jose": "^6.1.0"
   },
   "scripts": {
-    "check:dev-env": "node scripts/check-development-environment.mjs .env.local"
+    "check:dev-env": "node scripts/check-development-environment.mjs .env.local",
+    "dev:local": "node scripts/start-development.mjs"
   }
 }
