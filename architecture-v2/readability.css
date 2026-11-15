@@ -1,0 +1,28 @@
+/* Readable type is the default; compactness comes from spacing. */
+html{font-size:18px}
+body{font-size:18px;line-height:1.5;--muted:#bdc5cb}
+#app{font-size:18px;line-height:1.5}
+#app p,#app li,#app label{font-size:18px}
+#app input:not([type=checkbox]):not([type=radio]):not([type=hidden]),#app textarea,#app select{font-size:18px!important;line-height:1.4}
+#app .btn{font-size:17px!important;min-height:46px}
+#app small,#app .hint,#app .edit-status,#app .newsMeta,#app .restaurantLookupStatus,#app .reviewProgress p,#app .optionalMark,#app .entryDetails>summary,#app .cocktailAverage small{font-size:16px!important;line-height:1.5;color:#bdc5cb}
+#app .recipeTitleToggle{font-size:22px!important;line-height:1.35}
+#app .recipeCardHeader>strong,#app .restaurantNameLink,#app .cocktailCard h3{font-size:22px;line-height:1.35}
+#app .readOnlyItem:has(.recipeTitleToggle)>small{font-size:17px!important}
+#app .reviewQuestionHead b,#app .reviewQuestionHead span,#app .cocktailRatingField b{font-size:18px}
+#app .reviewScore button,#app .cocktailScoreButtons button{font-size:18px!important;min-height:46px;padding:8px 2px;min-width:0}
+#app .reviewScaleLegend,#app .reviewScaleGuide{font-size:14px!important;line-height:1.4}
+#app .dishIdea{font-size:17px;min-height:44px}
+#app .cocktailTabs button{font-size:16px;min-height:48px;line-height:1.3}
+#app .recentEntry strong,#app .localNewsItem a{font-size:18px;line-height:1.4}
+#app .sectionKicker,#app .reviewedBadge{font-size:13px;line-height:1.4}
+#app .groceryList .inlineCheck,#app .barGamingFilter{font-size:17px}
+#app .sourcePhotoCredit{font-size:15px}
+#metroAccountPanel,#metroAccountPanel button,#metroAccountPanel p{font-size:17px;line-height:1.5}
+.bottomNav .bottomNavLabel{font-size:12px;line-height:1.25}
+#app .collectionSearchToggle{width:50px;height:50px;font-size:25px!important;display:grid;place-items:center}
+@media(max-width:600px){
+ #app .reviewScore,#app .pizzaRatingField .reviewScore,#app .cocktailScoreButtons{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px}
+ #app .reviewScore button,#app .cocktailScoreButtons button{width:100%;min-width:0}
+ #app .reviewScaleLegend{padding-inline:6px;gap:6px}
+}

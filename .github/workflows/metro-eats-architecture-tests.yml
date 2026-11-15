@@ -1,0 +1,61 @@
+name: Metro Eats release tests
+on:
+  push:
+    branches:
+      - architecture/metro-eats-clean-rebuild-2026-10-25
+      - main
+      - 'development/**'
+      - metro-eats-isolated-development
+    paths:
+      - 'architecture-v2/**'
+      - 'api/**'
+      - 'middleware.js'
+      - 'scripts/*development*.mjs'
+      - '.env.example'
+      - 'DEV-ENVIRONMENT.md'
+      - 'package.json'
+      - 'vercel.json'
+      - 'scripts/build-journal-validation.mjs'
+      - 'scripts/test-photo-usage-postgres.mjs'
+      - 'scripts/test-account-*.mjs'
+      - 'test-tools/package.json'
+      - '.github/workflows/metro-eats-architecture-tests.yml'
+  pull_request:
+    paths:
+      - 'architecture-v2/**'
+      - 'api/**'
+      - 'middleware.js'
+      - 'scripts/*development*.mjs'
+      - '.env.example'
+      - 'DEV-ENVIRONMENT.md'
+      - 'package.json'
+      - 'vercel.json'
+      - 'scripts/build-journal-validation.mjs'
+      - 'scripts/test-photo-usage-postgres.mjs'
+      - 'scripts/test-account-*.mjs'
+      - 'test-tools/package.json'
+      - '.github/workflows/metro-eats-architecture-tests.yml'
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: architecture-v2
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - run: npm test
+      - run: npm install --prefix ../test-tools --ignore-scripts --no-package-lock --no-audit --no-fund
+      - run: node ../scripts/test-photo-usage-postgres.mjs
+      - run: node ../scripts/test-account-onboarding-ui.mjs
+      - run: node ../scripts/test-account-isolation-postgres.mjs
+      - run: node ../scripts/build-journal-validation.mjs --check
+      - run: node --check src/main.mjs
+      - run: node --check src/domain/normalize.mjs
+      - run: node --check src/data/repository.mjs
+      - run: node --check src/domain/contracts.mjs
+      - run: node --check src/features/recipes/import-parser.mjs
+      - run: node --check src/features/recipes/safe-url-fetch.mjs
+      - run: node --check ../api/import-recipe-v2.js

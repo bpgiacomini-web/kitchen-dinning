@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="640" viewBox="0 0 1600 640" role="img" aria-labelledby="title desc">
+<title id="title">Metro Eats</title>
+<desc id="desc">Metro Eats wordmark over the St. Louis skyline at sunset, with the Gateway Arch and a fleur-de-lis in gold.</desc>
+<defs>
+ <linearGradient id="sky" x2="0" y2="1"><stop stop-color="#20284a"/><stop offset=".34" stop-color="#8b3f58"/><stop offset=".61" stop-color="#ff7a27"/><stop offset=".8" stop-color="#ffd35b"/><stop offset="1" stop-color="#b34a26"/></linearGradient>
+ <linearGradient id="gold" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#fff5c6"/><stop offset=".28" stop-color="#ffda78"/><stop offset=".58" stop-color="#d79b2e"/><stop offset=".82" stop-color="#fff0a2"/><stop offset="1" stop-color="#8c5516"/></linearGradient>
+ <linearGradient id="water" x2="0" y2="1"><stop stop-color="#9c4e30"/><stop offset=".4" stop-color="#1e2839"/><stop offset="1" stop-color="#0c1420"/></linearGradient>
+ <linearGradient id="plate" x2="0" y2="1"><stop stop-color="#17191d"/><stop offset=".5" stop-color="#030405"/><stop offset="1" stop-color="#17191b"/></linearGradient>
+ <filter id="glow" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="10"/></filter>
+ <clipPath id="scene"><rect x="16" y="16" width="1568" height="608" rx="38"/></clipPath>
+</defs>
+<g clip-path="url(#scene)">
+ <rect width="1600" height="640" fill="url(#sky)"/>
+ <circle cx="1270" cy="230" r="76" fill="#ffda73" opacity=".55" filter="url(#glow)"/>
+ <circle cx="1270" cy="230" r="39" fill="#fff3b0"/>
+ <path d="M0 312 L60 302 60 251 90 251 90 287 120 287 120 240 155 240 155 295 185 295 185 270 216 270 216 304 246 304 246 259 270 259 270 306 305 306 305 276 330 276 330 306 365 306 365 250 395 250 395 300 428 300 428 278 454 278 454 305 490 305 490 238 520 238 520 296 551 296 551 267 582 267 582 305 620 305 620 263 650 263 650 304 682 304 682 242 714 242 714 304 746 304 746 278 774 278 774 304 812 304 812 248 842 248 842 305 875 305 875 276 904 276 904 305 942 305 942 258 972 258 972 306 1007 306 1007 280 1034 280 1034 306 1065 306 1065 243 1098 243 1098 302 1128 302 1128 272 1157 272 1157 306 1190 306 1190 260 1222 260 1222 304 1253 304 1253 276 1282 276 1282 304 1315 304 1315 249 1346 249 1346 302 1378 302 1378 268 1408 268 1408 304 1441 304 1441 246 1472 246 1472 300 1506 300 1506 270 1536 270 1536 308 1600 308 1600 388 0 388Z" fill="#111722" opacity=".92"/>
+ <path d="M0 388H1600V640H0Z" fill="url(#water)"/>
+ <g opacity=".5" stroke="#ffc45b" stroke-width="4"><path d="M0 420H1600M0 447H1600M0 485H1600M0 532H1600M0 578H1600"/><path d="M210 390l-40 250M320 390l-12 250M460 390l-30 250M690 390l-18 250M930 390l30 250M1130 390l42 250M1390 390l80 250"/></g>
+ <path d="M590 410 C618 158 701 62 800 62 C899 62 982 158 1010 410" fill="none" stroke="#090c12" stroke-width="47" stroke-linecap="round"/>
+ <path d="M590 410 C618 158 701 62 800 62 C899 62 982 158 1010 410" fill="none" stroke="url(#gold)" stroke-width="28" stroke-linecap="round"/>
+ <path d="M612 411 C640 181 714 91 800 91 C886 91 960 181 988 411" fill="none" stroke="#241a17" stroke-width="5"/>
+ <path d="M0 402H1600V640H0Z" fill="#06090e" opacity=".32"/>
+ <path d="M64 360 Q800 314 1536 360 L1510 523 Q800 570 90 523Z" fill="#000" opacity=".55"/>
+ <path d="M72 349 Q800 302 1528 349 L1510 508 Q800 555 90 508Z" fill="url(#plate)" stroke="url(#gold)" stroke-width="8"/>
+ <path d="M95 363 Q800 324 1505 363 L1492 490 Q800 532 108 490Z" fill="none" stroke="#7b521e" stroke-width="2"/>
+ <text x="800" y="444" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif" font-size="116" font-weight="bold" letter-spacing="7" fill="#080706" stroke="#080706" stroke-width="13" paint-order="stroke">METRO EATS</text>
+ <text x="800" y="437" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif" font-size="116" font-weight="bold" letter-spacing="7" fill="url(#gold)" stroke="#6e4619" stroke-width="2" paint-order="stroke">METRO EATS</text>
+ <path d="M258 463H1342" stroke="url(#gold)" stroke-width="3"/>
+ <text x="800" y="497" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="26" font-weight="bold" letter-spacing="6" fill="#fff0c3">RECIPES  •  RESTAURANTS  •  GOOD FOOD  •  LOCAL FLAVOR</text>
+ <g transform="translate(800 330)" fill="url(#gold)" stroke="#17100b" stroke-width="3" stroke-linejoin="round">
+  <path d="M0 -108 C-13 -91 -24 -75 -24 -60 C-24 -45 -14 -36 -5 -33 L-5 -17 L-32 -17 C-47 -17 -61 -29 -61 -43 C-61 -57 -49 -65 -37 -65 C-28 -65 -21 -60 -16 -53 C-18 -75 -37 -90 -58 -90 C-81 -90 -96 -74 -96 -54 C-96 -34 -80 -18 -61 -11 C-85 -7 -102 7 -102 25 C-102 43 -87 54 -70 54 C-53 54 -38 42 -31 29 C-25 16 -18 8 -8 4 L-8 34 L-23 48 L-23 59 L23 59 L23 48 L8 34 L8 4 C18 8 25 16 31 29 C38 42 53 54 70 54 C87 54 102 43 102 25 C102 7 85 -7 61 -11 C80 -18 96 -34 96 -54 C96 -74 81 -90 58 -90 C37 -90 18 -75 16 -53 C21 -60 28 -65 37 -65 C49 -65 61 -57 61 -43 C61 -29 47 -17 32 -17 L5 -17 L5 -33 C14 -36 24 -45 24 -60 C24 -75 13 -91 0 -108Z"/>
+  <path d="M-18 62H18L10 76H-10Z"/>
+ </g>
+</g>
+<rect x="16" y="16" width="1568" height="608" rx="38" fill="none" stroke="url(#gold)" stroke-width="8"/>
+</svg>

@@ -1,0 +1,389 @@
+import nearbySeed from './_lib/nearby-seed.cjs';
+import { nearbyCache } from "./_lib/nearby-cache.js";
+import { authenticatedUser } from './user-data.js';
+import { consumeAccountRateLimit, sendRateLimitResponse } from './_lib/rate-limit.js';
+import localRestaurantData from './_lib/local-restaurant-overrides.cjs';
+import foodNews from './_lib/food-news.cjs';
+
+const { isExcludedRestaurantName, LOCAL_RESTAURANT_OVERRIDES } = localRestaurantData;
+
+const FOOD_AMENITIES = new Set(["restaurant", "fast_food", "cafe", "bar", "pub"]);
+const PHOTON_URL = "https://photon.komoot.io/api/";
+const PHOTON_REVERSE_URL = "https://photon.komoot.io/reverse";
+const OPEN_FOOD_FACTS_URL = "https://world.openfoodfacts.org/api/v2/product/";
+const OVERPASS_URLS = [
+  "https://overpass.private.coffee/api/interpreter",
+  "https://overpass-api.de/api/interpreter"
+];
+
+function finiteCoordinate(value, min, max) {
+  if (value == null || value === "") return null;
+  const number = Number(value);
+  return Number.isFinite(number) && number >= min && number <= max ? number : null;
+}
+
+function requestLocation(req, supplied) {
+  const suppliedLat = finiteCoordinate(supplied?.lat, -90, 90);
+  const suppliedLon = finiteCoordinate(supplied?.lon, -180, 180);
+  if (suppliedLat != null && suppliedLon != null) {
+    return { lat: suppliedLat, lon: suppliedLon, source: "device" };
+  }
+  const lat = finiteCoordinate(req.headers["x-vercel-ip-latitude"], -90, 90);
+  const lon = finiteCoordinate(req.headers["x-vercel-ip-longitude"], -180, 180);
+  if (lat == null || lon == null) return null;
+  let city = String(req.headers["x-vercel-ip-city"] || "");
+  try { city = decodeURIComponent(city.replace(/\+/g, "%20")); } catch { city = ""; }
+  const region = String(req.headers["x-vercel-ip-country-region"] || "");
+  return { lat, lon, city, region, source: "network" };
+}
+
+function distanceMeters(origin, lat, lon) {
+  const radians = Math.PI / 180;
+  const dLat = (lat - origin.lat) * radians;
+  const dLon = (lon - origin.lon) * radians;
+  const a = Math.sin(dLat / 2) ** 2 + Math.cos(origin.lat * radians) * Math.cos(lat * radians) * Math.sin(dLon / 2) ** 2;
+  return Math.round(6371000 * 2 * Math.asin(Math.sqrt(a)));
+}
+
+function explicitlyClosed(tags={}){return ["disused:amenity","abandoned:amenity","demolished:amenity"].some(key=>tags[key])||[tags.disused,tags.abandoned,tags.closed].some(value=>String(value).toLowerCase()==="yes")||/^(closed|permanently_closed|ceased)$/i.test(String(tags["business:status"]||""))||/^closed$/i.test(String(tags.opening_hours||""));}
+function normalizeNearby(elements, location, { filter = () => true, limit = 100 } = {}) {
+  const seen = new Set();
+  return (Array.isArray(elements) ? elements : []).filter(item=>{const tags=item?.tags||{};return !explicitlyClosed(tags);}).map(item => {
+    const tags = item?.tags || {};
+    const lat = finiteCoordinate(item?.lat ?? item?.center?.lat, -90, 90);
+    const lon = finiteCoordinate(item?.lon ?? item?.center?.lon, -180, 180);
+    const address = [tags["addr:housenumber"], tags["addr:street"], tags["addr:city"], tags["addr:state"]].filter(Boolean).join(", ");
+    const amenity = String(tags.amenity || "").toLowerCase();
+    return {
+      name: String(tags.name || "").trim(),
+      cuisine: String(tags.cuisine || "").replaceAll("_", " "),
+      address,
+      phone: String(tags.phone || tags["contact:phone"] || "").slice(0,80),
+      website: String(tags.website || tags["contact:website"] || tags["website:en"] || ""),
+      lat, lon,
+      distance: lat != null && lon != null ? distanceMeters(location, lat, lon) : null,
+      amenity
+    };
+  }).filter(place => {
+    if (place.distance!=null && place.distance>32187)return false;
+    if (!place.name || isExcludedRestaurantName(place.name) || !FOOD_AMENITIES.has(place.amenity) || !filter(place)) return false;
+    const key = `${place.name.toLocaleLowerCase()}|${place.address.toLocaleLowerCase()}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  }).sort((a, b) => (a.distance ?? Infinity) - (b.distance ?? Infinity)).slice(0, limit);
+}
+
+function normalizePhotonNearby(features, location) {
+  const elements = (Array.isArray(features) ? features : []).map(feature => {
+    const props = feature?.properties || {};
+    const [lon, lat] = feature?.geometry?.coordinates || [];
+    return {
+      lat, lon,
+      tags: {
+        name: props.name,
+        amenity: props.osm_key === "amenity" ? props.osm_value : "",
+        cuisine: props.cuisine || props.extra?.cuisine || "",
+        phone: props.phone || props["contact:phone"] || props.extra?.phone || props.extra?.["contact:phone"] || props.extra?.contact?.phone || "",
+        disused:props.disused||props.extra?.disused,abandoned:props.abandoned||props.extra?.abandoned,closed:props.closed||props.extra?.closed,
+        "disused:amenity":props["disused:amenity"]||props.extra?.["disused:amenity"],
+        "business:status":props["business:status"]||props.extra?.["business:status"],
+        opening_hours:props.opening_hours||props.extra?.opening_hours,
+        website: props.website || props["contact:website"] || props.contact_website || props.extra?.website || props.extra?.contact?.website || "",
+        "addr:housenumber": props.housenumber,
+        "addr:street": props.street,
+        "addr:city": props.city,
+        "addr:state": props.state
+      }
+    };
+  });
+  return normalizeNearby(elements, location);
+}
+
+function includeCuratedNearby(places, location) {
+  const normalize = value => String(value || "").toLowerCase().replace(/[’']/g, "").replace(/[^a-z0-9]+/g, " ").trim();
+  places = places.map(place => {
+    const known = LOCAL_RESTAURANT_OVERRIDES.find(item => item.aliases.some(alias => normalize(alias) === normalize(place.name))
+      && Number.isFinite(place.lat) && Number.isFinite(place.lon) && distanceMeters(item, place.lat, place.lon) <= 2000);
+    return known ? { ...place, website: place.website || known.website, cuisine: place.cuisine || known.cuisine } : place;
+  });
+  const curated = [];
+  for (const restaurant of LOCAL_RESTAURANT_OVERRIDES) {
+    const distance = distanceMeters(location, restaurant.lat, restaurant.lon);
+    if (distance > 32187) continue;
+    const normalized = restaurant.name.toLocaleLowerCase();
+    if (places.some(place => restaurant.aliases.some(alias => normalize(alias) === normalize(place.name)) && Number.isFinite(place.lat) && Number.isFinite(place.lon) && distanceMeters(restaurant, place.lat, place.lon) <= 2000)) continue;
+    curated.push({ ...restaurant, distance, amenity: "restaurant", source: "Metro Eats local listing" });
+  }
+  return [...places,...curated].sort((a,b)=>(a.distance??Infinity)-(b.distance??Infinity)).slice(0,100);
+}
+
+function includeCuratedNameMatches(features, query, location) {
+  const normalizedQuery = String(query || "").toLocaleLowerCase().replace(/[’']/g, "").replace(/[^a-z0-9]+/g, " ").trim();
+  const curatedFeatures = LOCAL_RESTAURANT_OVERRIDES
+    .filter(restaurant => restaurant.aliases.some(alias => {
+      const normalizedAlias = alias.toLocaleLowerCase().replace(/[’']/g, "").replace(/[^a-z0-9]+/g, " ").trim();
+      return normalizedAlias === normalizedQuery || normalizedAlias.startsWith(`${normalizedQuery} `) || normalizedQuery.startsWith(`${normalizedAlias} `);
+    }))
+    .filter(restaurant => !location || distanceMeters(location, restaurant.lat, restaurant.lon) <= 200_000)
+    .map(restaurant => ({
+      type: "Feature",
+      geometry: { type: "Point", coordinates: [restaurant.lon, restaurant.lat] },
+      properties: { osm_key: "amenity", osm_value: "restaurant", name: restaurant.name }
+    }));
+  return [...(Array.isArray(features) ? features : []), ...curatedFeatures];
+}
+
+function hasFoodFeature(feature) {
+  const props = feature?.properties || {};
+  return String(props.osm_key || "").toLowerCase() === "amenity" && FOOD_AMENITIES.has(String(props.osm_value || "").toLowerCase());
+}
+
+function hasNearbyNameMatch(features, query, location) {
+  return features.some(feature => {
+    if (!hasFoodFeature(feature) || !nameMatches(feature?.properties?.name, query)) return false;
+    if (!location) return true;
+    const [lon, lat] = feature.geometry?.coordinates || [];
+    const point = { lat: Number(lat), lon: Number(lon) };
+    const distance = distanceMeters(location, point.lat, point.lon);
+    return distance == null || distance <= 30000;
+  });
+}
+
+function nameMatches(candidate, query) {
+  const normalize = value => String(value || "").toLocaleLowerCase().replace(/['’]/g, "").replace(/[^a-z0-9]+/g, " ").trim();
+  const name = normalize(candidate);
+  const search = normalize(query);
+  if (!name || !search) return false;
+  if (name.includes(search) || search.includes(name)) return true;
+  const words = search.split(/\s+/).filter(word => word.length > 1 && word !== "the");
+  return words.length > 0 && words.filter(word => name.includes(word)).length / words.length >= 0.7;
+}
+
+async function nearbyNameFeatures(query, location, fetcher, barsOnly = false) {
+  if (!location) return [];
+  const overpassQuery = `[out:json][timeout:15];nwr["amenity"~"^(${barsOnly ? "bar|pub" : "restaurant|fast_food|cafe|bar|pub"})$",i]["name"](around:30000,${location.lat},${location.lon});out center tags;`;
+  for (const [index, endpoint] of OVERPASS_URLS.entries()) {
+    const url = new URL(endpoint);
+    url.searchParams.set("data", overpassQuery);
+    try {
+      const payload = await fetchJson(fetcher, url, { headers: { Accept: "application/json" } }, index === 0 ? 7000 : 3000);
+      return normalizeNearby(payload.elements, location, { filter: place => nameMatches(place.name, query) && (!barsOnly || ["bar","pub"].includes(place.amenity)) }).map(place => ({
+        type: "Feature",
+        properties: {
+          name: place.name,
+          city: place.address.split(", ").slice(-2, -1)[0] || "",
+          street: place.address.split(", ").slice(0, 2).join(" "),
+          osm_key: "amenity",
+          osm_value: place.amenity,
+          extra: { cuisine: place.cuisine, website: place.website }
+        },
+        geometry: { type: "Point", coordinates: [place.lon, place.lat] }
+      }));
+    } catch { /* Try the public backup endpoint. */ }
+  }
+  return [];
+}
+
+async function fetchJson(fetcher, url, options, timeoutMs = 9000) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const response = await fetcher(url, { ...options, signal: controller.signal });
+    if (!response.ok) throw new Error(`upstream_${response.status}`);
+    return await response.json();
+  } finally { clearTimeout(timer); }
+}
+
+export function createRestaurantLookupHandler({ fetcher = fetch, authenticate = authenticatedUser, limitRequests = consumeAccountRateLimit, cacheLookup = nearbyCache } = {}) {
+  const websiteCache = new Map(); // Bounded public metadata; no new storage service.
+  return async function handler(req, res) {
+    res.setHeader("Cache-Control", "no-store, max-age=0");
+    res.setHeader("X-Content-Type-Options", "nosniff");
+    if (req.method !== "POST") {
+      res.setHeader("Allow", "POST");
+      return res.status(405).json({ error: "Method not allowed." });
+    }
+
+    const body = req.body && typeof req.body === "object" ? req.body : {};
+    const mode = body.mode;
+    const barsOnly = mode === "bar-name" || mode === "bar-nearby";
+    const barFeature = feature => ["bar", "pub"].includes(String(feature?.properties?.osm_value || "").toLowerCase());
+    if (mode === "food-news") {
+      try { return res.status(200).json(await foodNews.readFoodNews(fetcher)); }
+      catch { return res.status(503).json({ error: "The published food news feed could not be refreshed." }); }
+    }
+    if (mode === "pizza-upc") {
+      const identity = await authenticate(req);
+      if (identity.error) return res.status(identity.status || 503).json({ error: identity.error });
+      const upc = String(body.upc || "").trim();
+      if (!/^\d{8,14}$/.test(upc)) return res.status(400).json({ error: "Enter an 8 to 14 digit UPC barcode." });
+      try {
+        const allowance = await limitRequests({ scope: "pizza-upc-lookup", accountId: identity.userId, limit: 30, windowSeconds: 60 });
+        if (!allowance.allowed) return sendRateLimitResponse(res, allowance.retryAfterSeconds);
+      } catch (error) {
+        console.error("Metro Eats UPC lookup rate limit unavailable", String(error?.message || "rate_limit_error").slice(0, 80));
+        return res.status(503).json({ error: "UPC lookup is temporarily unavailable. Please try again later." });
+      }
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 7000);
+      try {
+        const url = new URL(`${OPEN_FOOD_FACTS_URL}${encodeURIComponent(upc)}.json`);
+        url.searchParams.set("fields", "code,product_name,product_name_en,brands");
+        const response = await fetcher(url, { headers: { Accept: "application/json", "User-Agent": "MetroEats/1.0 (frozen-pizza UPC lookup)" }, signal: controller.signal });
+        if (!response.ok) throw new Error(`upstream_${response.status}`);
+        const payload = await response.json();
+        const product = payload?.product;
+        const brand = String(product?.brands || "").split(",")[0].trim();
+        const name = String(product?.product_name_en || product?.product_name || "").trim();
+        if (payload?.status !== 1 || !product || (!brand && !name)) return res.status(404).json({ error: "No product details were found for that UPC. You can enter the brand and pizza name yourself." });
+        const productCode = String(product.code || "");
+        return res.status(200).json({ product: { upc: /^\d{8,14}$/.test(productCode) ? productCode : upc, brand, name, source: "Open Food Facts" } });
+      } catch (error) {
+        console.error("Metro Eats UPC lookup failed", String(error?.message || "upstream_error").slice(0, 80));
+        return res.status(502).json({ error: "Product lookup is temporarily unavailable. You can enter the brand and pizza name yourself." });
+      } finally { clearTimeout(timeout); }
+    }
+    if (mode === "website") {
+      const identity = await authenticate(req);
+      if (identity.error) return res.status(identity.status || 503).json({ error: identity.error });
+      const place = body.place || {};
+      const lat = finiteCoordinate(place.lat, -90, 90), lon = finiteCoordinate(place.lon, -180, 180);
+      const name = typeof place.name === "string" ? place.name.trim() : "";
+      if (!name || name.length > 180 || lat == null || lon == null) return res.status(400).json({ error: "Select a restaurant with a map location." });
+      const keyName = value => String(value || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+      const key = `${keyName(name)}:${lat.toFixed(5)}:${lon.toFixed(5)}`;
+      const cached = websiteCache.get(key);
+      if (cached && cached.expires > Date.now()) return res.status(200).json({ website: cached.website });
+      try {
+        const allowance = await limitRequests({ scope: "restaurant-website", accountId: identity.userId, limit: 30, windowSeconds: 60 });
+        if (!allowance.allowed) return sendRateLimitResponse(res, allowance.retryAfterSeconds);
+        const point = { lat, lon };
+        const safeWebsite = value => {
+          if (!value || String(value).length > 500) return "";
+          try { const url = new URL(/^https?:\/\//i.test(value) ? value : `https://${value}`); return ["http:", "https:"].includes(url.protocol) && !url.username && !url.password ? url.href : ""; } catch { return ""; }
+        };
+        const known = LOCAL_RESTAURANT_OVERRIDES.find(item => item.aliases.some(alias => keyName(alias) === keyName(name)) && distanceMeters(point, item.lat, item.lon) <= 250);
+        let website = safeWebsite(known?.website);
+        if (!website) {
+          const query = `[out:json][timeout:5];nwr["amenity"~"^(restaurant|fast_food|cafe|bar|pub)$"]["name"](around:250,${lat},${lon});out center tags;`;
+          for (const endpoint of OVERPASS_URLS) {
+            try {
+              const url = new URL(endpoint); url.searchParams.set("data", query);
+              const payload = await fetchJson(fetcher, url, { headers: { Accept: "application/json" } }, 3500);
+              const matches = normalizeNearby((payload.elements || []).filter(item => keyName(item?.tags?.name) === keyName(name) && distanceMeters(point, item.lat ?? item.center?.lat, item.lon ?? item.center?.lon) <= 250), point).filter(item => item.distance != null && item.distance <= 250).sort((a,b) => a.distance-b.distance);
+              website = safeWebsite(matches[0]?.website);
+              break; // A successful empty result is valid; avoid duplicate provider requests.
+            } catch { /* Try the existing backup; review remains usable if both fail. */ }
+          }
+        }
+        if (websiteCache.size >= 128) websiteCache.delete(websiteCache.keys().next().value);
+        websiteCache.set(key, { website, expires: Date.now() + (website ? 86400000 : 900000) });
+        return res.status(200).json({ website });
+      } catch { return res.status(503).json({ error: "Website lookup is temporarily unavailable." }); }
+    }
+    const location = requestLocation(req, body.location);
+    if (mode === "name" || mode === "bar-name") {
+      const query = typeof body.query === "string" ? body.query.trim() : "";
+      if (query.length < 2 || query.length > 120) return res.status(400).json({ error: "Enter a restaurant name between 2 and 120 characters." });
+      try {
+        const url = new URL(PHOTON_URL);
+        url.searchParams.set("q", query);
+        url.searchParams.set("limit", "30");
+        url.searchParams.set("lang", "en");
+        if (barsOnly) for (const amenity of ["bar","pub"]) url.searchParams.append("osm_tag", `amenity:${amenity}`);
+        if (location) {
+          url.searchParams.set("lat", String(location.lat));
+          url.searchParams.set("lon", String(location.lon));
+          url.searchParams.set("location_bias_scale", "0.1");
+        }
+        let features = [];
+        let photonError = null;
+        try {
+          const payload = await fetchJson(fetcher, url, { headers: { Accept: "application/json" } });
+          features = Array.isArray(payload?.features) ? payload.features.filter(feature => !barsOnly || barFeature(feature)) : [];
+        } catch (error) { photonError = error; }
+        if (!hasNearbyNameMatch(features, query, location)) {
+          const fallback = await nearbyNameFeatures(query, location, fetcher, barsOnly);
+          if (fallback.length) features = [...features, ...fallback];
+        }
+        if (!barsOnly) features = includeCuratedNameMatches(features, query, location);
+        if (photonError && !features.length) throw photonError;
+        return res.status(200).json({ features, location });
+      } catch (error) {
+        console.error("Metro Eats restaurant name lookup failed", String(error?.message || "upstream_error").slice(0, 80));
+        return res.status(502).json({ error: "Online restaurant search is temporarily unavailable." });
+      }
+    }
+
+    if (mode === "nearby" || mode === "bar-nearby") {
+      if (!location) return res.status(422).json({ error: "Device and network location are unavailable. Allow location access or enter the restaurant details manually." });
+      let primaryPlaces=[];
+      const closedPlaces=[];
+      const validPoint=place=>place?.lat!=null&&place?.lon!=null&&Number.isFinite(Number(place.lat))&&Number.isFinite(Number(place.lon));
+      const samePlace=(a,b)=>String(a.name||'').toLowerCase().replace(/[^a-z0-9]/g,'')===String(b.name||'').toLowerCase().replace(/[^a-z0-9]/g,'')&&distanceMeters(a,Number(b.lat),Number(b.lon))<150;
+      const rememberClosed=places=>{for(const place of places)if(place.name&&validPoint(place)&&!closedPlaces.some(old=>samePlace(old,place)))closedPlaces.push({...place,closed:true});};
+      const closureRows=elements=>elements.filter(item=>explicitlyClosed(item.tags)).map(item=>({name:item.tags?.name,lat:item.lat??item.center?.lat,lon:item.lon??item.center?.lon,closed:true}));
+      const combine=(...groups)=>{const all=groups.flat(),list=[];rememberClosed(all.filter(place=>place?.closed===true));for(const place of all){if(!place?.name||!validPoint(place)||place.closed||closedPlaces.some(old=>samePlace(old,place)))continue;const next={...place,distance:distanceMeters(location,Number(place.lat),Number(place.lon))};if(next.distance>32187)continue;const old=list.find(item=>samePlace(item,next));if(old){for(const field of ['phone','website','cuisine','address'])if(!old[field]&&next[field])old[field]=next[field];}else list.push(next);}return list.sort((a,b)=>a.distance-b.distance).slice(0,100);};
+      const seeded=normalizePhotonNearby(nearbySeed.features.filter(feature=>!barsOnly||barFeature(feature)),location);
+      const seedResponse=()=>res.status(200).json({places:barsOnly?combine(primaryPlaces,seeded,cached?.previousPlaces||[]):includeCuratedNearby(combine(primaryPlaces,seeded,cached?.previousPlaces||[]),location),location,source:'directory-fallback',cache:{stale:true,updatedAt:nearbySeed.updatedAt}});
+      const cached=await cacheLookup(location,barsOnly?'bars':'restaurants');
+      const saved=async()=>{const places=combine(cached.places,cached.previousPlaces||[],seeded),supplemented=places.length>combine(cached.places).length;if(supplemented&&cached.fresh){try{await cached.save?.([...closedPlaces,...places],{partial:true});}catch{}}return res.status(200).json({places,location,cache:{stale:!cached.fresh||supplemented,updatedAt:cached.updatedAt}});};
+      if(cached?.places.length && cached.skipRefresh)return saved();
+      if(cached?.skipRefresh && !cached.places.length && (seeded.length||cached.previousPlaces?.length))return seedResponse();
+      if(cached?.skipRefresh && !cached.places.length)return res.status(503).json({error:"Nearby map lookup is cooling down. Try again in 15 minutes."});
+      const deliver=async fresh=>{const places=combine(fresh,cached?.places||[],cached?.previousPlaces||[],seeded),partial=places.length>fresh.length;if(places.length)await cached?.save([...closedPlaces,...places],{partial});return res.status(200).json({places,location,...(partial?{partial:true,cache:{stale:true,updatedAt:cached?.updatedAt||nearbySeed.updatedAt}}:{})});};
+      const query = `[out:json][timeout:15];nwr["amenity"~"^(${barsOnly ? "bar|pub" : "restaurant|fast_food|cafe|bar|pub"})$",i]["name"](around:32187,${location.lat},${location.lon});out center tags;`;
+      const photonUrl = new URL(PHOTON_REVERSE_URL);
+      photonUrl.searchParams.set("lat", String(location.lat));
+      photonUrl.searchParams.set("lon", String(location.lon));
+      photonUrl.searchParams.set("radius", "32.187");
+      photonUrl.searchParams.set("limit", "100");
+      photonUrl.searchParams.set("lang", "en");
+      for (const amenity of barsOnly ? ["bar","pub"] : FOOD_AMENITIES) photonUrl.searchParams.append("osm_tag", `amenity:${amenity}`);
+      try {
+        const nearby = await fetchJson(fetcher, photonUrl, {
+          headers: { Accept: "application/json", "User-Agent": "MetroEats/1.0 (nearby restaurant lookup)" }
+        }, 4000);
+        if (!Array.isArray(nearby?.features)) throw new Error("invalid_photon_response");
+        rememberClosed(closureRows(nearby.features.map(feature=>({lat:feature.geometry?.coordinates?.[1],lon:feature.geometry?.coordinates?.[0],tags:{...feature.properties,...feature.properties?.extra}}))));
+        primaryPlaces=barsOnly ? normalizePhotonNearby(nearby.features.filter(barFeature), location) : includeCuratedNearby(normalizePhotonNearby(nearby.features, location), location);
+        if(primaryPlaces.length >= 100)return await deliver(primaryPlaces);
+      } catch (error) {
+        console.error("Metro Eats Photon nearby lookup failed", String(error?.message || "upstream_error").slice(0, 80));
+      }
+      let payload = null;
+      for (const [index, endpoint] of OVERPASS_URLS.entries()) {
+        const url = new URL(endpoint);
+        url.searchParams.set("data", query);
+        try {
+          payload = await fetchJson(fetcher, url, {
+            headers: { Accept: "application/json", "User-Agent": "MetroEats/1.0 (nearby restaurant lookup)" }
+          }, 3500);
+          if(!Array.isArray(payload?.elements))throw Error("invalid_overpass_response");
+          break;
+        } catch { payload=null; /* Try the public backup endpoint. */ }
+      }
+      if (!payload) {
+        if(cached?.places.length)return saved();
+        if(seeded.length)return seedResponse();
+        // Public map providers can be intermittently unavailable. Preserve a useful
+        // nearby experience for supported local areas without requiring either feed.
+        if(primaryPlaces.length)return res.status(200).json({places:primaryPlaces,location,partial:true});
+        const curated = barsOnly ? [] : includeCuratedNearby([], location);
+        if (curated.length) return res.status(200).json({ places: curated, location, partial:true, source: "curated-fallback" });
+        return res.status(502).json({ error: "Nearby restaurant data is temporarily unavailable. Name search is still available." });
+      }
+      rememberClosed(closureRows(payload.elements));
+      const secondary=barsOnly ? normalizeNearby(payload.elements, location, {filter:place => ["bar","pub"].includes(place.amenity)}) : normalizeNearby(payload.elements, location);
+      const places=combine(primaryPlaces,secondary);
+      if(!places.length && cached?.places.length)return saved();
+      if(!places.length && seeded.length)return seedResponse();
+      return await deliver(barsOnly ? places : includeCuratedNearby(places,location));
+    }
+
+    return res.status(400).json({ error: "Choose a restaurant name or nearby search." });
+  };
+}
+
+export default createRestaurantLookupHandler();
