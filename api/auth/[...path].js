@@ -78,7 +78,7 @@ export default async function handler(req, res) {
     // request bodies, credentials, cookies, tokens, or the Neon host.
     console.info("Metro Eats Preview auth proxy response", {
       method: req.method || "GET",
-      path: authPath,
+      path: authPath.startsWith('reset-password/') ? 'reset-password/[redacted]' : authPath,
       status: upstream.status,
       requestId: upstream.headers.get("x-neon-ret-request-id") || null
     });
