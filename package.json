@@ -5,5 +5,8 @@
     "@vercel/blob": "^2.3.0",
     "@neondatabase/serverless": "^1.0.2",
     "jose": "^6.1.0"
+  },
+  "scripts": {
+    "check:dev-env": "node scripts/check-development-environment.mjs .env.local"
   }
 }

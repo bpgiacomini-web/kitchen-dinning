@@ -4,10 +4,14 @@ on:
     branches:
       - architecture/metro-eats-clean-rebuild-2026-10-25
       - main
+      - 'development/**'
     paths:
       - 'architecture-v2/**'
       - 'api/**'
       - 'middleware.js'
+      - 'scripts/check-development-environment.mjs'
+      - '.env.example'
+      - 'DEV-ENVIRONMENT.md'
       - 'package.json'
       - 'vercel.json'
       - 'scripts/build-journal-validation.mjs'
@@ -20,6 +24,9 @@ on:
       - 'architecture-v2/**'
       - 'api/**'
       - 'middleware.js'
+      - 'scripts/check-development-environment.mjs'
+      - '.env.example'
+      - 'DEV-ENVIRONMENT.md'
       - 'package.json'
       - 'vercel.json'
       - 'scripts/build-journal-validation.mjs'
