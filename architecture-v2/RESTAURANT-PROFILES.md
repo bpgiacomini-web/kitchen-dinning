@@ -23,3 +23,11 @@ No new API route, service, dependency, database schema, or authentication change
 203 automated tests, including new summary, legacy mirror, ID collision, visit deletion, gallery, legacy survey, duplicate detection, merge preservation, and safe-rendering coverage. Existing account isolation and revision-conflict tests remain in the suite.
 
 Local browser verification used actual API handlers and the isolated development database: existing photo loaded; added a second visit (8.0 -> 7.0, 100% -> 50%); edited it (7.5 aggregate); reloaded and retained data; deleted only that visit (8.0, one visit, 100%); combined a disposable second restaurant and reloaded with one restaurant and both sets of notes retained. Desktop and narrow-screen layouts inspected.
+
+## Cleanup batch — November 16
+- Food categories containing saved or draft items are highlighted and show live item counts.
+- Around Me restaurant menus offer Want to Try alongside Mark as closed. Save uses the existing account-scoped dataset and reuses an existing profile when matched; no visit is required.
+- Restaurant-level travel boolean defaults old records to Home. My Restaurants has Home/Travel/All filters. Travel restaurants retain their data but are excluded from home restaurant insights, the embedded home map, and matched dinner suggestions. Current-location discovery remains independent.
+- Home now has a compact Recent Journal Entries disclosure without Your Table or its oversized panel. Removed preview footer wording.
+- Badge names/thresholds are still outstanding; no invented milestones were introduced.
+- Daily Bite free-only feasibility is documented separately. Static curated content is viable without new APIs, database writes, cron, AI subscriptions, or image storage. Initial researched content remains required; the feature is not enabled in this batch.

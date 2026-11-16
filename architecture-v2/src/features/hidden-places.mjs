@@ -1,6 +1,6 @@
 import {hiddenPlaceDescriptor,isHiddenPlace,validHiddenPlaces} from '../domain/hidden-places.mjs';
 const esc=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-export function createHiddenPlaces({root,getData,save,refresh}){
+export function createHiddenPlaces({root,getData,save,refresh,onWantToTry}){
  let pending=null,trigger=null,dialog=null,saving=false;
  const descriptors=new WeakMap();
  const control=place=>{const button=document.createElement('button');button.type='button';button.className='btn';button.dataset.hiddenAction='mark';const hidden=isHiddenPlace(place,getData().hiddenPlaces||[]);button.textContent=hidden?'Marked closed':'Mark as closed';button.disabled=hidden;descriptors.set(button,hiddenPlaceDescriptor(place));return button;};
@@ -14,6 +14,9 @@ export function createHiddenPlaces({root,getData,save,refresh}){
    if(row.querySelector('.placeMoreMenu'))continue;
    let place;try{place=JSON.parse(row.dataset.hiddenPlace||row.querySelector('[data-nearby]')?.dataset.nearby||'null');}catch{}if(!place)continue;
    const menu=document.createElement('details');menu.className='cardOptions placeMoreMenu';menu.innerHTML='<summary class="cardOptionsTrigger" aria-label="More options for '+esc(place.name)+'">More</summary><div class="cardOptionsList"></div>';menu.querySelector('div').append(control(place));
+   if(onWantToTry && (row.matches('.nearbyPlace,.pickInfo') || row.closest('#restaurant-search-results,#home-restaurant-search-results'))){
+    const want=document.createElement('button');want.type='button';want.className='btn';want.dataset.hiddenAction='want';want.textContent='Want to Try';descriptors.set(want,place);menu.querySelector('div').prepend(want);
+   }
    (row.querySelector('.nearbyPlaceActions')||row).append(menu);
   }
  };
@@ -22,6 +25,12 @@ export function createHiddenPlaces({root,getData,save,refresh}){
  document.addEventListener('click',async event=>{
   const button=event.target.closest('[data-hidden-action]');if(!button)return;
   const action=button.dataset.hiddenAction;
+  if(action==='want'){
+   const place=descriptors.get(button);if(!place||!onWantToTry)return;
+   button.disabled=true;
+   try{await onWantToTry(place);button.textContent='Saved · Want to Try';}
+   catch(error){button.disabled=false;let feedback=button.closest('.placeMoreMenu').querySelector('[role="status"]');if(!feedback){feedback=document.createElement('p');feedback.setAttribute('role','status');button.after(feedback);}feedback.textContent=error.message||'Could not save restaurant.';}return;
+  }
   if(action==='cancel'){if(!saving)close();return;}
   if(action==='mark'){
    if(dialog)return;pending=descriptors.get(button);if(!pending)return;trigger=button;
