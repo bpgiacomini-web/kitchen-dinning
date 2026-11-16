@@ -10,3 +10,9 @@ return {welcome:1,recipes,restaurants:places.size};}
 export function earnedBadges(data){const counts=badgeCounts(data);return BADGES.filter(badge=>counts[badge.kind]>=badge.threshold||data.achievements?.[badge.id]);}
 export function awardBadges(data,now=new Date().toISOString()){const achievements={...(data.achievements||{})};for(const badge of earnedBadges(data))if(!achievements[badge.id])achievements[badge.id]=now;return {...data,achievements};}
 export function nextBadges(data){const earned=new Set(earnedBadges(data).map(b=>b.id));return ['recipes','restaurants'].map(kind=>BADGES.find(b=>b.kind===kind&&!earned.has(b.id))).filter(Boolean);}
+
+export function highestBadge(data){
+ const tier=b=>b.kind==='welcome'?0:(b.kind==='recipes'?[1,10,25,50]:[1,5,10,25,50]).indexOf(b.threshold)+1;
+ return earnedBadges(data).reduce((best,badge)=>!best||tier(badge)>tier(best)||(tier(badge)===tier(best)&&String(data.achievements?.[badge.id]||'')>=String(data.achievements?.[best.id]||''))?badge:best,null);
+}
+export function badgeArtwork(badge){return BADGES.some(b=>b.id===badge?.id)?'./assets/badges/'+badge.id+'.svg':'';}

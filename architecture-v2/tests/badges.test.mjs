@@ -1,5 +1,13 @@
-import test from 'node:test';import assert from 'node:assert/strict';import {awardBadges,earnedBadges,badgeCounts,nextBadges} from '../src/domain/badges.mjs';
+import test from 'node:test';import assert from 'node:assert/strict';import {awardBadges,earnedBadges,badgeCounts,nextBadges,highestBadge,badgeArtwork} from '../src/domain/badges.mjs';
 test('new account has welcome badge and two clear next milestones',()=>{assert.deepEqual(earnedBadges({}).map(b=>b.id),['welcome']);assert.deepEqual(nextBadges({}).map(b=>b.id),['recipes-1','restaurants-1']);});
 test('places count distinct reviewed restaurants, not visits or saved wants',()=>{const row={name:'Cafe',address:'Main',reviewHistory:[{id:'a',overall:8},{id:'b',overall:9}]};assert.equal(badgeCounts({restaurants:[row,{...row,id:'duplicate'},{name:'Want',wantToTry:true}]}).restaurants,1);});
 test('Super Diner is earned at 25 places and remains after records are removed',()=>{const data={restaurants:Array.from({length:25},(_,i)=>({name:'Cafe '+i,address:'Main',reviewHistory:[{id:'v',overall:8}]}))};const saved=awardBadges(data,'2026-11-16');assert.ok(earnedBadges(saved).some(b=>b.id==='restaurants-25'));assert.ok(earnedBadges({...saved,restaurants:[]}).some(b=>b.id==='restaurants-25'));assert.equal(earnedBadges({}).length,1);});
 test('recipe milestones use unique saved IDs and do not mutate input',()=>{const data={recipes:[{id:'a'},{id:'a'}]};assert.equal(badgeCounts(data).recipes,1);assert.ok(awardBadges(data).achievements['recipes-1']);assert.equal(data.achievements,undefined);});
+
+test('account badge follows tiers and recent award ties without leaking between accounts',()=>{
+ assert.equal(highestBadge({}).id,'welcome');
+ assert.equal(highestBadge({achievements:{'recipes-50':'2026-11-16','restaurants-5':'2026-11-17'}}).id,'recipes-50');
+ assert.equal(highestBadge({achievements:{'recipes-10':'2026-11-16','restaurants-5':'2026-11-17'}}).id,'restaurants-5');
+ assert.equal(highestBadge({achievements:{'restaurants-50':'2026-11-16','recipes-50':'2026-11-17'}}).id,'restaurants-50');
+ assert.equal(highestBadge({}).id,'welcome');assert.equal(badgeArtwork({id:'../unsafe'}),'');
+});

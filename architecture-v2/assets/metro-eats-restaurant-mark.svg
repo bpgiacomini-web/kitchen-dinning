@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 128 128" role="img" aria-labelledby="mark-title">
+  <title id="mark-title">Metro Eats restaurant image fallback concept</title>
+  <defs>
+    <linearGradient id="rim" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#fff1b4"/><stop offset=".4" stop-color="#d9aa4a"/><stop offset=".75" stop-color="#885421"/><stop offset="1" stop-color="#e8c574"/></linearGradient>
+    <linearGradient id="ivory-gold" x1="0" y1="0" x2=".4" y2="1"><stop stop-color="#fff9dc"/><stop offset=".48" stop-color="#f4e5ad"/><stop offset="1" stop-color="#b48740"/></linearGradient>
+    <linearGradient id="warm-gold" x1="0" y1="0" x2=".2" y2="1"><stop stop-color="#fff4b7"/><stop offset=".46" stop-color="#efc55f"/><stop offset="1" stop-color="#ad6c20"/></linearGradient>
+    <filter id="bevel" x="-20%" y="-20%" width="150%" height="150%"><feDropShadow dx="1.5" dy="2" stdDeviation=".6" flood-color="#000" flood-opacity=".9"/></filter>
+  </defs>
+  <rect x="3" y="3" width="122" height="122" rx="23" fill="#0e181b" stroke="url(#rim)" stroke-width="2"/>
+  <path d="M23 56Q64-19 106 56" fill="none" stroke="url(#rim)" stroke-width="3" opacity=".8"/>
+  <path d="M14 44Q13 42 20 42L32 40L48 76L61 39L73 37Q77 37 72 42L72 96Q72 100 76 99V102L56 105V102Q61 101 61 97V57L44 100L40 101L24 61V98Q24 103 30 102V105L12 108V105Q18 103 18 98V49Q18 46 14 46Z" fill="url(#ivory-gold)" stroke="#f6d98e" stroke-width=".65" filter="url(#bevel)"/>
+  <path d="M77 43L112 41L114 57H111Q107 46 100 47L91 48V68H99Q104 68 106 61H109V81H106Q104 74 99 74H91V96H102Q111 95 114 85H117L114 104H77V101Q82 100 82 96V51Q82 47 77 46Z" fill="url(#warm-gold)" stroke="#ffe8a2" stroke-width=".65" filter="url(#bevel)"/>
+  <path d="M22 115Q64 107 107 114" fill="none" stroke="url(#rim)" stroke-width="1.5"/>
+</svg>
