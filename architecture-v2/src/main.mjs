@@ -166,12 +166,13 @@ function releaseRecipeWakeLock() {
   void setRecipeWakeLock(false);
 }
 const RESTAURANT_REVIEW_CATEGORIES = ["Appetizers", "Entrées", "Salads", "Soups", "Sides", "Desserts", "Drinks"];
-const RESTAURANT_CUISINES = ["American", "BBQ", "Bakery & Cafe", "Breakfast & Brunch", "Buffet", "Chinese", "Deli & Sandwiches", "Diner", "Fast Food", "Coffee Shop", "Ice Cream & Desserts", "Sports Bar", "Food Truck", "Gastropub", "French", "Greek", "Indian", "Italian", "Japanese", "Korean", "Mediterranean", "Mexican", "Middle Eastern", "Pizza", "Seafood", "Southern / Soul Food", "Thai", "Vietnamese", "Other"].sort((a,b)=>a.localeCompare(b));
+const RESTAURANT_CUISINES = ["American", "Bar & Grill", "BBQ", "Bakery & Cafe", "Breakfast & Brunch", "Buffet", "Chinese", "Deli & Sandwiches", "Diner", "Fast Food", "Coffee Shop", "Ice Cream & Desserts", "Sports Bar", "Food Truck", "Gastropub", "French", "Greek", "Indian", "Italian", "Japanese", "Korean", "Mediterranean", "Mexican", "Middle Eastern", "Pizza", "Seafood", "Southern / Soul Food", "Thai", "Vietnamese", "Other"].sort((a,b)=>a.localeCompare(b));
 function canonicalCuisine(value) {
   const raw = String(value || "").trim();
   const normalized = raw.toLocaleLowerCase().replace(/[_-]+/g, " ").replace(/\s+/g, " ");
   if (["restaurant", "fast food", "bar", "pub"].includes(normalized)) return "";
   const aliases = {
+    "bar & grill": ["bar and grill", "bar & grill", "bar grill"],
     "breakfast & brunch": ["breakfast", "brunch", "breakfast and brunch"],
     "deli & sandwiches": ["deli", "sandwich", "sandwiches"],
     "diner": ["diner"],
