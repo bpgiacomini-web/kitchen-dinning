@@ -1100,7 +1100,7 @@ document.addEventListener("click", async event => {
     const restaurant=cloudDataset.restaurants.find(row=>String(row.id)===String(actionButton.dataset.restaurantId));if(!restaurant?.website)return;
     const feedback=root.querySelector('[data-website-image-status]')||root.querySelector('.edit-status');actionButton.disabled=true;if(feedback)feedback.textContent='Checking '+new URL(restaurant.website).hostname+'…';
     try{const imageAccount=window.metroAccountId;const websiteImage=await findRestaurantImage(restaurant.website,{strict:true});if(window.metroAccountId!==imageAccount)return;if(!websiteImage){if(feedback)feedback.textContent='No usable website image found. Your photos are unchanged.';actionButton.disabled=false;return;}
-    await saveCloudDataset({...cloudDataset,restaurants:cloudDataset.restaurants.map(row=>row===restaurant?{...row,websiteImage,hideWebsiteImage:false}:row)});render();const result=root.querySelector('[data-website-image-status]');if(result)result.textContent=summarizeRestaurantProfile(restaurant).primaryPhoto&&!prefersWebsiteImage(restaurant)?'Website image saved. Your own photo remains the main picture.':'Website image updated.';}
+    await saveCloudDataset({...cloudDataset,restaurants:cloudDataset.restaurants.map(row=>row===restaurant?{...row,websiteImage,hideWebsiteImage:false}:row)});render();const options=root.querySelector('.restaurantOptions');if(options)options.open=true;const result=root.querySelector('[data-website-image-status]');if(result)result.textContent=summarizeRestaurantProfile(restaurant).primaryPhoto&&!prefersWebsiteImage(restaurant)?'Website image saved. Your own photo remains the main picture.':'Website image updated.';}
     catch(error){actionButton.disabled=false;if(feedback)feedback.textContent=error.message;}return;
   }
   if(actionButton.dataset.action==='choose-restaurant-main-image'){
@@ -1108,7 +1108,7 @@ document.addEventListener("click", async event => {
     const mainImageSource=actionButton.dataset.imageSource;if(!['website','personal'].includes(mainImageSource))return;
     if(mainImageSource==='website'&&!restaurant.websiteImage?.url)return;
     actionButton.disabled=true;
-    try{await saveCloudDataset({...cloudDataset,restaurants:cloudDataset.restaurants.map(row=>row===restaurant?{...row,mainImageSource,...(mainImageSource==='website'?{hideWebsiteImage:false}:{})}:row)});render();}
+    try{await saveCloudDataset({...cloudDataset,restaurants:cloudDataset.restaurants.map(row=>row===restaurant?{...row,mainImageSource,...(mainImageSource==='website'?{hideWebsiteImage:false}:{})}:row)});render();const options=root.querySelector('.restaurantOptions');if(options)options.open=true;}
     catch(error){actionButton.disabled=false;const feedback=root.querySelector('[data-website-image-status]');if(feedback)feedback.textContent=error.message;}return;
   }
   if(actionButton.dataset.action === "photo-usage"){await photoController.usage(document.querySelector('#photo-storage-usage'));return;}
