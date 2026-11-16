@@ -14,8 +14,8 @@
 #app .dailyBiteDisclosure>summary{display:flex;align-items:center;justify-content:space-between;gap:16px;cursor:pointer;list-style:none;padding:18px 20px;margin:0;color:#e5c682;min-height:80px;box-sizing:border-box}
 #app .dailyBiteDisclosure>summary::-webkit-details-marker{display:none}
 #app .dailyBiteSummaryText{display:grid;gap:6px;min-width:0}
-#app .dailyBiteSummaryText>strong{font-size:1.15rem;line-height:1.25;color:var(--gold,#dbb366)}
-#app .dailyBiteHeadline{font-size:.95rem;line-height:1.4;color:#f4f1ea;font-weight:500}
+#app .dailyBiteSummaryText>strong{font-size:.8rem;line-height:1.25;color:var(--gold,#dbb366);font-weight:600}
+#app .dailyBiteHeadline{font-size:1.1rem;line-height:1.35;color:#f4f1ea;font-weight:800}
 #app .dailyBiteChevron{flex:none;transition:transform .15s}
 #app .dailyBiteDisclosure[open]>summary .dailyBiteChevron{transform:rotate(180deg)}
 #app .dailyBiteDisclosure>summary:focus-visible{outline:2px solid #e5c682;outline-offset:3px;border-radius:20px}
