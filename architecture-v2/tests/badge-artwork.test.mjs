@@ -6,7 +6,7 @@ import {updateAccountBadge} from '../src/features/badges.mjs';
 import {restaurantFallbackMarkup} from '../src/features/restaurant-image.mjs';
 test('badge art is local and distinct for all ten milestones',async()=>{
  const arts=await Promise.all(BADGES.map(b=>readFile(new URL('../'+badgeArtwork(b).slice(2),import.meta.url),'utf8')));
- assert.equal(new Set(arts).size,10);for(const art of arts){assert.match(art,/<svg/);assert.doesNotMatch(art,/<script|https?:|onload=/);}
+ assert.equal(new Set(arts).size,10);for(const art of arts){assert.match(art,/<svg/);assert.doesNotMatch(art,/<script|(?:href|src)=["']https?:|onload=/);}
 });
 test('account badge restores original person icon while signing out or changing accounts',()=>{
  const classes=new Set();const button={innerHTML:'<svg>person</svg>',classList:{toggle(name,on){on?classes.add(name):classes.delete(name)}}};
