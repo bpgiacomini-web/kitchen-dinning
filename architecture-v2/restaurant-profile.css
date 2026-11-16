@@ -1,0 +1,39 @@
+.profileHeading{display:flex;gap:24px;align-items:center;margin:24px 0}.profileHeading h2{margin:0 0 8px}.profileCover{width:180px;max-width:100%;border-radius:16px;overflow:hidden}.profileCover .journalPhotoStrip{margin:0}.profileCover img,img.profileCover{width:180px;height:150px;object-fit:cover}.profileStats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin:24px 0}.profileStats>div{display:flex;flex-direction:column;padding:18px;border:1px solid var(--line,#d9d5cd);border-radius:14px;gap:6px}.profileStats strong{font-size:1.4rem}.profileStats small,.profileCategories small{opacity:.7}.profileCategories{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:14px}.profileCategories>div{display:flex;flex-direction:column;gap:5px}.profileGallery{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:16px}.profileGallery figure{margin:0;display:flex;flex-direction:column;gap:8px}.profileGalleryPhoto .journalPhotoStrip{margin:0}.profileGalleryPhoto img,img.profileGalleryPhoto{width:100%;height:150px;object-fit:cover;border-radius:12px}.profileVisit{border-top:1px solid var(--line,#d9d5cd);padding:14px 0}.profileVisit summary{display:flex;justify-content:space-between;gap:15px;cursor:pointer;list-style:revert}.profileVisitBody{padding:10px 4px}.profileNotes{white-space:pre-wrap;overflow-wrap:anywhere}.restaurantProfile .restaurantDetailBlock{padding:16px 0}.restaurantProfile .actions{flex-wrap:wrap}.restaurantCard .profileCardSummary{display:flex;gap:12px;align-items:center}.restaurantCard .profileCardSummary .profileCover{width:90px}.restaurantCard .profileCardSummary .profileCover img{width:90px;height:75px}.restaurantProfile button,.restaurantCard button{touch-action:manipulation}@media(max-width:600px){.profileHeading{flex-direction:column;align-items:flex-start}.profileStats{grid-template-columns:repeat(2,minmax(0,1fr))}.profileHeading .actions{display:flex;flex-direction:column;align-items:stretch}.profileHeading>div{width:100%}}
+.profileGallery figure[hidden]{display:none}.profileConfirmation{padding:16px;border:1px solid var(--line,#39424d);border-radius:12px}.profileConfirmation .btn{margin-right:10px}
+.reviewCategory.hasReviewItems>summary{background:#233d35;border-color:#8ab6a3;color:#e3f5ec;box-shadow:inset 4px 0 0 #8ab6a3}.reviewCategoryCount{display:inline-block;margin-left:12px;padding:2px 9px;border:1px solid #8ab6a3;border-radius:999px;font-size:.8em;font-weight:600;color:#e3f5ec}.reviewCategoryCount[hidden]{display:none}
+.hero.homeJournalCompact{padding:0;background:none;border:0;box-shadow:none;margin-block:12px}.homeJournalCompact .heroIn{padding:0}.homeJournalCompact .homeAppsDisclosure{margin:0}.restaurantScopeControl{display:flex;align-items:center;gap:10px;margin-block:12px}.restaurantScopeControl select{min-height:44px}.restaurantProfile .sectionKicker{color:var(--accent,#8ab6a3)}
+#app>.hero.homeJournalCompact{padding:0;background:none;border:0;box-shadow:none}#app>.hero.homeJournalCompact>.heroIn{padding:0}#app .homeJournalCompact .homeAppsDisclosure>summary{margin:0}
+.app:has(>.top.homeStickyHeader) #app>.hero.homeJournalCompact{margin:12px 0 18px}.app:has(>.top.homeStickyHeader) #app>.hero.homeJournalCompact>.heroIn{padding:0;max-width:none;width:100%}#app .homeJournalCompact .homeAppsDisclosure{margin:0;width:100%}
+
+@media(max-width:520px){.app:has(>.top.homeStickyHeader) #app{padding-top:calc(var(--metro-home-header-height,132px) + 8px)}}
+.restaurantWebsiteImage{margin:0;flex:none;width:88px}.restaurantWebsiteImage img{display:block;width:88px;height:88px;object-fit:cover;background:transparent;border-radius:12px}.restaurantWebsiteImage figcaption{font-size:11px;margin-top:4px}.restaurantWebsiteImage a{color:#a8c9ba}.restaurantImageFallback{display:grid;place-items:center;width:72px;height:72px;flex:none;border-radius:12px;background:#ffffff09;color:#dcb56b;font-size:28px}.profileHeading>.restaurantWebsiteImage{width:140px}.profileHeading>.restaurantWebsiteImage img{width:140px;height:140px}.badgeGrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}.achievementBadge{display:grid;gap:8px;padding:18px;border:1px solid #ffffff22;border-radius:16px}.achievementBadge>span{font-size:30px}.achievementBadge.earned{border-color:#dcb56b;color:#f0d291;background:#dcb56b0c}.achievementBadge.locked{color:#a3adb2}.achievementBadge small{line-height:1.5}.badgeProgress{padding:14px 0}.badgeProgress p{margin:6px 0}.badgeProgress progress{width:100%;accent-color:#dcb56b}.badgeCelebration{position:fixed;z-index:1200;bottom:100px;left:50%;transform:translateX(-50%);width:min(420px,calc(100vw - 32px));padding:18px;box-sizing:border-box;background:#172824;border:1px solid #dcb56b;border-radius:16px;box-shadow:0 8px 30px #0008}.badgeCelebration strong{display:block;margin-bottom:10px}.badgeCelebration .btn{margin-right:8px}
+.achievementBadge>span{display:grid;place-items:center;border:2px solid currentColor;border-radius:50%;width:48px;height:48px}.achievementBadge.locked>span{opacity:.5}
+
+.restaurantWebsiteLogo img{object-fit:contain;background:transparent}
+/* The disclosure owns its clipping and outline; the former hero shell must not clip its corners. */
+#app>.hero.homeJournalCompact,#app>.hero.homeJournalCompact>.heroIn{overflow:visible}
+#app .homeJournalCompact .homeAppsDisclosure{position:relative;isolation:isolate;border:0;border-radius:18px;overflow:hidden;box-sizing:border-box}
+#app .homeJournalCompact .homeAppsDisclosure::after{content:"";position:absolute;inset:0;z-index:2;border:1px solid #e0b96f;border-radius:inherit;pointer-events:none}
+#app .homeAppsDisclosure .recentEntry:last-child{border-bottom:0}
+/* Keep the next visit prominent; secondary maintenance controls stay collapsed. */
+#app .restaurantProfile .profileHeading{display:grid;grid-template-columns:88px minmax(0,1fr);align-items:center;gap:14px;margin:18px 0 14px}
+#app .restaurantProfile .profileHeading>div{width:auto;min-width:0}
+#app .restaurantProfile .profileHeading h2{font-size:clamp(1.25rem,3vw,1.7rem);line-height:1.2;margin:0 0 6px}
+#app .restaurantProfile .profileHeading p{margin:4px 0;line-height:1.4}
+#app .restaurantProfile .profileHeading .sectionKicker{font-size:.7rem}
+#app .restaurantProfile .profileHeading>.restaurantWebsiteImage,#app .restaurantProfile .profileHeading>.profileCover{width:88px;max-width:88px}
+#app .restaurantProfile .profileHeading .profileCover img,#app .restaurantProfile .profileHeading>img.profileCover,#app .restaurantProfile .profileHeading>.restaurantWebsiteImage img{width:88px;height:88px;max-width:88px;border-radius:12px}
+#app .restaurantProfile .profileMainActions{display:flex;gap:10px;flex-wrap:wrap;margin:0 0 10px}
+#app .restaurantProfile .profileMainActions>.btn{min-height:46px;margin:0}
+#app .restaurantOptions{border:1px solid #ffffff25;border-radius:12px;margin:0 0 14px;overflow:hidden}
+#app .restaurantOptions>summary{padding:12px 14px;min-height:44px;box-sizing:border-box;cursor:pointer;font-weight:650;color:#dcb56b}
+#app .restaurantOptionActions{display:flex;gap:8px;flex-wrap:wrap;padding:0 12px 12px}
+#app .restaurantOptionActions>.btn{margin:0;min-height:44px}
+#app .restaurantOptions .websiteImageStatus{margin:0 12px 12px;line-height:1.5}
+#app .websiteImageStatus:empty{display:none}
+#app .restaurantProfile .profileStats{gap:10px;margin:14px 0 20px}
+#app .restaurantProfile .profileStats>div{padding:12px;gap:4px;min-height:0}
+#app .restaurantProfile .profileStats strong{font-size:1.15rem;line-height:1.3}
+#app .restaurantProfile .profileStats span{font-size:.85rem;line-height:1.3}
+#app .restaurantProfile .profileStats small{font-size:.72rem;line-height:1.3}
+@media(max-width:600px){#app .restaurantProfile .profileMainActions>.primary{width:100%}#app .restaurantOptionActions{flex-direction:column}#app .restaurantOptionActions>.btn{width:100%;text-align:left}}

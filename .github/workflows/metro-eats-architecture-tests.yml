@@ -16,6 +16,7 @@ on:
       - 'package.json'
       - 'vercel.json'
       - 'scripts/build-journal-validation.mjs'
+      - 'scripts/check-daily-bites.mjs'
       - 'scripts/test-photo-usage-postgres.mjs'
       - 'scripts/test-account-*.mjs'
       - 'test-tools/package.json'
@@ -31,6 +32,7 @@ on:
       - 'package.json'
       - 'vercel.json'
       - 'scripts/build-journal-validation.mjs'
+      - 'scripts/check-daily-bites.mjs'
       - 'scripts/test-photo-usage-postgres.mjs'
       - 'scripts/test-account-*.mjs'
       - 'test-tools/package.json'
@@ -47,6 +49,7 @@ jobs:
         with:
           node-version: 24
       - run: npm test
+      - run: node ../scripts/check-daily-bites.mjs
       - run: npm install --prefix ../test-tools --ignore-scripts --no-package-lock --no-audit --no-fund
       - run: node ../scripts/test-photo-usage-postgres.mjs
       - run: node ../scripts/test-account-onboarding-ui.mjs

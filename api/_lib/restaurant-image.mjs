@@ -1,0 +1,13 @@
+import {validateRecipeUrl} from '../../architecture-v2/src/features/recipes/safe-url-fetch.mjs';
+const decode=value=>String(value||'').replace(/&amp;/gi,'&').replace(/&quot;/gi,'"').replace(/&#39;/g,"'").replace(/&#(\d+);/g,(_,n)=>String.fromCodePoint(Number(n)));
+export function extractRestaurantImage(html,sourceUrl){
+const candidates=[];for(const tag of String(html).match(/<meta\b[^>]*>/gi)||[]){const attrs={};for(const a of tag.matchAll(/([\w:-]+)\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))/g))attrs[a[1].toLowerCase()]=decode(a[2]??a[3]??a[4]);if(['og:image','twitter:image','twitter:image:src'].includes((attrs.property||attrs.name||'').toLowerCase()))candidates.push({url:attrs.content,imageType:'photo'});}
+for(const match of String(html).matchAll(/<script[^>]*type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi)){try{const parsed=JSON.parse(match[1]);const walk=(value,depth=0)=>{if(!value||depth>6)return;if(Array.isArray(value))return value.forEach(v=>walk(v,depth+1));if(typeof value==='object'){if(value.logo)candidates.push({url:typeof value.logo==='string'?value.logo:value.logo.url,imageType:'logo'});if(value['@graph'])walk(value['@graph'],depth+1);}};walk(parsed);}catch{}}
+// Some sites declare their brand only through a logo-marked header image.
+for(const tag of String(html).match(/<img\b[^>]*>/gi)||[]){
+ const attrs={};for(const a of tag.matchAll(/([\w:-]+)\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))/g))attrs[a[1].toLowerCase()]=decode(a[2]??a[3]??a[4]);
+ const marker=[attrs.class,attrs.id,attrs.alt].filter(Boolean).join(' ');
+ if(/(?:^|[\s_-])logo(?:$|[\s_-])/i.test(marker))candidates.push({url:attrs['data-src']||attrs.src,imageType:'logo'});
+}
+for(const candidate of candidates){if(typeof candidate.url!=="string"||!candidate.url.trim())continue;try{const url=validateRecipeUrl(new URL(candidate.url,sourceUrl).href);if(url.protocol==='https:'&&url.href.length<=2048)return {url:url.href,sourceUrl,kind:'Website image',imageType:candidate.imageType==='logo'||/logo/i.test(url.pathname)?'logo':'photo'};}catch{}}
+return null;}

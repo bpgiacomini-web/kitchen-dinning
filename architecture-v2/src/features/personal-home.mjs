@@ -1,3 +1,4 @@
+import { isTravelRestaurant } from '../domain/restaurant-travel.mjs';
 import {isHiddenPlace,hiddenPlaceDescriptor} from "../domain/hidden-places.mjs";
 import {businessPhone} from "../domain/business-phone.mjs";
 import {matchingSavedRestaurants} from "../domain/nearby-personal-rating.mjs";
@@ -18,7 +19,7 @@ export function renderRecentActivity(data) {
  return `<div class="journalHighlights">${recent.map(item=>`<button class="recentEntry" type="button" data-action="open-journal-item" data-collection="${item.collection}" data-item-id="${esc(item.id)}"><small>${item.label}</small><strong>${esc(item.name)}</strong></button>`).join('')||'<p class="hint">Your next memory starts here.</p>'}</div>`;
 }
 export function pickCandidates(data,filter='all',nearby=[]) {
- const local=nearby.filter(item=>(item.distance==null||item.distance<=32187)&&!isHiddenPlace(item,data.hiddenPlaces)).map(item=>({...item,id:"nearby:"+item.name+"|"+item.address}));
+ const local=nearby.filter(item=>!matchingSavedRestaurants(item,data.restaurants||[]).some(isTravelRestaurant)&&(item.distance==null||item.distance<=32187)&&!isHiddenPlace(item,data.hiddenPlaces)).map(item=>({...item,id:"nearby:"+item.name+"|"+item.address}));
  const seen=new Set(),key=item=>[item.name,item.address].join(' ').toLowerCase().replace(/[^a-z0-9]/g,'');
  return local.filter(item=>{const value=key(item);if(seen.has(value))return false;seen.add(value);return true;});
 }

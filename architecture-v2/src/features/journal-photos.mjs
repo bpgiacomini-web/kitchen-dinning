@@ -1,3 +1,5 @@
+import {summarizeRestaurantProfile} from '../domain/restaurant-profile.mjs';
+import {prefersWebsiteImage} from './restaurant-image.mjs';
 import { importCocktailUrl } from "./cocktail-import.mjs";
 import { recipeImageUrl } from "./recipes/import-parser.mjs";
 export async function optimizePhoto(file) {
@@ -58,7 +60,7 @@ export function createJournalPhotos({root,getData,save}) {
  }
  function enhance(){
   for(const card of root.querySelectorAll('[data-review-photo-refs]')){
-   if(card.dataset.reviewPhotosMounted)continue;
+   if(card.dataset.reviewPhotosMounted || card.closest('[hidden],details:not([open])'))continue;
    card.dataset.reviewPhotosMounted='true';
    let refs;try{refs=JSON.parse(card.dataset.reviewPhotoRefs);}catch{continue;}
    if(!Array.isArray(refs)||!refs.length)continue;
@@ -84,11 +86,14 @@ export function createJournalPhotos({root,getData,save}) {
    if(entry.dataset.photoLoading || entry.querySelector('.recentThumb'))continue;
    const item=getData()[entry.dataset.collection]?.find(item=>String(item.id)===entry.dataset.itemId);if(!item)continue;
    const visits=[...(item.reviewHistory||item.visits||[])].reverse();
-   const path=visits.find(visit=>visit.photoRefs?.length)?.photoRefs?.[0]?.path || item.photoRefs?.[0]?.path;
-   const source=recipeImageUrl(item.sourceImageUrl);if(!path&&!source)continue;entry.dataset.photoLoading='true';
-   void (path?imageUrl(path):Promise.resolve(source)).then(src=>{if(!src||!entry.isConnected)return;const image=new window.Image();image.className='recentThumb';image.alt='';image.referrerPolicy='no-referrer';image.onload=()=>{if(entry.isConnected)entry.append(image);};image.src=src;});
+   const restaurantCover=entry.dataset.collection==='restaurants'?summarizeRestaurantProfile(item).primaryPhoto:null;
+   const websiteCover=entry.dataset.collection==='restaurants'&&!item.hideWebsiteImage&&item.websiteImage?.url&&(prefersWebsiteImage(item)||!restaurantCover);
+   const path=websiteCover?null:restaurantCover?.path || visits.find(visit=>visit.photoRefs?.length)?.photoRefs?.[0]?.path || item.photoRefs?.[0]?.path;
+   const source=recipeImageUrl(websiteCover?item.websiteImage.url:restaurantCover?.url||item.sourceImageUrl);if(!path&&!source)continue;entry.dataset.photoLoading='true';
+   void (path?imageUrl(path):Promise.resolve(source)).then(src=>{if(!src||!entry.isConnected)return;const image=new window.Image();image.className='recentThumb';if(websiteCover&&item.websiteImage.imageType==='logo')image.style.objectFit='contain';image.alt='';image.referrerPolicy='no-referrer';image.onload=()=>{if(entry.isConnected)entry.append(image);};image.src=src;});
   }
  }
+ root.addEventListener('toggle',()=>enhance(),true);
  const observer=new window.MutationObserver(()=>{if(!pending){pending=true;queueMicrotask(()=>{pending=false;enhance();});}});observer.observe(root,{childList:true,subtree:true});
  root.addEventListener('click',event=>{const button=event.target.closest('[data-photo-action]');if(!button)return;if(button.dataset.photoAction==='open' && editTargets().some(([collection,id,editor])=>collection===button.dataset.collection && id===button.dataset.itemId && editor?.contains(button)))open(button.dataset.collection,button.dataset.itemId);});
  function open(collection,id){

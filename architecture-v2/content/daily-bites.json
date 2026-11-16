@@ -1,0 +1,340 @@
+{
+  "schemaVersion": 1,
+  "regions": [
+    {
+      "id": "greater-st-louis",
+      "name": "St. Louis · Metro East",
+      "timeZone": "America/Chicago"
+    }
+  ],
+  "entries": [
+    {
+      "id": "joy-of-cooking",
+      "regionId": "greater-st-louis",
+      "publicationDate": "2026-11-16",
+      "status": "approved",
+      "category": "Regional food history",
+      "title": "The Joy of Cooking began in St. Louis",
+      "summary": "Before it became a kitchen staple, The Joy of Cooking began as a St. Louis self-publishing project.",
+      "body": "In 1931, Irma Rombauer published the first edition herself. Her daughter Marion contributed its illustrations, and a local printer produced 3,000 copies. A cookbook that would reach kitchens far beyond the region started with a distinctly local collaboration.",
+      "primarySubject": "joy-of-cooking",
+      "claimKey": "joy-of-cooking-1931-first-edition",
+      "subjectTags": [
+        "joy",
+        "of",
+        "cooking"
+      ],
+      "sources": [
+        {
+          "name": "The Joy of Cooking — official history",
+          "url": "https://joyofcooking.com/about/"
+        }
+      ],
+      "verifiedAt": "2026-11-16"
+    },
+    {
+      "id": "collinsville-horseradish",
+      "regionId": "greater-st-louis",
+      "publicationDate": "2026-11-17",
+      "status": "approved",
+      "category": "Metro East discoveries",
+      "title": "Collinsville celebrates the horseradish harvest",
+      "summary": "Horseradish belongs on a Metro East food map, right alongside the restaurants.",
+      "body": "Illinois Extension describes horseradish as a perennial that commercial growers cultivate as an annual row crop, planting in spring and digging roots in late fall. The roots become the pungent condiment. Collinsville celebrates that agricultural connection with its International Horseradish Festival.",
+      "primarySubject": "collinsville-horseradish",
+      "claimKey": "horseradish-commercial-growing-cycle",
+      "subjectTags": [
+        "collinsville",
+        "horseradish"
+      ],
+      "sources": [
+        {
+          "name": "University of Illinois Extension",
+          "url": "https://extension.illinois.edu/blogs/prairies-perennials/2016-06-03-how-grow-and-harvest-horseradish"
+        }
+      ],
+      "verifiedAt": "2026-11-16"
+    },
+    {
+      "id": "mushroom-umami",
+      "regionId": "greater-st-louis",
+      "publicationDate": "2026-11-18",
+      "status": "approved",
+      "category": "Cooking science",
+      "title": "Mushrooms bring their own savory flavor",
+      "summary": "There is a reason mushrooms can give a dish that satisfying savory character.",
+      "body": "University of Connecticut Extension identifies glutamate in commercially produced mushrooms as a source of umami, the savory taste also associated with foods such as meat and cheese. That makes the mushroom more than a texture on the plate: it brings a flavor of its own.",
+      "primarySubject": "mushroom-umami",
+      "claimKey": "mushroom-glutamate-umami",
+      "subjectTags": [
+        "mushroom",
+        "umami"
+      ],
+      "sources": [
+        {
+          "name": "University of Connecticut Extension",
+          "url": "https://extension.uconn.edu/publication/edible-mushroom-nutrition-facts/"
+        }
+      ],
+      "verifiedAt": "2026-11-16"
+    },
+    {
+      "id": "soulard-market",
+      "regionId": "greater-st-louis",
+      "publicationDate": "2026-11-19",
+      "status": "approved",
+      "category": "Neighborhood food culture",
+      "title": "Soulard Market’s present buildings date to 1929",
+      "summary": "The market buildings have a story of their own.",
+      "body": "The City of St. Louis dates the present Soulard Market complex to 1929. Earlier market buildings were destroyed by the 1896 tornado. The replacement paired market stalls with a central building containing a community auditorium, borrowing inspiration from Italian Renaissance architecture.",
+      "primarySubject": "soulard-market",
+      "claimKey": "soulard-current-complex-1929",
+      "subjectTags": [
+        "soulard",
+        "market"
+      ],
+      "sources": [
+        {
+          "name": "City of St. Louis — building history",
+          "url": "https://dynamic.stlouis-mo.gov/history/structdetail.cfm?Master_ID=1321"
+        }
+      ],
+      "verifiedAt": "2026-11-16"
+    },
+    {
+      "id": "pie-pumpkins",
+      "regionId": "greater-st-louis",
+      "publicationDate": "2026-11-20",
+      "status": "approved",
+      "category": "Seasonal foods",
+      "title": "Pie pumpkins are picked for flavor and texture",
+      "summary": "The pumpkin for your porch is not necessarily the one you want in your pie.",
+      "body": "Illinois Extension recommends smaller pie pumpkins for their cooking flavor and texture. Processing pumpkins may be labeled pie or sweet pumpkins. When baking is the goal, choosing a pumpkin intended for the kitchen is a useful first step before the recipe even begins.",
+      "primarySubject": "pie-pumpkins",
+      "claimKey": "pie-pumpkin-cooking-selection",
+      "subjectTags": [
+        "pie",
+        "pumpkins"
+      ],
+      "sources": [
+        {
+          "name": "University of Illinois Extension",
+          "url": "https://extension.illinois.edu/gardening/pumpkin"
+        }
+      ],
+      "verifiedAt": "2026-11-16"
+    },
+    {
+      "id": "old-vienna",
+      "regionId": "greater-st-louis",
+      "publicationDate": "2026-11-21",
+      "status": "approved",
+      "category": "Local food brands",
+      "title": "Old Vienna traces its St. Louis roots to 1936",
+      "summary": "The company behind Red Hot Riplets traces its beginnings to a local potato-chip business.",
+      "body": "According to Old Vienna’s own history, Louis Kauffmann started the St. Louis business in 1936. The original company later dissolved, and new ownership continued as Old Vienna LLC in 1996. Its sweet-and-spicy barbecue snack identity is one more part of the region’s food vocabulary.",
+      "primarySubject": "old-vienna",
+      "claimKey": "old-vienna-company-origins-1936",
+      "subjectTags": [
+        "old",
+        "vienna"
+      ],
+      "sources": [
+        {
+          "name": "Old Vienna — company history",
+          "url": "https://oldviennallc.com/about-us/"
+        }
+      ],
+      "verifiedAt": "2026-11-16"
+    },
+    {
+      "id": "cahokia-corn",
+      "regionId": "greater-st-louis",
+      "publicationDate": "2026-11-22",
+      "status": "approved",
+      "category": "Regional food history",
+      "title": "An 800-year-old corn cob tells Cahokia’s food story",
+      "summary": "A small object from Cahokia can open a much bigger conversation about food.",
+      "body": "The Illinois State Museum describes a corn cob recovered from a Cahokia fire pit dating to roughly 800 years ago. It is smaller than modern sweet corn. The museum explains how growers saved kernels from larger ears for planting, connecting a surviving food remnant with generations of agricultural knowledge.",
+      "primarySubject": "cahokia-corn",
+      "claimKey": "cahokia-corn-cob-museum",
+      "subjectTags": [
+        "cahokia",
+        "corn"
+      ],
+      "sources": [
+        {
+          "name": "Illinois State Museum",
+          "url": "https://story.illinoisstatemuseum.org/node/41"
+        }
+      ],
+      "verifiedAt": "2026-11-16"
+    },
+    {
+      "id": "ted-drewes",
+      "regionId": "greater-st-louis",
+      "publicationDate": "2026-11-23",
+      "status": "approved",
+      "category": "Regional food traditions",
+      "title": "Why Ted Drewes calls its frozen custard a concrete",
+      "summary": "In St. Louis, concrete can mean something you eat with a spoon.",
+      "body": "Ted Drewes describes its concrete as a thick, hand-mixed frozen-custard treat dense enough to serve upside down. The name captures the texture, rather than a separate flavor: it is a memorable way to describe a familiar local dessert tradition.",
+      "primarySubject": "ted-drewes",
+      "claimKey": "ted-drewes-concrete-texture",
+      "subjectTags": [
+        "ted",
+        "drewes"
+      ],
+      "sources": [
+        {
+          "name": "Ted Drewes — frequently asked questions",
+          "url": "https://teddrewes.com/faq/"
+        }
+      ],
+      "verifiedAt": "2026-11-16"
+    },
+    {
+      "id": "cranberry-buoyancy",
+      "regionId": "greater-st-louis",
+      "publicationDate": "2026-11-24",
+      "status": "approved",
+      "category": "Food science",
+      "title": "Air pockets help cranberries float at harvest",
+      "summary": "Those floating berries have a little help hidden beneath their skins.",
+      "body": "Air pockets inside cranberries make them buoyant. Massachusetts Cranberries explains that growers can flood bogs during harvest so loosened fruit floats for collection. The water is a harvesting tool; the floating berry is a small demonstration of food science.",
+      "primarySubject": "cranberry-buoyancy",
+      "claimKey": "cranberry-air-pockets-float",
+      "subjectTags": [
+        "cranberry",
+        "buoyancy"
+      ],
+      "sources": [
+        {
+          "name": "Massachusetts Cranberries — harvest",
+          "url": "https://www.cranberries.org/fall"
+        }
+      ],
+      "verifiedAt": "2026-11-16"
+    },
+    {
+      "id": "slpl-culinary-collection",
+      "regionId": "greater-st-louis",
+      "publicationDate": "2026-11-25",
+      "status": "approved",
+      "category": "Food discoveries",
+      "title": "St. Louis food history lives in old menus",
+      "summary": "You can explore regional food culture without making a reservation.",
+      "body": "St. Louis Public Library’s Culinary Collection began as an effort to document the city’s culinary history, conceived in 1989 by Susan Manlin Katzman. Rare cookbooks and menus are part of the collection at Central Library. Its online exhibit offers another doorway into the places and meals people wanted to remember.",
+      "primarySubject": "slpl-culinary-collection",
+      "claimKey": "slpl-culinary-collection-origins",
+      "subjectTags": [
+        "slpl",
+        "culinary",
+        "collection"
+      ],
+      "sources": [
+        {
+          "name": "St. Louis Public Library — Culinary Collection",
+          "url": "https://culinary.slpl.org/"
+        }
+      ],
+      "verifiedAt": "2026-11-16"
+    },
+    {
+      "id": "bread-yeast",
+      "regionId": "greater-st-louis",
+      "publicationDate": "2026-11-26",
+      "status": "approved",
+      "category": "Cooking techniques",
+      "title": "Yeast gives bread its lift with carbon dioxide",
+      "summary": "A rising loaf is a kitchen project with a living ingredient at work.",
+      "body": "Iowa State University Extension explains that active yeast breaks down sugar and releases carbon dioxide gas. That gas helps dough rise. The bubbles you are waiting for are part of the transformation from a bowl of ingredients into bread.",
+      "primarySubject": "bread-yeast",
+      "claimKey": "yeast-carbon-dioxide-bread-rise",
+      "subjectTags": [
+        "bread",
+        "yeast"
+      ],
+      "sources": [
+        {
+          "name": "Iowa State University Extension",
+          "url": "https://blogs.extension.iastate.edu/answerline/2021/01/12/yeast-bread-baking-a-kitchen-science-drama/"
+        }
+      ],
+      "verifiedAt": "2026-11-16"
+    },
+    {
+      "id": "fitzs-bottling",
+      "regionId": "greater-st-louis",
+      "publicationDate": "2026-11-27",
+      "status": "approved",
+      "category": "Restaurant innovations",
+      "title": "Fitz’s rescued its bottling line from a barn",
+      "summary": "At Fitz’s, the machinery is part of the food story.",
+      "body": "Fitz’s says its vintage 1940s bottling line was found in a barn in Shawano, Wisconsin, then refurbished for the Delmar Loop restaurant that opened in 1993. Installed where guests could see it, the line brought the production process into the restaurant experience.",
+      "primarySubject": "fitzs-bottling",
+      "claimKey": "fitzs-rescued-bottling-line",
+      "subjectTags": [
+        "fitzs",
+        "bottling"
+      ],
+      "sources": [
+        {
+          "name": "Fitz’s — official history",
+          "url": "https://fitzsrootbeer.com/history/"
+        }
+      ],
+      "verifiedAt": "2026-11-16"
+    },
+    {
+      "id": "worlds-fair-ice-cream-cone",
+      "regionId": "greater-st-louis",
+      "publicationDate": "2026-11-28",
+      "status": "approved",
+      "category": "Food myths",
+      "title": "The 1904 ice cream cone story has rival inventors",
+      "summary": "The 1904 World’s Fair connection is famous. Naming a single inventor is less straightforward.",
+      "body": "The Library of Congress describes the Charles E. Menches story as a legend and notes that several confectioners at the St. Louis World’s Fair claimed the invention. Enjoy the local connection, but treat a tidy, one-person origin story as disputed history.",
+      "primarySubject": "worlds-fair-ice-cream-cone",
+      "claimKey": "ice-cream-cone-disputed-inventor",
+      "subjectTags": [
+        "worlds",
+        "fair",
+        "ice",
+        "cream",
+        "cone"
+      ],
+      "sources": [
+        {
+          "name": "Library of Congress — In the Muse",
+          "url": "https://blogs.loc.gov/music/2010/07/ice-cream/"
+        }
+      ],
+      "verifiedAt": "2026-11-16"
+    },
+    {
+      "id": "st-paul-sandwich",
+      "regionId": "greater-st-louis",
+      "publicationDate": "2026-11-29",
+      "status": "approved",
+      "category": "Regional food traditions",
+      "title": "The St. Paul puts egg foo young between bread",
+      "summary": "The St. Paul sandwich puts an egg foo young patty between slices of bread.",
+      "body": "In its review of Love at First Bite, Sauce Magazine describes the familiar St. Paul as an egg foo young patty served on white bread before discussing the restaurant’s variation. It is a useful reminder that a regional signature can be a sandwich as readily as a pizza or dessert.",
+      "primarySubject": "st-paul-sandwich",
+      "claimKey": "st-paul-sandwich-egg-foo-young",
+      "subjectTags": [
+        "st",
+        "paul",
+        "sandwich"
+      ],
+      "sources": [
+        {
+          "name": "Sauce Magazine — restaurant review",
+          "url": "https://www.saucemagazine.com/places-2/2020-best-new-restaurants-no-10-love-at-first-bite-17341834/"
+        }
+      ],
+      "verifiedAt": "2026-11-16"
+    }
+  ]
+}
