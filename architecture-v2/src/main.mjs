@@ -381,7 +381,7 @@ function renderRestaurantReviewForm(restaurantId) {
     const rating = reviewRating({ rating: dish.rating, ratingScale: editingReview?.ratingScale }, "rating") || 0;
     return `<article class="reviewDish" data-review-dish-id="${itemId}" data-rating="${rating}">${reviewDishMarkup(dish, restaurant, rating, itemId)}</article>`;
   };
-  const categories = RESTAURANT_REVIEW_CATEGORIES.map(category => `<details class="reviewCategory"><summary>${category}</summary><div class="reviewCategoryBody" data-review-category="${category}"><div class="reviewDishList">${savedDishes.filter(dish => (dish.category || "Entrées") === category).map(renderSavedDish).join("")}</div><button class="btn" type="button" data-action="add-review-dish" data-category="${category}">＋ Add ${category === "Drinks" ? "a drink" : "a dish"}</button></div></details>`).join("");
+  const categories = RESTAURANT_REVIEW_CATEGORIES.map(category => `<details class="reviewCategory"><summary>${category}<span class="reviewCategoryCount" hidden></span></summary><div class="reviewCategoryBody" data-review-category="${category}"><div class="reviewDishList">${savedDishes.filter(dish => (dish.category || "Entrées") === category).map(renderSavedDish).join("")}</div><button class="btn" type="button" data-action="add-review-dish" data-category="${category}">＋ Add ${category === "Drinks" ? "a drink" : "a dish"}</button></div></details>`).join("");
   root.innerHTML = `
     <section class="hero"><div class="heroIn"><div class="eyebrow">Your dining journal · Food Critic</div><h2>${editingReview ? "Edit Visit Review" : "Rate a Visit"}</h2><p>${editingReview ? `Update the saved review for ${escapeHtml(restaurant.name)}. Your current ratings, dishes, and notes have been loaded.` : `Review your visit to <strong>${escapeHtml(restaurant.name)}</strong>. Your restaurant details and review are saved together when you finish.`}</p></div></section>
     <section class="content-panel restaurantEditorPage">
@@ -409,7 +409,7 @@ function renderRestaurantReviewForm(restaurantId) {
       </div>
     </section>`;
   reviewPhotoEditor=mountReviewPhotos({container:root.querySelector(".reviewPhotos"),restaurantId,initial:editingReview?.photoRefs||[]});
-  updateReviewSurveySummary();
+  updateReviewFoodAverage();
 }
 function renderRestaurantRankings() {
   const ranked = dataset.restaurants.map(restaurant => {
@@ -552,6 +552,12 @@ function requestDeviceRestaurantLocation() {
   }, { enableHighAccuracy: false, timeout: 12000, maximumAge: 300000 });
 }
 function updateReviewFoodAverage() {
+  for (const category of root.querySelectorAll('.reviewCategory')) {
+    const count=category.querySelectorAll('[data-review-dish-id]').length;
+    category.classList.toggle('hasReviewItems',count>0);
+    const badge=category.querySelector('.reviewCategoryCount');
+    if(badge){badge.hidden=!count;badge.textContent=count ? count+' '+(count===1?'item':'items') : '';}
+  }
   const dishes = [...root.querySelectorAll("[data-review-dish-id]")];
   const ratings = dishes.map(dish => Number(dish.dataset.rating)).filter(value => Number.isFinite(value) && value >= 1 && value <= 10);
   const label = root.querySelector("#review-food-average");
