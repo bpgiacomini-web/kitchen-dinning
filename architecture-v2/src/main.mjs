@@ -497,7 +497,7 @@ function renderRestaurantLookupResults(results, message = "", target = {}) {
     return;
   }
   statusLine.textContent = message || `Choose a match to fill available details${restaurantLookupLocation ? "; closest places appear first" : ""}.`;
-  container.innerHTML = results.map((place, index) => `<div class="lookupMatch"><button class="restaurantLookupResult" type="button" data-action="select-restaurant-lookup" data-result-index="${index}"><strong>${escapeHtml(place.name)}</strong><small>${escapeHtml([place.cuisine, place.address, place.distance == null ? "" : place.distance < 1609 ? `${Math.round(place.distance * 3.28084)} ft away` : `${(place.distance / 1609.34).toFixed(1)} mi away`].filter(Boolean).join(" · ") || "Address not listed")}</small></button>${mapMenuMarkup(place)}</div>`).join("");
+  container.innerHTML = results.map((place, index) => `<div class="lookupMatch" data-hidden-place="${escapeHtml(JSON.stringify(place))}"><button class="restaurantLookupResult" type="button" data-action="select-restaurant-lookup" data-result-index="${index}"><strong>${escapeHtml(place.name)}</strong><small>${escapeHtml([place.cuisine, place.address, place.distance == null ? "" : place.distance < 1609 ? `${Math.round(place.distance * 3.28084)} ft away` : `${(place.distance / 1609.34).toFixed(1)} mi away`].filter(Boolean).join(" · ") || "Address not listed")}</small></button>${mapMenuMarkup(place)}</div>`).join("");
 }
 function localRestaurantNameMatches(query) {
   const normalize = value => String(value || "").toLocaleLowerCase().replace(/[’']/g, "").replace(/[^a-z0-9]+/g, " ").trim();
