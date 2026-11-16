@@ -1,4 +1,4 @@
-import test from 'node:test';import assert from 'node:assert/strict';import {extractRestaurantImage} from '../../api/_lib/restaurant-image.mjs';import {createRestaurantLookupHandler} from '../../api/restaurant-lookup.js';import {websiteImageMarkup} from '../src/features/restaurant-image.mjs';
+import test from 'node:test';import assert from 'node:assert/strict';import {extractRestaurantImage} from '../../api/_lib/restaurant-image.mjs';import {createRestaurantLookupHandler} from '../../api/restaurant-lookup.js';import {websiteImageMarkup,findRestaurantImage} from '../src/features/restaurant-image.mjs';
 const response=()=>({headers:{},setHeader(k,v){this.headers[k]=v},status(code){this.statusCode=code;return this},json(body){this.body=body;return this}});
 test('website metadata resolves relative declared images and JSON-LD logos',()=>{assert.equal(extractRestaurantImage('<meta content="/logo.png?a=1&amp;b=2" property="og:image">','https://cafe.example/').url,'https://cafe.example/logo.png?a=1&b=2');assert.equal(extractRestaurantImage('<script type="application/ld+json">{"@type":"Restaurant","logo":{"url":"/logo.png"}}</script>','https://cafe.example/').url,'https://cafe.example/logo.png');});
 test('private and executable image URLs and missing content are ignored',()=>{for(const url of ['javascript:alert(1)','http://localhost/a','https://127.0.0.1/a'])assert.equal(extractRestaurantImage('<meta property="og:image" content="'+url+'">','https://cafe.example/'),null);assert.equal(extractRestaurantImage('<meta property="og:image">','https://cafe.example/'),null);});
@@ -10,4 +10,11 @@ test("declared logos keep their type while ordinary preview pictures fill thumbn
 test('clearly marked header logos work without social metadata, ordinary images are ignored',()=>{
 const html='<img src="/food.jpg" alt="Lunch"><img src="https://elmezcalmexicanfood.com/wp-content/uploads/2020/06/El-Mezcal-Logo-200w.png" width="200" height="99" alt="El Mezcal – Authentic Mexican Food Logo" class="fusion-standard-logo">';
 const image=extractRestaurantImage(html,'https://elmezcalmexicanfood.com/');assert.equal(image.imageType,'logo');assert.match(image.url,/El-Mezcal-Logo-200w.png$/);assert.equal(extractRestaurantImage('<img src="/food.jpg" alt="Lunch">','https://cafe.example/'),null);
+});
+
+test('explicit refresh reports authentication and request failures instead of silently returning no image',async()=>{
+for(const [status,message] of [[401,/sign-in/],[429,/limit/],[422,/usable image/],[503,/did not finish/]]){
+await assert.rejects(findRestaurantImage('https://cafe.example/',{strict:true,getToken:()=> 'test',fetcher:async()=>({ok:false,status})}),message);
+assert.equal(await findRestaurantImage('https://cafe.example/',{getToken:()=> 'test',fetcher:async()=>({ok:false,status})}),null);
+}
 });

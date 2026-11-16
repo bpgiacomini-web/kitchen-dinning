@@ -1098,9 +1098,9 @@ document.addEventListener("click", async event => {
   if (!actionButton) return;
   if(actionButton.dataset.action==='refresh-restaurant-image'){
     const restaurant=cloudDataset.restaurants.find(row=>String(row.id)===String(actionButton.dataset.restaurantId));if(!restaurant?.website)return;
-    const feedback=root.querySelector('.edit-status');actionButton.disabled=true;
-    try{const imageAccount=window.metroAccountId;const websiteImage=await findRestaurantImage(restaurant.website);if(window.metroAccountId!==imageAccount)return;if(!websiteImage){if(feedback)feedback.textContent='No usable website image found. Your photos are unchanged.';actionButton.disabled=false;return;}
-    await saveCloudDataset({...cloudDataset,restaurants:cloudDataset.restaurants.map(row=>row===restaurant?{...row,websiteImage,hideWebsiteImage:false}:row)});render();}
+    const feedback=root.querySelector('[data-website-image-status]')||root.querySelector('.edit-status');actionButton.disabled=true;if(feedback)feedback.textContent='Checking '+new URL(restaurant.website).hostname+'…';
+    try{const imageAccount=window.metroAccountId;const websiteImage=await findRestaurantImage(restaurant.website,{strict:true});if(window.metroAccountId!==imageAccount)return;if(!websiteImage){if(feedback)feedback.textContent='No usable website image found. Your photos are unchanged.';actionButton.disabled=false;return;}
+    await saveCloudDataset({...cloudDataset,restaurants:cloudDataset.restaurants.map(row=>row===restaurant?{...row,websiteImage,hideWebsiteImage:false}:row)});render();const result=root.querySelector('[data-website-image-status]');if(result)result.textContent=summarizeRestaurantProfile(restaurant).primaryPhoto?'Website image saved. Your own photo remains the main picture.':'Website image updated.';}
     catch(error){actionButton.disabled=false;if(feedback)feedback.textContent=error.message;}return;
   }
   if(actionButton.dataset.action === "photo-usage"){await photoController.usage(document.querySelector('#photo-storage-usage'));return;}
