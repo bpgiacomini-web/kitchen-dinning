@@ -1,5 +1,5 @@
 import {awardBadges,earnedBadges} from './domain/badges.mjs';
-import {badgesMarkup,celebrateBadges} from './features/badges.mjs';
+import {badgesMarkup,celebrateBadges,updateAccountBadge} from './features/badges.mjs';
 import {websiteImageMarkup,findRestaurantImage,mountWebsiteImageFallback,prefersWebsiteImage} from './features/restaurant-image.mjs';
 import { mountDailyBite } from './features/daily-bite.mjs';
 let destroyDailyBite=null;
@@ -92,6 +92,7 @@ async function saveCloudDataset(nextDataset) {
   cloudRevision = result.revision;
   window.metroDatasetRevision = cloudRevision;
   cloudDataset = nextDataset;
+  updateAccountBadge(document.querySelector("#metroAccountButton"),cloudDataset);
   celebrateBadges(earnedBadges(nextDataset).filter(badge=>!previousBadges.has(badge.id)));
   mergeVisibleDataset();
   return result;
@@ -440,9 +441,9 @@ function renderRestaurantRankings() {
     const summary=summarizeRestaurantProfile(restaurant);
     const reviews=summary.visits;
     const average=summary.average;
-    return { restaurant, reviews, average };
+    return { restaurant, reviews, average, summary };
   }).filter(item => item.average != null).sort((a, b) => b.average - a.average || a.restaurant.name.localeCompare(b.restaurant.name));
-  root.innerHTML = `<section class="hero"><div class="heroIn"><div class="eyebrow">Your dining journal · Food Critic</div><h2>My Restaurant Rankings</h2><p>Restaurants are ranked by your average overall score across saved visits.</p></div></section><section class="content-panel"><div class="sectionTitle"><h3>Your highest rated restaurants</h3><button class="btn" type="button" data-view="dining">← My Restaurants</button></div><div class="restaurantRankings">${ranked.length ? ranked.map(({ restaurant, reviews, average }, index) => `<button class="restaurantRanking" type="button" data-action="open-journal-item" data-collection="restaurants" data-item-id="${escapeHtml(restaurant.id)}" aria-label="Open review for ${escapeHtml(restaurant.name)}"><span class="rankBadge">#${index + 1}</span><div><strong>${escapeHtml(restaurant.name)}</strong><small>${escapeHtml([restaurant.cuisine, `${reviews.length} ${reviews.length === 1 ? "visit" : "visits"}`].filter(Boolean).join(" · "))}</small>${topReviewFoods(restaurant).length ? `<p>Top dishes: ${topReviewFoods(restaurant).map(item => `${escapeHtml(item.name)} ${escapeHtml(item.rating)}/10`).join(" · ")}</p>` : ""}</div><strong class="rankingScore">${average.toFixed(1)}<small>/10</small></strong></button>`).join("") : `<div class="empty">Complete a restaurant visit review to start your rankings.</div>`}</div></section>`;
+  root.innerHTML = `<section class="hero"><div class="heroIn"><div class="eyebrow">Your dining journal · Food Critic</div><h2>My Restaurant Rankings</h2><p>Restaurants are ranked by your average overall score across saved visits.</p></div></section><section class="content-panel"><div class="sectionTitle"><h3>Your highest rated restaurants</h3><button class="btn" type="button" data-view="dining">← My Restaurants</button></div><div class="restaurantRankings">${ranked.length ? ranked.map(({ restaurant, reviews, average, summary }, index) => `<button class="restaurantRanking" type="button" data-action="open-journal-item" data-collection="restaurants" data-item-id="${escapeHtml(restaurant.id)}" aria-label="Open review for ${escapeHtml(restaurant.name)}"><span class="rankingMarker"><span class="rankingThumb">${summary.primaryPhoto && !prefersWebsiteImage(restaurant) ? photoMarkup(summary.primaryPhoto,true) : websiteImageMarkup(restaurant)}</span><span class="rankBadge">#${index + 1}</span></span><div><strong>${escapeHtml(restaurant.name)}</strong><small>${escapeHtml([restaurant.cuisine, `${reviews.length} ${reviews.length === 1 ? "visit" : "visits"}`].filter(Boolean).join(" · "))}</small>${topReviewFoods(restaurant).length ? `<p>Top dishes: ${topReviewFoods(restaurant).map(item => `${escapeHtml(item.name)} ${escapeHtml(item.rating)}/10`).join(" · ")}</p>` : ""}</div><strong class="rankingScore">${average.toFixed(1)}<small>/10</small></strong></button>`).join("") : `<div class="empty">Complete a restaurant visit review to start your rankings.</div>`}</div></section>`;
 }
 async function searchHomeBars() {
  const section=root.querySelector("#home-bars");if(!section)return;
@@ -933,6 +934,7 @@ function renderImportPreview(recipe) {
   preview.innerHTML = `<article class="parsedRecipe"><p class="sectionKicker">Review before saving</p><div class="field"><label for="review-recipe-title">Recipe title</label><input id="review-recipe-title" maxlength="180" value="${escapeHtml(recipe.title)}"></div><div class="field"><label for="review-recipe-category">Recipe category</label><select id="review-recipe-category">${RECIPE_CATEGORIES.map(category => `<option value="${escapeHtml(category)}"${category === "Other" ? " selected" : ""}>${escapeHtml(category)}</option>`).join("")}</select></div><div class="field"><label for="review-recipe-rating">Your overall recipe rating <span class="optionalMark">Optional · 1–10</span></label><input id="review-recipe-rating" type="number" min="1" max="10" step="1" inputmode="numeric" value="${recipe.overallRating == null ? "" : escapeHtml(recipe.overallRating)}" placeholder="Leave blank if unrated"></div>${metadata.length ? `<dl>${metadata.map(([label, value]) => `<div><dt>${label}</dt><dd>${escapeHtml(value)}</dd></div>`).join("")}</dl>` : ""}${recipe.source ? `<p class="note"><a class="recipeSourceLink" href="${escapeHtml(recipe.source)}" target="_blank" rel="noopener noreferrer">Recipe link ↗</a></p>` : ""}<div class="field"><label for="review-recipe-ingredients">Ingredients (one per line)</label><textarea id="review-recipe-ingredients" rows="8" maxlength="30000">${escapeHtml(ingredients.join("\n"))}</textarea></div><div class="field"><label for="review-recipe-directions">Directions (one step per line)</label><textarea id="review-recipe-directions" rows="8" maxlength="30000">${escapeHtml(directions.join("\n"))}</textarea></div><div class="actions"><button class="btn primary" type="button" data-action="save-recipe">Save to My Recipes</button></div><p id="recipe-save-status" class="importFeedback" role="status" aria-live="polite"></p></article>`;
 }
 function render() {
+  updateAccountBadge(document.querySelector("#metroAccountButton"),cloudReady?cloudDataset:null);
   destroyDailyBite?.();destroyDailyBite=null;
   destroyJourney?.();destroyJourney=null;
   stopPizzaScanner();
@@ -1854,6 +1856,7 @@ async function refreshDataset() {
   document.querySelector(".badgeCelebration")?.remove();
   try {
     cloudReady = false;
+    updateAccountBadge(document.querySelector("#metroAccountButton"),null);
     cloudDataset = { recipes: [], restaurants: [], pizzas: [], bars: [], drinks: [], cocktailRecipes: [], cats: [] };
     cloudRevision = 0;
     try {
@@ -1881,6 +1884,7 @@ async function refreshDataset() {
 
   } catch (error) {
     cloudReady = false;
+    updateAccountBadge(document.querySelector("#metroAccountButton"),null);
     setStatus(error?.message || "Data unavailable", "warn");
     render();
     if (activeView === "home") { loadLocalFoodNews(); searchNearbyRestaurants(); }
@@ -1895,3 +1899,5 @@ window.addEventListener("metro-authenticated", () => { void refreshDataset(); })
 // The auth bootstrap in index.html can finish before this module downloads.
 // If it already authenticated the page, recover here instead of missing the event.
 if (document.body.classList.contains("metro-authenticated")) void refreshDataset();
+
+window.addEventListener("metro-signed-out",()=>{updateAccountBadge(document.querySelector("#metroAccountButton"),null);document.querySelector(".badgeCelebration")?.remove();});
