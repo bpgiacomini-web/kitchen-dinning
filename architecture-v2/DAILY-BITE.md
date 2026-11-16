@@ -28,3 +28,5 @@ Scheduled text is publicly fetchable as a static asset, though the UI hides futu
 Domain tests cover winter/summer midnight, 23/25-hour days, future/draft exclusion, exhausted reserve, empty/unknown regions and duplicate protection. Browser checks cover expansion, attribution, archive search, Back navigation, responsive layout and failure isolation. Full existing release tests remain required. Existing Hobby/static hosting infrastructure is reused; no new billable integration was added. Normal existing hosting quotas still apply.
 
 Deferred: 90-entry library expansion, trivia, favorites, share links, private administrator UI, automated replenishment, administrator notifications and additional region selection. Do not add paid infrastructure for these without explicit approval.
+
+Home refinement: Daily Bite is collapsed by default, showing only its title, headline and chevron. One expansion reveals the date, category, complete story, sources and archive link. Mobile Home reserves the measured banner height through ResizeObserver, including safe-area padding, rather than a fixed 132px estimate. Verified at 390px and 430px widths with a 30px logo-to-journal gap.

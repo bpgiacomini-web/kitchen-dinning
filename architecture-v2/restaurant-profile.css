@@ -4,3 +4,5 @@
 .hero.homeJournalCompact{padding:0;background:none;border:0;box-shadow:none;margin-block:12px}.homeJournalCompact .heroIn{padding:0}.homeJournalCompact .homeAppsDisclosure{margin:0}.restaurantScopeControl{display:flex;align-items:center;gap:10px;margin-block:12px}.restaurantScopeControl select{min-height:44px}.restaurantProfile .sectionKicker{color:var(--accent,#8ab6a3)}
 #app>.hero.homeJournalCompact{padding:0;background:none;border:0;box-shadow:none}#app>.hero.homeJournalCompact>.heroIn{padding:0}#app .homeJournalCompact .homeAppsDisclosure>summary{margin:0}
 .app:has(>.top.homeStickyHeader) #app>.hero.homeJournalCompact{margin:12px 0 18px}.app:has(>.top.homeStickyHeader) #app>.hero.homeJournalCompact>.heroIn{padding:0;max-width:none;width:100%}#app .homeJournalCompact .homeAppsDisclosure{margin:0;width:100%}
+
+@media(max-width:520px){.app:has(>.top.homeStickyHeader) #app{padding-top:calc(var(--metro-home-header-height,132px) + 8px)}}

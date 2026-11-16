@@ -9,3 +9,16 @@
 .dailyBiteSources{font-size:.8rem;color:#bfcac6}.dailyBiteSources a{color:#a8ddcb;text-decoration:underline;overflow-wrap:anywhere}
 .dailyBiteArchiveLink{margin-top:8px}.dailyBiteFilters{display:flex;gap:12px;flex-wrap:wrap;margin:20px 0}.dailyBiteFilters label{display:grid;gap:6px;flex:1;min-width:150px}.dailyBiteFilters input,.dailyBiteFilters select{width:100%;min-height:44px}
 @media(max-width:600px){.dailyBite{padding:20px}.dailyBite h2{font-size:1.4rem}.dailyBite h3{font-size:1.2rem}}
+/* A single accessible disclosure keeps Home brief; the complete story is one tap away. */
+#app .dailyBite.dailyBiteCompact{padding:0}
+#app .dailyBiteDisclosure>summary{display:flex;align-items:center;justify-content:space-between;gap:16px;cursor:pointer;list-style:none;padding:18px 20px;margin:0;color:#e5c682;min-height:80px;box-sizing:border-box}
+#app .dailyBiteDisclosure>summary::-webkit-details-marker{display:none}
+#app .dailyBiteSummaryText{display:grid;gap:6px;min-width:0}
+#app .dailyBiteSummaryText>strong{font-size:1.15rem;line-height:1.25;color:var(--gold,#dbb366)}
+#app .dailyBiteHeadline{font-size:.95rem;line-height:1.4;color:#f4f1ea;font-weight:500}
+#app .dailyBiteChevron{flex:none;transition:transform .15s}
+#app .dailyBiteDisclosure[open]>summary .dailyBiteChevron{transform:rotate(180deg)}
+#app .dailyBiteDisclosure>summary:focus-visible{outline:2px solid #e5c682;outline-offset:3px;border-radius:20px}
+#app .dailyBiteExpanded{padding:0 20px 20px;border-top:1px solid #ffffff18}
+#app .dailyBiteExpanded>.dailyBiteMeta{margin-top:16px}
+@media(prefers-reduced-motion:reduce){#app .dailyBiteChevron{transition:none}}

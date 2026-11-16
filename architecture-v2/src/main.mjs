@@ -38,6 +38,11 @@ import { createGroceryPlanner } from "./features/grocery-planner.mjs";
 const groceryPlanner=createGroceryPlanner();
 const personalNearbyScore=place=>{const rating=nearbyPersonalRating(place,cloudDataset.restaurants),favorite=matchingSavedRestaurants(place,cloudDataset.restaurants).some(item=>item.favorite===true);return rating==null&&!favorite?"":`<span class="nearbyPersonalRating">${favorite?'<span class="nearbyFavorite" aria-label="Favorite">★</span> ':''}${rating==null?"":`Your rating · ${rating.toFixed(1)}/10`}</span>`;};
 const root = document.querySelector("#app");
+// Reserve the real banner height, including mobile safe-area padding and image resizing.
+const homeHeader=document.querySelector(".app > .top");
+if(homeHeader && typeof ResizeObserver!=='undefined') {
+  new ResizeObserver(()=>document.documentElement.style.setProperty('--metro-home-header-height',homeHeader.getBoundingClientRect().height+'px')).observe(homeHeader);
+}
 const status = document.querySelector("#previewNotice");
 document.querySelectorAll(".navCocktailIcon").forEach(icon => { icon.innerHTML = COCKTAIL_ICON; });
 let dataset = { recipes: [], restaurants: [], pizzas: [], bars: [], drinks: [], cocktailRecipes: [], hiddenPlaces: [], cats: [] };
