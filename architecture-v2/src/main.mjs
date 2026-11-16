@@ -1,3 +1,5 @@
+import { mountDailyBite } from './features/daily-bite.mjs';
+let destroyDailyBite=null;
 import { matchesRestaurantScope, homeJournalData } from './domain/restaurant-travel.mjs';
 import { restaurantProfileMarkup } from './features/restaurant-profile.mjs';
 import { summarizeRestaurantProfile, prepareRestaurantVisits, removeRestaurantVisit, duplicateRestaurant, visitId, restaurantGallery, mergeRestaurantProfiles } from './domain/restaurant-profile.mjs';
@@ -605,6 +607,8 @@ function renderHome() {
   root.innerHTML = `<section class="hero homeJournalCompact"><div class="heroIn"><details class="homeAppsDisclosure"><summary><svg class="homeJournalIcon" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="3" width="15" height="18" rx="2"/><path d="M9 3v18M3 7h4m-4 5h4m-4 5h4m6-9h4m-4 4h4"/></svg><span>Recent Journal Entries</span><svg class="homeJournalChevron" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary>${renderRecentActivity(cloudDataset)}</details></div></section><section class="localNewsPanel" aria-labelledby="local-news-title"><div class="panel-heading"><div><p class="eyebrow">St. Louis • Metro East</p><h2 id="local-news-title">Local Food News</h2></div><div class="newsHeadingActions"><span class="liveNewsBadge"><span class="liveNewsDot" aria-hidden="true"></span>LOCAL HEADLINES</span><button class="btn newsRefreshButton" type="button" id="refresh-local-news">↻ Refresh</button></div></div><p class="newsIntro">Fresh openings, good bites, and food stories from across the bi-state.</p><div id="local-food-news" class="localNewsList" aria-live="polite"><p class="hint">Loading local food stories…</p></div><p class="hint" id="local-news-updated"></p></section><p class="homePrivacyNote">Your recipes, reviews, and ratings are private to your account.</p>`;
   root.querySelector(".hero")?.insertAdjacentHTML("afterend",renderTonightPick(cloudDataset,pickFilter,chosenPickId,homeNearbyCache?.response?.places||[]));
   root.querySelector("#pick-filter")?.addEventListener("change",event=>{pickFilter=event.target.value;chosenPickId=null;render();});
+  root.querySelector(".localNewsPanel")?.insertAdjacentHTML("beforebegin", '<div id="daily-bite"></div>');
+  destroyDailyBite=mountDailyBite(root.querySelector("#daily-bite"));
   const newsPanel = root.querySelector(".localNewsPanel");
   if (newsPanel && !newsPanel.querySelector(".newsDisclosure")) {
     const intro = newsPanel.querySelector(".newsIntro");
@@ -917,6 +921,7 @@ function renderImportPreview(recipe) {
   preview.innerHTML = `<article class="parsedRecipe"><p class="sectionKicker">Review before saving</p><div class="field"><label for="review-recipe-title">Recipe title</label><input id="review-recipe-title" maxlength="180" value="${escapeHtml(recipe.title)}"></div><div class="field"><label for="review-recipe-category">Recipe category</label><select id="review-recipe-category">${RECIPE_CATEGORIES.map(category => `<option value="${escapeHtml(category)}"${category === "Other" ? " selected" : ""}>${escapeHtml(category)}</option>`).join("")}</select></div><div class="field"><label for="review-recipe-rating">Your overall recipe rating <span class="optionalMark">Optional · 1–10</span></label><input id="review-recipe-rating" type="number" min="1" max="10" step="1" inputmode="numeric" value="${recipe.overallRating == null ? "" : escapeHtml(recipe.overallRating)}" placeholder="Leave blank if unrated"></div>${metadata.length ? `<dl>${metadata.map(([label, value]) => `<div><dt>${label}</dt><dd>${escapeHtml(value)}</dd></div>`).join("")}</dl>` : ""}${recipe.source ? `<p class="note"><a class="recipeSourceLink" href="${escapeHtml(recipe.source)}" target="_blank" rel="noopener noreferrer">Recipe link ↗</a></p>` : ""}<div class="field"><label for="review-recipe-ingredients">Ingredients (one per line)</label><textarea id="review-recipe-ingredients" rows="8" maxlength="30000">${escapeHtml(ingredients.join("\n"))}</textarea></div><div class="field"><label for="review-recipe-directions">Directions (one step per line)</label><textarea id="review-recipe-directions" rows="8" maxlength="30000">${escapeHtml(directions.join("\n"))}</textarea></div><div class="actions"><button class="btn primary" type="button" data-action="save-recipe">Save to My Recipes</button></div><p id="recipe-save-status" class="importFeedback" role="status" aria-live="polite"></p></article>`;
 }
 function render() {
+  destroyDailyBite?.();destroyDailyBite=null;
   destroyJourney?.();destroyJourney=null;
   stopPizzaScanner();
   document.querySelector(".app > .top")?.classList.toggle("homeStickyHeader", activeView === "home");
@@ -933,6 +938,7 @@ function render() {
     if (active) button.setAttribute("aria-current", "page"); else button.removeAttribute("aria-current");
   });
   if (activeView === "recipes") renderList("My Recipes", "Your kitchen", dataset.recipes, "recipes");
+  else if (activeView === "daily-bite-archive") { root.innerHTML='<div id="daily-bite"></div>'; destroyDailyBite=mountDailyBite(root.querySelector("#daily-bite"),{archive:true}); }
   else if (activeView === "hidden-places") hiddenPlacesController.render();
   else if (activeView === "groceries") groceryPlanner.render(root,dataset.recipes);
   else if (activeView === "add-recipe") renderAddRecipe();
@@ -1026,7 +1032,7 @@ const viewHistory=mountViewHistory({
  key:()=>[activeView,activeView==='cocktails'?JSON.stringify(cocktailJournal.captureView()):'',activeRestaurantId,activeRecipeId,activePizzaId,pizzaEditorOpen].join('|'),
  capture:()=>({view:activeView,position:captureReturnPosition(root),cocktail:cocktailJournal.captureView(),activeRestaurantId,newRestaurantPrefill,activeReviewIndex,activeRecipeId,activePizzaId,pizzaEditorOpen,pizzaSort,pizzaQuery,pizzaFavoritesOnly,recipeSort,recipeFavoritesOnly,restaurantSort,restaurantScope,restaurantFavoritesOnly,restaurantReviewFilter,chosenPickId}),
  restore:snapshot=>{
-  if(!['home','dining','restaurant-rankings','recipes','pizzas','cocktails','groceries','journey','hidden-places','restaurant-profile','restaurant-edit','restaurant-review','edit-recipe','add-recipe'].includes(snapshot.view)||!snapshot.position)return;
+  if(!['home','daily-bite-archive','dining','restaurant-rankings','recipes','pizzas','cocktails','groceries','journey','hidden-places','restaurant-profile','restaurant-edit','restaurant-review','edit-recipe','add-recipe'].includes(snapshot.view)||!snapshot.position)return;
   stopReturnRestore?.();stopReturnRestore=null;stopEntryAlignment();releaseRecipeWakeLock();editorOrigin=null;
   activeView=snapshot.view;
   ({activeRestaurantId,activeReviewIndex,activeRecipeId,activePizzaId,pizzaEditorOpen,pizzaSort,pizzaQuery,pizzaFavoritesOnly,recipeSort,recipeFavoritesOnly,restaurantSort,restaurantFavoritesOnly,restaurantReviewFilter,chosenPickId}=snapshot);
