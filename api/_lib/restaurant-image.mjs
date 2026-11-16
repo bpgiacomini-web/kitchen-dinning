@@ -1,0 +1,7 @@
+import {validateRecipeUrl} from '../../architecture-v2/src/features/recipes/safe-url-fetch.mjs';
+const decode=value=>String(value||'').replace(/&amp;/gi,'&').replace(/&quot;/gi,'"').replace(/&#39;/g,"'").replace(/&#(\d+);/g,(_,n)=>String.fromCodePoint(Number(n)));
+export function extractRestaurantImage(html,sourceUrl){
+const candidates=[];for(const tag of String(html).match(/<meta\b[^>]*>/gi)||[]){const attrs={};for(const a of tag.matchAll(/([\w:-]+)\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))/g))attrs[a[1].toLowerCase()]=decode(a[2]??a[3]??a[4]);if(['og:image','twitter:image','twitter:image:src'].includes((attrs.property||attrs.name||'').toLowerCase()))candidates.push(attrs.content);}
+for(const match of String(html).matchAll(/<script[^>]*type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi)){try{const parsed=JSON.parse(match[1]);const walk=(value,depth=0)=>{if(!value||depth>6)return;if(Array.isArray(value))return value.forEach(v=>walk(v,depth+1));if(typeof value==='object'){if(value.logo)candidates.push(typeof value.logo==='string'?value.logo:value.logo.url);if(value['@graph'])walk(value['@graph'],depth+1);}};walk(parsed);}catch{}}
+for(const candidate of candidates){if(typeof candidate!=="string"||!candidate.trim())continue;try{const url=validateRecipeUrl(new URL(candidate,sourceUrl).href);if(url.protocol==='https:'&&url.href.length<=2048)return {url:url.href,sourceUrl,kind:'Website image'};}catch{}}
+return null;}

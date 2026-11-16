@@ -46,7 +46,7 @@
   <link rel="stylesheet" href="./styles.css?v=77">
   <link rel="stylesheet" href="./pizza-theme.css?v=8">
   <link rel="stylesheet" href="./readability.css?v=1">
-<link rel="stylesheet" href="restaurant-profile.css?v=5">
+<link rel="stylesheet" href="restaurant-profile.css?v=6">
 <link rel="stylesheet" href="daily-bite.css?v=3">
 </head>
 <body>
@@ -107,12 +107,13 @@
     <button id="metroSignOut" type="button">Sign Out</button>
     <button id="metroRestorePoints" type="button">Restore a previous version</button>
     <div id="metroRestorePanel" hidden></div><button type="button" data-action="export-journal">Export My Journal</button><button type="button" data-action="photo-usage">Photo Storage</button><div id="photo-storage-usage"></div>
+    <button type="button" data-view="badges">My Badges</button>
     <button type="button" data-view="hidden-places">Hidden places</button>
     <button type="button" data-close>Close</button>
     <p id="metroAccountStatus" role="status" aria-live="polite"></p>
   </section>
   <script src="./vendor/zxing-browser-0.2.1.min.js?v=1"></script>
-  <script type="module" src="./src/main.mjs?v=73"></script>
+  <script type="module" src="./src/main.mjs?v=74"></script>
   <script>
     const panel = document.getElementById('metroAuthPanel');
     const loading = document.getElementById('metroAuthLoading');

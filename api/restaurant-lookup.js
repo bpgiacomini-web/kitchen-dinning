@@ -195,7 +195,7 @@ async function fetchJson(fetcher, url, options, timeoutMs = 9000) {
   } finally { clearTimeout(timer); }
 }
 
-export function createRestaurantLookupHandler({ fetcher = fetch, authenticate = authenticatedUser, limitRequests = consumeAccountRateLimit, cacheLookup = nearbyCache } = {}) {
+export function createRestaurantLookupHandler({ fetcher = fetch, authenticate = authenticatedUser, limitRequests = consumeAccountRateLimit, cacheLookup = nearbyCache, fetchImagePage, resolveImageHost } = {}) {
   const websiteCache = new Map(); // Bounded public metadata; no new storage service.
   return async function handler(req, res) {
     res.setHeader("Cache-Control", "no-store, max-age=0");
@@ -243,6 +243,22 @@ export function createRestaurantLookupHandler({ fetcher = fetch, authenticate = 
         console.error("Metro Eats UPC lookup failed", String(error?.message || "upstream_error").slice(0, 80));
         return res.status(502).json({ error: "Product lookup is temporarily unavailable. You can enter the brand and pizza name yourself." });
       } finally { clearTimeout(timeout); }
+    }
+    if (mode === "website-image") {
+      const identity=await authenticate(req);
+      if(identity.error)return res.status(identity.status||503).json({error:identity.error});
+      const url=typeof body.url==='string'?body.url.trim():'';
+      if(!url||url.length>500)return res.status(400).json({error:'Enter a restaurant website first.'});
+      try {
+        const quota=await limitRequests({scope:'restaurant-image',accountId:identity.userId,limit:20,windowSeconds:3600});
+        if(!quota.allowed)return sendRateLimitResponse(res,quota.retryAfterSeconds);
+        const safe=await import('../architecture-v2/src/features/recipes/safe-url-fetch.mjs');
+        const page=await (fetchImagePage||safe.fetchPublicRecipePage)(url);
+        const {extractRestaurantImage}=await import('./_lib/restaurant-image.mjs');
+        const image=extractRestaurantImage(page.body||'',page.finalUrl);
+        if(image)await (resolveImageHost||safe.resolvePublicIPv4)(new URL(image.url).hostname);
+        return res.status(200).json({image:image?{...image,checkedAt:new Date().toISOString()}:null});
+      }catch{return res.status(422).json({error:'No usable website image was found. You can still add your own photo.'});}
     }
     if (mode === "website") {
       const identity = await authenticate(req);

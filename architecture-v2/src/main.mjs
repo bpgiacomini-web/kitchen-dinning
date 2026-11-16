@@ -1,7 +1,10 @@
+import {awardBadges,earnedBadges} from './domain/badges.mjs';
+import {badgesMarkup,celebrateBadges} from './features/badges.mjs';
+import {websiteImageMarkup,findRestaurantImage,mountWebsiteImageFallback} from './features/restaurant-image.mjs';
 import { mountDailyBite } from './features/daily-bite.mjs';
 let destroyDailyBite=null;
 import { matchesRestaurantScope, homeJournalData } from './domain/restaurant-travel.mjs';
-import { restaurantProfileMarkup } from './features/restaurant-profile.mjs';
+import { restaurantProfileMarkup, photoMarkup } from './features/restaurant-profile.mjs';
 import { summarizeRestaurantProfile, prepareRestaurantVisits, removeRestaurantVisit, duplicateRestaurant, visitId, restaurantGallery, mergeRestaurantProfiles } from './domain/restaurant-profile.mjs';
 import {revealEntry,stopEntryAlignment} from "./features/entry-navigation.mjs";
 import {mountViewHistory} from "./features/view-history.mjs?v=3";
@@ -83,10 +86,13 @@ function mergeVisibleDataset() {
 
 async function saveCloudDataset(nextDataset) {
   if (!cloudClient || !cloudReady) throw new Error("Secure cloud storage is not ready. Nothing was saved.");
+  const previousBadges=new Set(earnedBadges(cloudDataset).map(badge=>badge.id));
+  nextDataset=awardBadges({...nextDataset,achievements:{...awardBadges(cloudDataset).achievements,...nextDataset.achievements}});
   const result = await cloudClient.save(nextDataset, cloudRevision);
   cloudRevision = result.revision;
   window.metroDatasetRevision = cloudRevision;
   cloudDataset = nextDataset;
+  celebrateBadges(earnedBadges(nextDataset).filter(badge=>!previousBadges.has(badge.id)));
   mergeVisibleDataset();
   return result;
 }
@@ -326,7 +332,7 @@ function renderRestaurants(items) {
   items=items.filter(row=>matchesRestaurantScope(row,restaurantScope));
   const rows = sortRestaurantItems(items, restaurantSort, { lastVisit: restaurantLastVisit, averageRating: restaurantAverageRating }).map(restaurant => {
     const summary = summarizeRestaurantProfile(restaurant);
-    const photo = summary.primaryPhoto?.path ? `<div class="profileCover" data-review-photo-refs="${escapeHtml(JSON.stringify([summary.primaryPhoto]))}"></div>` : '';
+    const photo = summary.primaryPhoto ? photoMarkup(summary.primaryPhoto,true) : websiteImageMarkup(restaurant);
     return `<article class="readOnlyItem restaurantCard" data-search="${escapeHtml(JSON.stringify(restaurant).toLowerCase())}" data-restaurant-entry="${escapeHtml(restaurant.id)}"><div class="profileCardSummary">${photo}<div><div class="restaurantNameGroup"><button class="restaurantFavoriteStar" type="button" data-action="toggle-restaurant-favorite" data-restaurant-id="${escapeHtml(restaurant.id)}" aria-pressed="${restaurant.favorite?'true':'false'}" aria-label="${restaurant.favorite?'Remove from favorites':'Add to favorites'}">${restaurant.favorite?'★':'☆'}</button><button class="restaurantNameLink" data-action="open-restaurant-profile" data-restaurant-id="${escapeHtml(restaurant.id)}">${escapeHtml(restaurant.name)}</button></div><div class="restaurantCardRating">${summary.average==null?'Unrated':summary.average.toFixed(1)+'<small>/10</small>'}</div><small>${escapeHtml(restaurant.cuisine)} · ${summary.count} ${summary.count===1?'visit':'visits'}${summary.lastVisit?' · Last visit '+escapeHtml(restaurantReviewDateText({visitedAt:summary.lastVisit})):''}</small></div></div><p class="edit-status" role="status" aria-live="polite"></p></article>`;
   }).join("");
   root.innerHTML = `<section class="hero"><div class="heroIn"><div class="eyebrow">Your dining journal</div><h2><span class="sectionHeadingIcon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M4 2v7m3-7v7m-6-7v7c0 3 6 3 6 0M4 11v11M19 2c-4 4-5 9-1 10h2V2h-1Zm1 10v10"/></svg></span>My Restaurants</h2><p>Keep restaurant details and visit-by-visit food critic reviews together in your private Metro Eats account.</p></div></section><section class="content-panel"><div class="sectionTitle"><div><div class="sectionKicker">${items.length} saved</div><h3>Your restaurants &amp; reviews</h3></div><div class="diningActions"><label class="restaurantSortControl" for="restaurant-sort">Sort by <select id="restaurant-sort"><option value="recent"${restaurantSort === "recent" ? " selected" : ""}>Last visited · newest first</option><option value="highest"${restaurantSort === "highest" ? " selected" : ""}>Highest rated</option><option value="lowest"${restaurantSort === "lowest" ? " selected" : ""}>Lowest rated</option><option value="visits"${restaurantSort === "visits" ? " selected" : ""}>Most visits</option><option value="name"${restaurantSort === "name" ? " selected" : ""}>Name · A to Z</option></select></label><button class="btn rankingsButton" type="button" data-action="open-rankings"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 3h8v5a4 4 0 0 1-8 0V3Z"/><path d="M8 5H5v2a4 4 0 0 0 4 4m7-6h3v2a4 4 0 0 1-4 4m-3 1v5m-4 4h8m-7 0v-4h6v4"/></svg><span>My Rankings</span></button><button class="btn primary" type="button" data-action="new-restaurant">＋ Add a Restaurant</button></div></div><section class="nearbyPanel"><div><h3>Restaurants Around Me</h3><p class="hint">Nearby places load automatically when you open this page. Location is used only for this search, never saved. If device location is unavailable, Metro Eats uses an approximate area.</p></div><p class="edit-status" id="nearby-status" role="status" aria-live="polite">Nearby restaurant search will start automatically.</p><details class="nearbyDisclosure" id="nearby-disclosure" hidden><summary id="nearby-summary">Nearby restaurants</summary><div class="nearbyResults" id="nearby-results"></div></details></section><button class="btn collectionSearchToggle" type="button" data-action="toggle-restaurant-search" aria-label="Search restaurants" aria-expanded="false"><svg viewBox="0 0 24 24" width="27" height="27" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><circle cx="10" cy="10" r="6"/><path d="m15 15 6 6"/></svg></button><label class="restaurantSearchLabel" for="restaurant-search">Search your restaurants</label><input id="restaurant-search" hidden class="restaurantSearch" type="search" placeholder="Name, cuisine, address, dish, or note" autocomplete="off"><label class="inlineCheck"><input id="restaurant-favorites-only" type="checkbox"${restaurantFavoritesOnly?" checked":""}> Favorites only</label><p class="hint" id="restaurant-search-count" aria-live="polite">Showing ${items.length} ${items.length === 1 ? "restaurant" : "restaurants"}.</p><div class="readOnlyList" id="restaurant-list">${rows || `<div class="empty">No restaurants in this journal yet. Choose Home, Travel, or All above, or add a restaurant.</div>`}</div><p class="hint"></p></section>`;
@@ -371,7 +377,7 @@ function renderRestaurantProfile() {
 function renderRestaurantEditor(restaurantId = null) {
   const restaurant = restaurantId ? cloudDataset.restaurants.find(item => String(item.id) === String(restaurantId)) : restaurantDraft || newRestaurantPrefill;
   if (restaurantId && !restaurant) { activeView = "dining"; render(); return; }
-  root.innerHTML = `<section class="hero"><div class="heroIn"><div class="eyebrow">Your dining journal</div><h2>${restaurantId ? "Edit Restaurant" : "Add a Restaurant"}</h2><p>${restaurantId ? "Update the details or continue straight to a new visit review." : "Save a spot or review your visit."}</p></div></section><section class="content-panel restaurantEditorPage"><div class="restaurantEditPanel"><label>Restaurant name<input id="restaurant-name" required maxlength="180" value="${escapeHtml(restaurant?.name || "")}" placeholder="Start typing a restaurant name" autocomplete="organization"></label><div class="restaurantLookupTools"><p class="hint">Search fills in available details.</p></div><div id="restaurant-lookup-status" role="status" aria-live="polite" class="restaurantLookupStatus"></div><div id="restaurant-lookup-results" class="restaurantLookupResults"></div><div class="restaurantEditorGrid">${cuisineFields(restaurant?.cuisine || restaurant?.type || "")}<label>Website<input id="restaurant-website" type="url" maxlength="500" value="${escapeHtml(restaurant?.website || "")}" placeholder="Filled automatically when available"></label></div><label>Menu link<input id="restaurant-menu" type="url" maxlength="500" value="${escapeHtml(restaurant?.menuUrl || "")}" placeholder="https://"></label><label>Address<input id="restaurant-address" maxlength="300" value="${escapeHtml(restaurant?.address || "")}" placeholder="Street, city"></label><label>Notes<textarea id="restaurant-notes" rows="3" maxlength="5000" placeholder="Anything you want to remember">${escapeHtml(restaurant?.notes || "")}</textarea></label><label class="inlineCheck"><input id="restaurant-travel" type="checkbox"${restaurant?.travel === true ? " checked" : ""}> Travel restaurant · keep separate from my home journal</label><label class="inlineCheck"><input id="restaurant-want" type="checkbox"${restaurant?.wantToTry?" checked":""}> Want to Try</label><label class="inlineCheck"><input id="restaurant-favorite" type="checkbox"${restaurant?.favorite ? " checked" : ""}> Favorite</label><div class="recipeEditActions"><button class="btn" type="button" data-action="cancel-restaurant-edit">Cancel</button>${restaurantId ? `<button class="btn danger restaurantDeleteInEdit" type="button" data-action="delete-restaurant" data-restaurant-id="${escapeHtml(restaurant.id)}">Delete Restaurant</button>` : ""}<button class="btn" type="button" data-action="save-restaurant" data-restaurant-id="${escapeHtml(restaurant?.id || "")}">${restaurantId ? "Save Details Only" : "Save &amp; Review Later"}</button><button class="btn primary" type="button" data-action="start-restaurant-review" data-restaurant-id="${escapeHtml(restaurant?.id || "")}">Review Now</button></div><p class="edit-status" role="status" aria-live="polite"></p></div></section>`;
+  root.innerHTML = `<section class="hero"><div class="heroIn"><div class="eyebrow">Your dining journal</div><h2>${restaurantId ? "Edit Restaurant" : "Add a Restaurant"}</h2><p>${restaurantId ? "Update the details or continue straight to a new visit review." : "Save a spot or review your visit."}</p></div></section><section class="content-panel restaurantEditorPage"><div class="restaurantEditPanel"><label>Restaurant name<input id="restaurant-name" required maxlength="180" value="${escapeHtml(restaurant?.name || "")}" placeholder="Start typing a restaurant name" autocomplete="organization"></label><div class="restaurantLookupTools"><p class="hint">Search fills in available details.</p></div><div id="restaurant-lookup-status" role="status" aria-live="polite" class="restaurantLookupStatus"></div><div id="restaurant-lookup-results" class="restaurantLookupResults"></div><div class="restaurantEditorGrid">${cuisineFields(restaurant?.cuisine || restaurant?.type || "")}<label>Website<input id="restaurant-website" type="url" maxlength="500" value="${escapeHtml(restaurant?.website || "")}" placeholder="Filled automatically when available"></label></div><label>Menu link<input id="restaurant-menu" type="url" maxlength="500" value="${escapeHtml(restaurant?.menuUrl || "")}" placeholder="https://"></label><label>Address<input id="restaurant-address" maxlength="300" value="${escapeHtml(restaurant?.address || "")}" placeholder="Street, city"></label><label>Notes<textarea id="restaurant-notes" rows="3" maxlength="5000" placeholder="Anything you want to remember">${escapeHtml(restaurant?.notes || "")}</textarea></label><label class="inlineCheck"><input id="restaurant-hide-website-image" type="checkbox"${restaurant?.hideWebsiteImage?" checked":""}> Hide website image (your visit photos still take priority)</label><label class="inlineCheck"><input id="restaurant-travel" type="checkbox"${restaurant?.travel === true ? " checked" : ""}> Travel restaurant · keep separate from my home journal</label><label class="inlineCheck"><input id="restaurant-want" type="checkbox"${restaurant?.wantToTry?" checked":""}> Want to Try</label><label class="inlineCheck"><input id="restaurant-favorite" type="checkbox"${restaurant?.favorite ? " checked" : ""}> Favorite</label><div class="recipeEditActions"><button class="btn" type="button" data-action="cancel-restaurant-edit">Cancel</button>${restaurantId ? `<button class="btn danger restaurantDeleteInEdit" type="button" data-action="delete-restaurant" data-restaurant-id="${escapeHtml(restaurant.id)}">Delete Restaurant</button>` : ""}<button class="btn" type="button" data-action="save-restaurant" data-restaurant-id="${escapeHtml(restaurant?.id || "")}">${restaurantId ? "Save Details Only" : "Save &amp; Review Later"}</button><button class="btn primary" type="button" data-action="start-restaurant-review" data-restaurant-id="${escapeHtml(restaurant?.id || "")}">Review Now</button></div><p class="edit-status" role="status" aria-live="polite"></p></div></section>`;
   if (restaurant) void fillRestaurantWebsite(root, restaurant);
   if (!restaurantLookupLocation || restaurantLookupLocation.source !== "device") requestDeviceRestaurantLocation();
 }
@@ -944,6 +950,7 @@ function render() {
   });
   if (activeView === "recipes") renderList("My Recipes", "Your kitchen", dataset.recipes, "recipes");
   else if (activeView === "daily-bite-archive") { root.innerHTML='<div id="daily-bite"></div>'; destroyDailyBite=mountDailyBite(root.querySelector("#daily-bite"),{archive:true}); }
+  else if (activeView === "badges") root.innerHTML=badgesMarkup(cloudDataset);
   else if (activeView === "hidden-places") hiddenPlacesController.render();
   else if (activeView === "groceries") groceryPlanner.render(root,dataset.recipes);
   else if (activeView === "add-recipe") renderAddRecipe();
@@ -957,6 +964,7 @@ function render() {
   else if (activeView === "pizzas") renderFrozenPizzas();
   else if (activeView === "cocktails") cocktailJournal.render();
   else renderHome();
+  mountWebsiteImageFallback(root);
 }
 let importMode = "text";
 document.addEventListener("toggle", event => {
@@ -1037,7 +1045,7 @@ const viewHistory=mountViewHistory({
  key:()=>[activeView,activeView==='cocktails'?JSON.stringify(cocktailJournal.captureView()):'',activeRestaurantId,activeRecipeId,activePizzaId,pizzaEditorOpen].join('|'),
  capture:()=>({view:activeView,position:captureReturnPosition(root),cocktail:cocktailJournal.captureView(),activeRestaurantId,newRestaurantPrefill,activeReviewIndex,activeRecipeId,activePizzaId,pizzaEditorOpen,pizzaSort,pizzaQuery,pizzaFavoritesOnly,recipeSort,recipeFavoritesOnly,restaurantSort,restaurantScope,restaurantFavoritesOnly,restaurantReviewFilter,chosenPickId}),
  restore:snapshot=>{
-  if(!['home','daily-bite-archive','dining','restaurant-rankings','recipes','pizzas','cocktails','groceries','journey','hidden-places','restaurant-profile','restaurant-edit','restaurant-review','edit-recipe','add-recipe'].includes(snapshot.view)||!snapshot.position)return;
+  if(!['home','badges','daily-bite-archive','dining','restaurant-rankings','recipes','pizzas','cocktails','groceries','journey','hidden-places','restaurant-profile','restaurant-edit','restaurant-review','edit-recipe','add-recipe'].includes(snapshot.view)||!snapshot.position)return;
   stopReturnRestore?.();stopReturnRestore=null;stopEntryAlignment();releaseRecipeWakeLock();editorOrigin=null;
   activeView=snapshot.view;
   ({activeRestaurantId,activeReviewIndex,activeRecipeId,activePizzaId,pizzaEditorOpen,pizzaSort,pizzaQuery,pizzaFavoritesOnly,recipeSort,recipeFavoritesOnly,restaurantSort,restaurantFavoritesOnly,restaurantReviewFilter,chosenPickId}=snapshot);
@@ -1077,7 +1085,7 @@ document.addEventListener("click", async event => {
     event.preventDefault();
     releaseRecipeWakeLock();
     activeView = viewButton.dataset.view;
-    if(activeView==="hidden-places"){document.querySelector("#metroAccountPanel").hidden=true;document.querySelector("#metroAccountButton").setAttribute("aria-expanded","false");}
+    if(["hidden-places","badges"].includes(activeView)){document.querySelector("#metroAccountPanel").hidden=true;document.querySelector("#metroAccountButton").setAttribute("aria-expanded","false");}
     if (activeView === "cocktails") cocktailJournal.setTab(viewButton.dataset.cocktailCategory || "bars");
     render();
     if (activeView === "dining") searchNearbyRestaurants();
@@ -1088,6 +1096,13 @@ document.addEventListener("click", async event => {
   }
   const actionButton = event.target.closest("[data-action]");
   if (!actionButton) return;
+  if(actionButton.dataset.action==='refresh-restaurant-image'){
+    const restaurant=cloudDataset.restaurants.find(row=>String(row.id)===String(actionButton.dataset.restaurantId));if(!restaurant?.website)return;
+    const feedback=root.querySelector('.edit-status');actionButton.disabled=true;
+    try{const imageAccount=window.metroAccountId;const websiteImage=await findRestaurantImage(restaurant.website);if(window.metroAccountId!==imageAccount)return;if(!websiteImage){if(feedback)feedback.textContent='No usable website image found. Your photos are unchanged.';actionButton.disabled=false;return;}
+    await saveCloudDataset({...cloudDataset,restaurants:cloudDataset.restaurants.map(row=>row===restaurant?{...row,websiteImage,hideWebsiteImage:false}:row)});render();}
+    catch(error){actionButton.disabled=false;if(feedback)feedback.textContent=error.message;}return;
+  }
   if(actionButton.dataset.action === "photo-usage"){await photoController.usage(document.querySelector('#photo-storage-usage'));return;}
   if(actionButton.dataset.action === "export-journal"){const blob=new Blob([JSON.stringify({exportedAt:new Date().toISOString(),version:1,data:cloudDataset},null,2)],{type:'application/json'});const url=URL.createObjectURL(blob),link=document.createElement('a');link.href=url;link.download='metro-eats-journal-'+new Date().toISOString().slice(0,10)+'.json';link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);return;}
   if(actionButton.dataset.action === "shuffle-pick") {
@@ -1400,7 +1415,7 @@ document.addEventListener("click", async event => {
     const duplicate=duplicateRestaurant({id:existing?.id,name,address,placeId:newRestaurantPrefill?.placeId},cloudDataset.restaurants);
     if(duplicate){showExistingRestaurant(statusLine,duplicate);return;}
     const now = new Date().toISOString();
-    restaurantDraft = { ...(existing || newRestaurantPrefill || {}), ...(newRestaurantPrefill?.name===name?{lat:newRestaurantPrefill.lat,lon:newRestaurantPrefill.lon}:{}), id: existing?.id, name, cuisine, address, website, menuUrl, notes, favorite, travel:Boolean(root.querySelector("#restaurant-travel")?.checked), wantToTry:Boolean(root.querySelector("#restaurant-want")?.checked), ratingScale: 10, createdAt: existing?.createdAt || now, updatedAt: now };
+    restaurantDraft = { ...(existing || newRestaurantPrefill || {}), ...(newRestaurantPrefill?.name===name?{lat:newRestaurantPrefill.lat,lon:newRestaurantPrefill.lon}:{}), id: existing?.id, name, cuisine, address, website, menuUrl, notes, favorite, hideWebsiteImage:Boolean(root.querySelector("#restaurant-hide-website-image")?.checked), travel:Boolean(root.querySelector("#restaurant-travel")?.checked), wantToTry:Boolean(root.querySelector("#restaurant-want")?.checked), ratingScale: 10, createdAt: existing?.createdAt || now, updatedAt: now };
     activeRestaurantId = existing?.id || null;
     activeView = "restaurant-review";
     render();
@@ -1446,6 +1461,13 @@ document.addEventListener("click", async event => {
     if(duplicate){showExistingRestaurant(statusLine,duplicate);return;}
     const now = new Date().toISOString();
     const restaurant = { ...(existing || newRestaurantPrefill || {}), ...(newRestaurantPrefill?.name===name?{lat:newRestaurantPrefill.lat,lon:newRestaurantPrefill.lon}:{}), id: existing?.id || `metro-restaurant-${crypto.randomUUID()}`, name, cuisine, address, website, menuUrl, notes, favorite, travel:Boolean(root.querySelector("#restaurant-travel")?.checked), wantToTry:Boolean(root.querySelector("#restaurant-want")?.checked), ratingScale: 10, createdAt: existing?.createdAt || now, updatedAt: now };
+    restaurant.hideWebsiteImage=Boolean(root.querySelector('#restaurant-hide-website-image')?.checked);
+    if(website && !restaurant.hideWebsiteImage && (!restaurant.websiteImage || existing?.website!==website)) {
+      actionButton.disabled=true;if(statusLine)statusLine.textContent='Looking for a website image…';
+      const imageAccount=window.metroAccountId;
+      restaurant.websiteImage=await findRestaurantImage(website).catch(()=>null);
+      if(window.metroAccountId!==imageAccount)return;
+    }
     const restaurants = existing
       ? cloudDataset.restaurants.map(item => String(item.id) === String(id) ? restaurant : item)
       : [...cloudDataset.restaurants, restaurant];
@@ -1501,6 +1523,11 @@ document.addEventListener("click", async event => {
     const standalone=(restaurant.photoRefs||[]).filter(ref=>!oldVisitPaths.has(ref.path));
     const photoRefs=[...new Map([...standalone,...restaurantReviewRecords(reviewState).flatMap(row=>row.photoRefs||[])].map(ref=>[ref.path,ref])).values()];
     const updated = { ...reviewState, photoRefs, id: savedRestaurant?.id || `metro-restaurant-${crypto.randomUUID()}`, favorite: Boolean(root.querySelector("#review-restaurant-favorite")?.checked), rating, ratingScale:10, updatedAt:now };
+    if(updated.website && !updated.hideWebsiteImage && (!updated.websiteImage || savedRestaurant?.website!==updated.website) && !summarizeRestaurantProfile(updated).primaryPhoto){
+      actionButton.disabled=true;const imageAccount=window.metroAccountId;
+      updated.websiteImage=await findRestaurantImage(updated.website).catch(()=>null);
+      if(window.metroAccountId!==imageAccount)return;
+    }
     const restaurants = savedRestaurant
       ? cloudDataset.restaurants.map(item => String(item.id) === String(id) ? updated : item)
       : [...cloudDataset.restaurants, updated];
@@ -1815,6 +1842,7 @@ document.addEventListener("click", async event => {
 let sharedRecipeOpened=false;
 async function refreshDataset() {
   groceryPlanner.reset();
+  document.querySelector(".badgeCelebration")?.remove();
   try {
     cloudReady = false;
     cloudDataset = { recipes: [], restaurants: [], pizzas: [], bars: [], drinks: [], cocktailRecipes: [], cats: [] };

@@ -1,0 +1,8 @@
+const esc=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+export function websiteImageMarkup(restaurant){const image=restaurant.websiteImage;if(restaurant.hideWebsiteImage||!image?.url)return '<span class="restaurantImageFallback" aria-label="Restaurant">🍽</span>';try{const u=new URL(image.url);if(u.protocol!=='https:'||u.username||u.password)return '';const source=new URL(image.sourceUrl);if(!['https:','http:'].includes(source.protocol)||source.username||source.password)return '';return '<figure class="restaurantWebsiteImage"><img src="'+esc(u.href)+'" alt="'+esc(restaurant.name)+' website image" loading="lazy" referrerpolicy="no-referrer"><figcaption><a href="'+esc(source.href)+'" target="_blank" rel="noopener noreferrer">Website image</a></figcaption></figure>';}catch{return '';}}
+export async function findRestaurantImage(website){const token=await globalThis.metroGetAccessToken?.();if(!token||!website)return null;const response=await fetch('/api/restaurant-lookup',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+token},body:JSON.stringify({mode:'website-image',url:website})});if(!response.ok)return null;return (await response.json()).image||null;}
+export function mountWebsiteImageFallback(root){
+root.querySelectorAll('.restaurantWebsiteImage img').forEach(image=>{
+ const fallback=()=>{const figure=image.closest('figure');if(figure)figure.outerHTML='<span class="restaurantImageFallback" aria-label="Restaurant">🍽</span>';};
+ if(image.complete&&!image.naturalWidth)fallback();else image.addEventListener('error',fallback,{once:true});
+});}
