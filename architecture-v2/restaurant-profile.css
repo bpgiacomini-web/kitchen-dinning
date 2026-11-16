@@ -10,3 +10,8 @@
 .achievementBadge>span{display:grid;place-items:center;border:2px solid currentColor;border-radius:50%;width:48px;height:48px}.achievementBadge.locked>span{opacity:.5}
 
 .restaurantWebsiteLogo img{object-fit:contain;background:transparent}
+/* The disclosure owns its clipping and outline; the former hero shell must not clip its corners. */
+#app>.hero.homeJournalCompact,#app>.hero.homeJournalCompact>.heroIn{overflow:visible}
+#app .homeJournalCompact .homeAppsDisclosure{position:relative;isolation:isolate;border:0;border-radius:18px;overflow:hidden;box-sizing:border-box}
+#app .homeJournalCompact .homeAppsDisclosure::after{content:"";position:absolute;inset:0;z-index:2;border:1px solid #e0b96f;border-radius:inherit;pointer-events:none}
+#app .homeAppsDisclosure .recentEntry:last-child{border-bottom:0}
