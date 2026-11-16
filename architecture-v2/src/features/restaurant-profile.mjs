@@ -1,0 +1,32 @@
+import { summarizeRestaurantProfile, visitId, visitDate, categoryScore } from '../domain/restaurant-profile.mjs';
+const esc = value => String(value ?? '').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const dateText = raw => {
+  const day = String(raw || '').match(/^\d{4}-\d{2}-\d{2}/)?.[0];
+  if (!day) return 'Date not recorded';
+  const date = new Date(`${day}T12:00:00`);
+  return Number.isNaN(date.getTime()) ? 'Date not recorded' : date.toLocaleDateString();
+};
+function photoMarkup(ref, primary = false) {
+  if (!ref) return '';
+  const key = ref.path || ref.url;
+  if (ref.path) return `<div class="${primary?'profileCover':'profileGalleryPhoto'}" data-review-photo-refs="${esc(JSON.stringify([ref]))}"></div>`;
+  try {
+    const url = new URL(ref.url);
+    if (!['http:','https:'].includes(url.protocol) || url.username || url.password) return '';
+    return `<img class="${primary?'profileCover':'profileGalleryPhoto'}" src="${esc(url.href)}" alt="Restaurant photo" loading="lazy" referrerpolicy="no-referrer">`;
+  } catch { return ''; }
+}
+export function restaurantProfileMarkup(restaurant, { saved = true } = {}) {
+  const s = summarizeRestaurantProfile(restaurant), id = esc(restaurant.id || '');
+  const visitRows = s.visits.map(review => {
+    const overall = summarizeRestaurantProfile({reviewHistory:[review]}).average;
+    const scores = ['food','service','value'].map(key=>({key,score:categoryScore(review,key)})).filter(row=>row.score!=null);
+    return `<details class="profileVisit" data-visit-id="${esc(visitId(review))}"><summary><span>${esc(dateText(visitDate(review)))}</span><strong>${overall==null?'Unrated':overall.toFixed(1)+'/10'}</strong></summary><div class="profileVisitBody"><p>${scores.map(row=>`${esc(row.key)} ${row.score.toFixed(1)}/10`).join(' · ')}</p>${review.order||review.ordered?`<p><strong>Ordered:</strong> ${esc(review.order||review.ordered)}</p>`:''}${review.foodItems?.length?`<ul>${review.foodItems.map(item=>`<li><strong>${esc(item.name)}</strong>${item.rating!=null?` · ${esc(item.rating)}/${Number(review.ratingScale)===5?'5':'10'}`:''}${item.notes?`<p>${esc(item.notes)}</p>`:''}</li>`).join('')}</ul>`:''}${review.orderAgain?`<p>Would order again: ${esc(review.orderAgain)}</p>`:''}${review.notes?`<p class="profileNotes">${esc(review.notes)}</p>`:''}<div data-review-photo-refs="${esc(JSON.stringify(review.photoRefs||[]))}"></div><div class="actions"><button class="btn" data-action="edit-restaurant-review" data-restaurant-id="${id}" data-review-id="${esc(visitId(review))}">Edit visit</button><button class="btn danger" data-action="delete-restaurant-review" data-restaurant-id="${id}" data-review-id="${esc(visitId(review))}">Delete visit</button></div></div></details>`;
+  }).join('');
+  const info = [['Cuisine',restaurant.cuisine],['Address',restaurant.address],['Website',restaurant.website],['Menu',restaurant.menuUrl]].filter(([,v])=>v).map(([label,value])=>{
+    let content=esc(value);
+    if(['Website','Menu'].includes(label))try{const u=new URL(value);if(['https:','http:'].includes(u.protocol)&&!u.username&&!u.password)content=`<a href="${esc(u.href)}" target="_blank" rel="noopener noreferrer">${label==='Menu'?'View menu':'Visit website'} ↗</a>`;}catch{}
+    return `<div><dt>${label}</dt><dd>${content}</dd></div>`;
+  }).join('');
+  return `<section class="content-panel restaurantProfile"><button class="btn" data-action="back-to-restaurants">← My Restaurants</button><div class="profileHeading">${photoMarkup(s.primaryPhoto,true)}<div><p class="sectionKicker">Your dining journal</p><h2>${esc(restaurant.name)}</h2><p>${esc(restaurant.address||restaurant.cuisine||'')}</p><div class="actions">${saved?`<button class="btn primary" data-action="add-restaurant-review" data-restaurant-id="${id}">${s.count?'Review Another Visit':'Review First Visit'}</button><button class="btn" data-action="edit-restaurant" data-restaurant-id="${id}">Edit Restaurant Information</button>`:`<button class="btn primary" data-action="review-discovered-restaurant">Review First Visit</button><button class="btn" data-action="save-discovered-restaurant">Save Restaurant</button>`}</div></div></div><div class="profileStats"><div><strong>${s.average==null?'Unrated':s.average.toFixed(1)+'/10'}</strong><span>Combined rating</span></div><div><strong>${s.count}</strong><span>${s.count===1?'Visit':'Visits'}</span></div><div><strong>${s.lastVisit?esc(dateText(s.lastVisit)):'—'}</strong><span>Last visit</span></div><div><strong>${s.orderAgainPercent==null?'—':s.orderAgainPercent+'%'}</strong><span>Would order again</span><small>${s.answered?`Yes on ${s.yes} of ${s.answered} answered visits`:'No answers yet'}</small></div></div><section class="restaurantDetailBlock"><h3>Category ratings</h3><div class="profileCategories">${s.categories.map(row=>`<div><span>${esc(row.label)}</span><strong>${row.average==null?'—':row.average.toFixed(1)+'/10'}</strong><small>${row.count} rated ${row.count===1?'visit':'visits'}</small></div>`).join('')}</div></section><section class="restaurantDetailBlock"><h3>Restaurant information</h3><dl>${info||'<p>No additional details saved.</p>'}</dl></section><section class="restaurantDetailBlock"><h3>Personal restaurant notes</h3><p class="profileNotes">${esc(restaurant.notes||'No restaurant notes yet.')}</p></section><section class="restaurantDetailBlock"><h3>Photo gallery <small>(${s.gallery.length})</small></h3>${s.gallery.length?`<div class="profileGallery">${s.gallery.map((ref,index)=>`<figure${index>=12?' hidden':''}>${photoMarkup(ref)}${saved?`<button class="btn" data-action="set-restaurant-primary-photo" data-photo-key="${esc(ref.path||ref.url)}" data-restaurant-id="${id}" aria-pressed="${(s.primaryPhoto?.path||s.primaryPhoto?.url)===(ref.path||ref.url)}">${(s.primaryPhoto?.path||s.primaryPhoto?.url)===(ref.path||ref.url)?'Primary photo':'Use as primary'}</button>`:''}</figure>`).join('')}</div>${s.gallery.length>12?'<button class="btn" data-action="show-more-profile-photos">Show more photos</button>':''}`:'<p>Add photos when reviewing a visit.</p>'}</section><section class="restaurantDetailBlock"><h3>Visit history</h3><p class="hint">Newest visit first. Each visit contributes equally to your combined rating.</p>${visitRows||'<p>No visits yet. Save this restaurant for later or review your first visit.</p>'}</section><p class="edit-status" role="status" aria-live="polite"></p></section>`;
+}

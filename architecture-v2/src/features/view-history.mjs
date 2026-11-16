@@ -16,7 +16,7 @@ export function mountViewHistory({root,enabled,capture,restore,key,account=()=>n
   if(!enabled()||restoring)return;
   const button=event.target.closest('[data-view],[data-action],[data-cocktail-tab],[data-cocktail-action]');
   const action=button?.dataset.action,kind=button?.dataset.cocktailAction;
-  const navigation=button&&(button.dataset.view||button.dataset.cocktailTab||['open-rankings','open-journal-item','open-picked-restaurant','new-restaurant','edit-restaurant','use-nearby','select-restaurant-lookup','add-restaurant-review','edit-restaurant-review','new-pizza','edit-pizza','open-recipe-edit'].includes(action)||['new','edit','visit','edit-visit','choose-bar','view-saved-recipe','edit-linked-drink'].includes(kind));
+  const navigation=button&&(button.dataset.view||button.dataset.cocktailTab||['open-restaurant-profile','back-to-restaurants','review-discovered-restaurant','save-discovered-restaurant','open-rankings','open-journal-item','open-picked-restaurant','new-restaurant','edit-restaurant','use-nearby','select-restaurant-lookup','add-restaurant-review','edit-restaurant-review','new-pizza','edit-pizza','open-recipe-edit'].includes(action)||['new','edit','visit','edit-visit','choose-bar','view-saved-recipe','edit-linked-drink'].includes(kind));
   if(!navigation){schedule();return;}
   clearTimeout(timer);sync();const before=key();pending=true;
   setTimeout(()=>{

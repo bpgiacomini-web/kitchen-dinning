@@ -1,3 +1,4 @@
+import { summarizeRestaurantProfile } from './restaurant-profile.mjs';
 import {averageRestaurantVisitRating,restaurantReviewRecords} from './restaurant-review.mjs';
 const nameKey=value=>String(value||'').toLowerCase().replace(/[^a-z0-9]/g,'');
 const addressKey=value=>String(value||'').toLowerCase().replace(/\b(street|avenue|road|boulevard|illinois|missouri)\b/g,word=>({street:'st',avenue:'ave',road:'rd',boulevard:'blvd',illinois:'il',missouri:'mo'}[word])).replace(/[^a-z0-9]/g,'');
@@ -15,7 +16,7 @@ export function matchingSavedRestaurants(place,restaurants=[]){
 }
 export function nearbyPersonalRating(place,restaurants=[]){
  for(const saved of matchingSavedRestaurants(place,restaurants)){
-  const average=averageRestaurantVisitRating(restaurantReviewRecords(saved));if(average!=null)return average;
+  const average=summarizeRestaurantProfile(saved).average;if(average!=null)return average;
   if(saved.rating!=null&&saved.rating!==''&&Number.isFinite(Number(saved.rating))){const rating=Number(saved.rating);if(rating>=1&&rating<=10)return Number(saved.ratingScale)===10||rating>5?rating:rating*2;}
  }
  return null;

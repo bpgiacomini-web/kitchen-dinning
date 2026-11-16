@@ -1,3 +1,4 @@
+import { summarizeRestaurantProfile } from './restaurant-profile.mjs';
 import { restaurantReviewRecords } from "./restaurant-review.mjs";
 import { summarizeCocktailCollection } from "./cocktails.mjs";
 
@@ -19,7 +20,7 @@ function foodScores(review) {
 
 export function summarizeRestaurantInsights(restaurants = []) {
   const entries = (Array.isArray(restaurants) ? restaurants : []).map(restaurant => {
-    const reviews = restaurantReviewRecords(restaurant);
+    const reviews = summarizeRestaurantProfile(restaurant).visits;
     const scores = reviews.map(overallScore).filter(Number.isFinite);
     return {
       restaurant,
