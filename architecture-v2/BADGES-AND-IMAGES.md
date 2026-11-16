@@ -23,11 +23,11 @@ My Badges is reached through Account & Settings. It shows earned and locked badg
 
 ## Website images
 
-Use the restaurant website's declared Open Graph/Twitter image or structured-data logo. Do not harvest arbitrary inline pictures. A metadata lookup is performed on restaurant detail save when missing/changed (unless hidden), or from the profile's Refresh website image button. A review save can enrich a restaurant without a personal photo. No scraping occurs on ordinary profile/list opens. Existing restaurants can use Refresh; no bulk crawl or migration.
+Use the restaurant website's declared Open Graph/Twitter image or structured-data logo, with a fallback for explicitly logo-marked images. Do not harvest arbitrary inline pictures. A metadata lookup is performed on restaurant detail save when missing/changed (unless hidden), or from the profile's Refresh website image button. A review save can enrich a restaurant without a personal photo. No scraping occurs on ordinary profile/list opens. Existing restaurants can use Refresh; no bulk crawl or migration.
 
 Reuse authenticated POST /api/restaurant-lookup mode website-image, account rate limit20/hour and existing DNS-pinned public-page fetcher (redirect checks, response byte cap, timeout and blocked private networks). Check the image hostname too. Only HTTPS image references are accepted. Returned image metadata is saved on its restaurant record, never in visit photos or the personal gallery. Your primary/personal photo takes priority; otherwise show the declared website image, then a restaurant icon. An image may be hidden through Edit Restaurant Information. Existing Add Photo and gallery Use as primary allow personal replacements.
 
-Website images are referenced directly with no referrer and a source link labeled Website image. Image bytes are not copied into Blob, proxied or archived. This is not a claim of ownership or a reusable image license; a website's removal or refusal is honored through the fallback. Broken images fall back without interrupting the journal. No paid image service, AI call, dependency, schema migration or extra Vercel function.
+Website images are referenced directly with no referrer and source metadata retained internally. The restaurant website link remains in Restaurant information; image captions are omitted. Photos fill their thumbnail; detected logos remain fully visible. Image bytes are not copied into Blob, proxied or archived. This is not a claim of ownership or a reusable image license; a website's removal or refusal is honored through the fallback. Broken images fall back without interrupting the journal. No paid image service, AI call, dependency, schema migration or extra Vercel function.
 
 ## Verification
 

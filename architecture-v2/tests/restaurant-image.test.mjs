@@ -6,3 +6,8 @@ test('image discovery requires authentication and rechecks image DNS',async()=>{
 test('website image metadata stays separate and unsafe source links are rejected',()=>{const row={name:'Cafe',websiteImage:{url:'https://cafe.example/logo.png',sourceUrl:'https://cafe.example/'}};assert.match(websiteImageMarkup(row),/restaurantWebsiteImage/);assert.doesNotMatch(websiteImageMarkup(row),/figcaption|<a /);assert.match(websiteImageMarkup({...row,websiteImage:{...row.websiteImage,imageType:"logo"}}),/restaurantWebsiteLogo/);assert.doesNotMatch(websiteImageMarkup({...row,hideWebsiteImage:true}),/<img/);assert.equal(websiteImageMarkup({...row,websiteImage:{...row.websiteImage,sourceUrl:'javascript:alert(1)'}}),'');});
 
 test("declared logos keep their type while ordinary preview pictures fill thumbnails",()=>{assert.equal(extractRestaurantImage('<meta property="og:image" content="/building.jpg">',"https://cafe.example/").imageType,"photo");assert.equal(extractRestaurantImage('<script type="application/ld+json">{"logo":"/brand.png"}</script>',"https://cafe.example/").imageType,"logo");});
+
+test('clearly marked header logos work without social metadata, ordinary images are ignored',()=>{
+const html='<img src="/food.jpg" alt="Lunch"><img src="https://elmezcalmexicanfood.com/wp-content/uploads/2020/06/El-Mezcal-Logo-200w.png" width="200" height="99" alt="El Mezcal – Authentic Mexican Food Logo" class="fusion-standard-logo">';
+const image=extractRestaurantImage(html,'https://elmezcalmexicanfood.com/');assert.equal(image.imageType,'logo');assert.match(image.url,/El-Mezcal-Logo-200w.png$/);assert.equal(extractRestaurantImage('<img src="/food.jpg" alt="Lunch">','https://cafe.example/'),null);
+});
