@@ -1707,7 +1707,7 @@ document.addEventListener("click", async event => {
         status.append(link);
         if(navigator.share){const send=document.createElement("button");send.className="btn";send.type="button";send.textContent="Share with Metro Eats";send.onclick=async()=>{try{await navigator.share(share);}catch(error){if(error.name!=="AbortError")send.textContent="Sharing unavailable — use the link";}};status.append(" ",send);}
         if (navigator.clipboard?.writeText) {
-          try { await navigator.clipboard.writeText(share.text+"\n"+share.url); status.textContent += " (copied)"; } catch { /* Keep the visible link usable if clipboard access is unavailable. */ }
+          try { await navigator.clipboard.writeText(share.text+"\n"+share.url); status.append(" (copied)"); } catch { /* Keep the visible link usable if clipboard access is unavailable. */ }
         }
       } else status.textContent = "Any existing link for this recipe has been revoked.";
     } catch (error) { status.textContent = error?.message || "Could not update the share link."; }
