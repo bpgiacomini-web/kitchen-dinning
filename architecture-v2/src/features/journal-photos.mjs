@@ -65,7 +65,7 @@ export function createJournalPhotos({root,getData,save}) {
    let refs;try{refs=JSON.parse(card.dataset.reviewPhotoRefs);}catch{continue;}
    if(!Array.isArray(refs)||!refs.length)continue;
    const strip=document.createElement('div');strip.className='journalPhotoStrip';card.append(strip);
-   for(const ref of refs){if(typeof ref?.path!=='string')continue;void imageUrl(ref.path).then(src=>{if(!src||!strip.isConnected)return;const img=new window.Image();img.alt=ref.label||'Review photo';img.decoding='async';img.onload=()=>{if(strip.isConnected)strip.append(img);};img.src=src;}).catch(()=>{});}
+   for(const ref of refs){if(typeof ref?.path!=='string')continue;void imageUrl(ref.path).then(src=>{if(!src||!strip.isConnected)return;const img=new window.Image();img.alt=ref.label||'Review photo';img.decoding='async';img.onload=()=>{if(strip.isConnected){strip.append(img);if(card.classList.contains("profileCover"))card.classList.add("hasLoadedPhoto");}};img.src=src;}).catch(()=>{});}
   }
   for(const [collection,id,editor] of editTargets()){
    if(!editor)continue;

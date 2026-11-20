@@ -1,0 +1,22 @@
+{
+  "name": "Metro Eats",
+  "short_name": "Metro Eats",
+  "id": "./",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#090b0e",
+  "theme_color": "#0b0d10",
+  "icons": [
+    {
+      "src": "../icon-180.png",
+      "sizes": "180x180",
+      "type": "image/png"
+    },
+    {
+      "src": "../icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

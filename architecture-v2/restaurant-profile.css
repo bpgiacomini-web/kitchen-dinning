@@ -54,3 +54,7 @@
 /* Earned artwork supplies its own silhouette; retain the full account hit target. */
 #metroAccountButton.hasAccountBadge{background:transparent;border-color:transparent;box-shadow:none}
 #metroAccountButton.hasAccountBadge:focus-visible{outline:2px solid #f0d291;outline-offset:3px}
+
+/* A loaded cover replaces its placeholder without a top gap. */
+#app .profileCover .journalPhotoStrip{margin:0;line-height:0}
+#app .profileCover.hasLoadedPhoto,#app img.profileCover{background-image:none}
