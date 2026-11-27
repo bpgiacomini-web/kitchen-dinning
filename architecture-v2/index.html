@@ -39,14 +39,14 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black">
   <meta name="apple-mobile-web-app-title" content="Metro Eats">
-  <link rel="manifest" href="../manifest.json">
+  <link rel="manifest" href="./manifest.json">
   <link rel="apple-touch-icon" href="../icon-180.png">
   <title>Metro Eats — Architecture Preview</title>
   <link rel="stylesheet" href="./base.css?v=1">
   <link rel="stylesheet" href="./styles.css?v=77">
   <link rel="stylesheet" href="./pizza-theme.css?v=8">
   <link rel="stylesheet" href="./readability.css?v=1">
-<link rel="stylesheet" href="restaurant-profile.css?v=11">
+<link rel="stylesheet" href="restaurant-profile.css?v=12">
 <link rel="stylesheet" href="daily-bite.css?v=3">
 </head>
 <body>
@@ -107,13 +107,14 @@
     <button id="metroSignOut" type="button">Sign Out</button>
     <button id="metroRestorePoints" type="button">Restore a previous version</button>
     <div id="metroRestorePanel" hidden></div><button type="button" data-action="export-journal">Export My Journal</button><button type="button" data-action="photo-usage">Photo Storage</button><div id="photo-storage-usage"></div>
+    <details class="homeScreenGuide"><summary>Add Metro Eats to Home Screen</summary><p>On iPhone or iPad, open Metro Eats in Safari, tap Share (or the page menu, then Share), choose Add to Home Screen, then tap Add. If shown, leave Open as Web App turned on.</p><p>Your phone asks you to complete this step; Metro Eats cannot add an icon automatically.</p><p>On Android, open your browser menu and choose Install app or Add to Home screen when available.</p></details>
     <button type="button" data-view="badges">My Badges</button>
     <button type="button" data-view="hidden-places">Hidden places</button>
     <button type="button" data-close>Close</button>
     <p id="metroAccountStatus" role="status" aria-live="polite"></p>
   </section>
   <script src="./vendor/zxing-browser-0.2.1.min.js?v=1"></script>
-  <script type="module" src="./src/main.mjs?v=81"></script>
+  <script type="module" src="./src/main.mjs?v=83"></script>
   <script>
     const panel = document.getElementById('metroAuthPanel');
     const loading = document.getElementById('metroAuthLoading');

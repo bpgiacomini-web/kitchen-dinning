@@ -1,3 +1,4 @@
+import {recipeShareMessage} from './domain/recipe-share.mjs';
 import {awardBadges,earnedBadges} from './domain/badges.mjs';
 import {badgesMarkup,celebrateBadges,updateAccountBadge} from './features/badges.mjs';
 import {websiteImageMarkup,findRestaurantImage,mountWebsiteImageFallback,prefersWebsiteImage} from './features/restaurant-image.mjs';
@@ -337,7 +338,7 @@ function renderRestaurants(items) {
     const photo = summary.primaryPhoto && !prefersWebsiteImage(restaurant) ? photoMarkup(summary.primaryPhoto,true) : websiteImageMarkup(restaurant);
     return `<article class="readOnlyItem restaurantCard" data-search="${escapeHtml(JSON.stringify(restaurant).toLowerCase())}" data-restaurant-entry="${escapeHtml(restaurant.id)}"><div class="profileCardSummary">${photo}<div><div class="restaurantNameGroup"><button class="restaurantFavoriteStar" type="button" data-action="toggle-restaurant-favorite" data-restaurant-id="${escapeHtml(restaurant.id)}" aria-pressed="${restaurant.favorite?'true':'false'}" aria-label="${restaurant.favorite?'Remove from favorites':'Add to favorites'}">${restaurant.favorite?'★':'☆'}</button><button class="restaurantNameLink" data-action="open-restaurant-profile" data-restaurant-id="${escapeHtml(restaurant.id)}">${escapeHtml(restaurant.name)}</button></div><div class="restaurantCardRating">${summary.average==null?'Unrated':summary.average.toFixed(1)+'<small>/10</small>'}</div><small>${escapeHtml(restaurant.cuisine)} · ${summary.count} ${summary.count===1?'visit':'visits'}${summary.lastVisit?' · Last visit '+escapeHtml(restaurantReviewDateText({visitedAt:summary.lastVisit})):''}</small></div></div><p class="edit-status" role="status" aria-live="polite"></p></article>`;
   }).join("");
-  root.innerHTML = `<section class="hero"><div class="heroIn"><div class="eyebrow">Your dining journal</div><h2><span class="sectionHeadingIcon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M4 2v7m3-7v7m-6-7v7c0 3 6 3 6 0M4 11v11M19 2c-4 4-5 9-1 10h2V2h-1Zm1 10v10"/></svg></span>My Restaurants</h2><p>Keep restaurant details and visit-by-visit food critic reviews together in your private Metro Eats account.</p></div></section><section class="content-panel"><div class="sectionTitle"><div><div class="sectionKicker">${items.length} saved</div><h3>Your restaurants &amp; reviews</h3></div><div class="diningActions"><label class="restaurantSortControl" for="restaurant-sort">Sort by <select id="restaurant-sort"><option value="recent"${restaurantSort === "recent" ? " selected" : ""}>Last visited · newest first</option><option value="highest"${restaurantSort === "highest" ? " selected" : ""}>Highest rated</option><option value="lowest"${restaurantSort === "lowest" ? " selected" : ""}>Lowest rated</option><option value="visits"${restaurantSort === "visits" ? " selected" : ""}>Most visits</option><option value="name"${restaurantSort === "name" ? " selected" : ""}>Name · A to Z</option></select></label><button class="btn rankingsButton" type="button" data-action="open-rankings"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 3h8v5a4 4 0 0 1-8 0V3Z"/><path d="M8 5H5v2a4 4 0 0 0 4 4m7-6h3v2a4 4 0 0 1-4 4m-3 1v5m-4 4h8m-7 0v-4h6v4"/></svg><span>My Rankings</span></button><button class="btn primary" type="button" data-action="new-restaurant">＋ Add a Restaurant</button></div></div><section class="nearbyPanel"><div><h3>Restaurants Around Me</h3><p class="hint">Nearby places load automatically when you open this page. Location is used only for this search, never saved. If device location is unavailable, Metro Eats uses an approximate area.</p></div><p class="edit-status" id="nearby-status" role="status" aria-live="polite">Nearby restaurant search will start automatically.</p><details class="nearbyDisclosure" id="nearby-disclosure" hidden><summary id="nearby-summary">Nearby restaurants</summary><div class="nearbyResults" id="nearby-results"></div></details></section><button class="btn collectionSearchToggle" type="button" data-action="toggle-restaurant-search" aria-label="Search restaurants" aria-expanded="false"><svg viewBox="0 0 24 24" width="27" height="27" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><circle cx="10" cy="10" r="6"/><path d="m15 15 6 6"/></svg></button><label class="restaurantSearchLabel" for="restaurant-search">Search your restaurants</label><input id="restaurant-search" hidden class="restaurantSearch" type="search" placeholder="Name, cuisine, address, dish, or note" autocomplete="off"><label class="inlineCheck"><input id="restaurant-favorites-only" type="checkbox"${restaurantFavoritesOnly?" checked":""}> Favorites only</label><p class="hint" id="restaurant-search-count" aria-live="polite">Showing ${items.length} ${items.length === 1 ? "restaurant" : "restaurants"}.</p><div class="readOnlyList" id="restaurant-list">${rows || `<div class="empty">No restaurants in this journal yet. Choose Home, Travel, or All above, or add a restaurant.</div>`}</div><p class="hint"></p></section>`;
+  root.innerHTML = `<section class="hero"><div class="heroIn"><div class="eyebrow">Your dining journal</div><h2><span class="sectionHeadingIcon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M4 2v7m3-7v7m-6-7v7c0 3 6 3 6 0M4 11v11M19 2c-4 4-5 9-1 10h2V2h-1Zm1 10v10"/></svg></span>My Restaurants</h2><p>Keep restaurant details and visit-by-visit food critic reviews together in your private Metro Eats account.</p></div></section><section class="content-panel"><div class="sectionTitle"><div><div class="sectionKicker">${items.length} saved</div><h3>Your restaurants &amp; reviews</h3></div><div class="diningActions"><label class="restaurantSortControl" for="restaurant-sort">Sort by <select id="restaurant-sort"><option value="recent"${restaurantSort === "recent" ? " selected" : ""}>Last visited · newest first</option><option value="highest"${restaurantSort === "highest" ? " selected" : ""}>Highest rated</option><option value="lowest"${restaurantSort === "lowest" ? " selected" : ""}>Lowest rated</option><option value="visits"${restaurantSort === "visits" ? " selected" : ""}>Most visits</option><option value="name"${restaurantSort === "name" ? " selected" : ""}>Name · A to Z</option></select></label><button class="btn rankingsButton" type="button" data-action="open-rankings"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 3h8v5a4 4 0 0 1-8 0V3Z"/><path d="M8 5H5v2a4 4 0 0 0 4 4m7-6h3v2a4 4 0 0 1-4 4m-3 1v5m-4 4h8m-7 0v-4h6v4"/></svg><span>My Rankings</span></button><button class="btn primary" type="button" data-action="new-restaurant">＋ Add a Restaurant</button></div></div><section class="nearbyPanel"><div><h3>Restaurants Around Me</h3><p class="hint">Nearby places load automatically when you open this page. Location is used only for this search, never saved. If device location is unavailable, Metro Eats uses an approximate area.</p></div><button class="btn" type="button" data-action="refresh-nearby-location">Use my current location</button><p class="edit-status" id="nearby-status" role="status" aria-live="polite">Nearby restaurant search will start automatically.</p><details class="nearbyDisclosure" id="nearby-disclosure" hidden><summary id="nearby-summary">Nearby restaurants</summary><div class="nearbyResults" id="nearby-results"></div></details></section><button class="btn collectionSearchToggle" type="button" data-action="toggle-restaurant-search" aria-label="Search restaurants" aria-expanded="false"><svg viewBox="0 0 24 24" width="27" height="27" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><circle cx="10" cy="10" r="6"/><path d="m15 15 6 6"/></svg></button><label class="restaurantSearchLabel" for="restaurant-search">Search your restaurants</label><input id="restaurant-search" hidden class="restaurantSearch" type="search" placeholder="Name, cuisine, address, dish, or note" autocomplete="off"><label class="inlineCheck"><input id="restaurant-favorites-only" type="checkbox"${restaurantFavoritesOnly?" checked":""}> Favorites only</label><p class="hint" id="restaurant-search-count" aria-live="polite">Showing ${items.length} ${items.length === 1 ? "restaurant" : "restaurants"}.</p><div class="readOnlyList" id="restaurant-list">${rows || `<div class="empty">No restaurants in this journal yet. Choose Home, Travel, or All above, or add a restaurant.</div>`}</div><p class="hint"></p></section>`;
   root.querySelector('.diningActions')?.insertAdjacentHTML('beforebegin',`<label class="restaurantScopeControl" for="restaurant-scope">Restaurant journal<select id="restaurant-scope">${[['home','Home'],['travel','Travel'],['all','All']].map(([value,label])=>`<option value="${value}"${restaurantScope===value?' selected':''}>${label}</option>`).join('')}</select></label>`);
   root.querySelector('#restaurant-scope')?.addEventListener('change',event=>{restaurantScope=event.target.value;render();});
   root.querySelector('.restaurantSortControl')?.insertAdjacentHTML('afterend',`<label class="restaurantReviewFilter">Show<select id="restaurant-review-filter">${[['all','All saved'],['reviewed','Reviewed'],['later','Review Later'],['want','Want to Try']].map(([value,label])=>`<option value="${value}"${restaurantReviewFilter===value?' selected':''}>${label}</option>`).join('')}</select></label>`);
@@ -455,7 +456,10 @@ async function searchHomeBars() {
  list.innerHTML=found.places.map(place=>`<article class="nearbyPlace" data-hidden-place="${escapeHtml(JSON.stringify(hiddenPlaceDescriptor(place)))}"><div><strong>${escapeHtml(place.name)}</strong><small>${escapeHtml([place.address,place.distance==null?"":(place.distance/1609.34).toFixed(1)+" mi"].filter(Boolean).join(" · "))}</small></div><div class="nearbyPlaceActions">${mapMenuMarkup(place)}</div></article>`).join("");
  }catch{if(section.isConnected){section.querySelector("summary").textContent="Nearby bars · Unavailable";status.textContent="Map provider unavailable. Try again shortly.";}}
 }
-async function searchNearbyRestaurants() {
+let nearbySearchSequence=0;
+async function searchNearbyRestaurants({force=false}={}) {
+  const sequence=++nearbySearchSequence;
+  if(force)homeNearbyCache=null;
   const statusLine = root.querySelector("#nearby-status");
   const results = root.querySelector("#nearby-results");
   const disclosure = root.querySelector("#nearby-disclosure");
@@ -464,12 +468,16 @@ async function searchNearbyRestaurants() {
   statusLine.textContent = "Finding your area…";
   results.innerHTML = "";
   if (disclosure) disclosure.hidden = true;
+  let locationFailure="";
   const search = async location => {
+    if(sequence!==nearbySearchSequence||!statusLine.isConnected)return;
     statusLine.textContent = "Searching nearby restaurants…";
     try {
-      const rawResponse = activeView==="home" && homeNearbyCache && Date.now()-homeNearbyCache.time<300000 ? homeNearbyCache.response : await lookupNearbyRestaurants({ location });
+      const cacheKey=location?`${location.lat},${location.lon}`:"network";
+      const rawResponse = !force && activeView==="home" && homeNearbyCache?.key===cacheKey && Date.now()-homeNearbyCache.time<300000 ? homeNearbyCache.response : await lookupNearbyRestaurants({ location });
+      if(sequence!==nearbySearchSequence||!statusLine.isConnected)return;
       const response={...rawResponse,places:filterHiddenPlaces(rawResponse.places,cloudDataset.hiddenPlaces)};
-      if(activeView==="home" && !rawResponse.partial)homeNearbyCache={response:rawResponse,time:Date.now()};
+      if(activeView==="home" && !rawResponse.partial)homeNearbyCache={response:rawResponse,time:Date.now(),key:cacheKey};
       restaurantLookupLocation = response.location || location;
       if (!response.places.length) {
         statusLine.textContent = "No named restaurants appeared within about twenty miles. Try the name search below.";
@@ -481,20 +489,24 @@ async function searchNearbyRestaurants() {
         ? `Showing places near the approximate area Vercel detected${response.location.city ? ` (${response.location.city})` : ""}. Allow precise location for a closer match.`
         : `Found ${response.places.length} nearby places. Select one to fill in its details and continue to a visit review.`;
       statusLine.textContent = activeView === "home" ? (response.location?.source === "network" ? `Approximate area${response.location.city ? ` · ${response.location.city}` : ""}` : "Nearby spots") : placeLabel;
-      if(response.cache?.stale)statusLine.textContent="Previously found nearby · Updating when available";
-      if(response.partial)statusLine.textContent="Limited map results · Try again shortly";
+      if(response.cache?.stale)statusLine.textContent+=" · Previously found results";
+      if(response.partial)statusLine.textContent+=" · Limited map results";
+      if(locationFailure)statusLine.textContent=locationFailure+" "+statusLine.textContent;
       results.innerHTML = response.places.map(place => `<article class="nearbyPlace"><div><strong>${escapeHtml(place.name)}</strong><small>${escapeHtml([place.cuisine, place.distance == null ? "" : place.distance < 1609 ? `${Math.round(place.distance * 3.28084)} ft` : `${(place.distance / 1609.34).toFixed(1)} mi`, place.address].filter(Boolean).join(" · ") || "Nearby food place")}</small>${personalNearbyScore(place)}</div><div class="nearbyPlaceActions"><details class="nearbyNavigationMenu"><summary class="btn nearbyDirectionsButton" aria-label="Choose a map app for ${escapeHtml(place.name)}" title="Choose a map app"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22s7-7.1 7-13a7 7 0 1 0-14 0c0 5.9 7 13 7 13Z"></path><circle cx="12" cy="9" r="2.4"></circle></svg></summary><div class="nearbyNavigationOptions">${restaurantNavigationOptions(place).map(option => `<a href="${escapeHtml(option.url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(option.label)}</a>`).join("")}</div></details><button class="btn" type="button" data-action="use-nearby" data-nearby="${escapeHtml(JSON.stringify(place))}">Review this restaurant</button></div></article>`).join("");
     } catch (error) {
       if (disclosure) disclosure.hidden = true;
       const message = typeof error?.message === "string" && error.message !== "[object Object]" ? error.message : "";
-      statusLine.textContent = message || "Nearby restaurant search is temporarily unavailable. You can still search by name below.";
+      if(sequence!==nearbySearchSequence||!statusLine.isConnected)return;
+      statusLine.textContent = locationFailure+" "+(message || "Nearby restaurant search is temporarily unavailable. You can still search by name below.");
     }
   };
-  if (activeView==="home" && homeNearbyCache && Date.now()-homeNearbyCache.time<300000) {await search(null);return;}
-  if (!navigator.geolocation) { await search(null); return; }
-  sharedPosition(position => {
-    search({ lat: position.coords.latitude, lon: position.coords.longitude });
-  }, () => { search(null); }, { enableHighAccuracy: false, timeout: 8000, maximumAge: 300000 });
+  const location=await new Promise(resolve=>{
+    sharedPosition(position=>resolve({lat:position.coords.latitude,lon:position.coords.longitude,source:'device'}),error=>{
+      locationFailure=error?.code===1?'Location is blocked. Allow location for this website in your browser’s website settings, then tap Use my current location.':'Device location is unavailable. Tap Use my current location to retry.';
+      resolve(null);
+    },{enableHighAccuracy:force,timeout:force?20000:8000,maximumAge:force?0:300000});
+  });
+  await search(location);
 }
 function renderRestaurantLookupResults(results, message = "", target = {}) {
   const statusId = target.statusId || "restaurant-lookup-status";
@@ -638,7 +650,7 @@ function renderHome() {
     newsPanel.append(disclosure);
     [intro, stories, refreshed].filter(Boolean).forEach(element => content.append(element));
   }
-  root.querySelector(".localNewsPanel")?.insertAdjacentHTML("afterend", '<section class="content-panel homeRestaurantFinder"><div class="homeFinderHeading"><h3>Around Me</h3><button class="btn homeSearchToggle" type="button" data-action="toggle-home-search" aria-label="Search restaurants" aria-expanded="false" aria-controls="home-name-search"><svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="10" cy="10" r="6"/><path d="m15 15 6 6"/></svg></button></div><div class="homeNameSearch" id="home-name-search" hidden><label class="sr-only" for="home-restaurant-search">Search restaurants</label><input id="home-restaurant-search" class="restaurantSearch" type="search" placeholder="Restaurant name" autocomplete="off"><p class="edit-status" id="home-restaurant-search-status" role="status" aria-live="polite"></p><div id="home-restaurant-search-results" class="restaurantLookupResults"></div></div><p class="edit-status" id="nearby-status" role="status" aria-live="polite">Finding nearby spots…</p><details class="nearbyDisclosure" id="nearby-disclosure" hidden><summary id="nearby-summary">Nearby restaurants</summary><div class="nearbyResults" id="nearby-results"></div></details><details class="nearbyDisclosure" id="home-bars"><summary>Nearby bars</summary><p class="hint" data-bar-status>Finding nearby bars…</p><div class="nearbyResults" data-bar-results></div></details></section>');
+  root.querySelector(".localNewsPanel")?.insertAdjacentHTML("afterend", '<section class="content-panel homeRestaurantFinder"><div class="homeFinderHeading"><h3>Around Me</h3><button class="btn homeSearchToggle" type="button" data-action="toggle-home-search" aria-label="Search restaurants" aria-expanded="false" aria-controls="home-name-search"><svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="10" cy="10" r="6"/><path d="m15 15 6 6"/></svg></button></div><div class="homeNameSearch" id="home-name-search" hidden><label class="sr-only" for="home-restaurant-search">Search restaurants</label><input id="home-restaurant-search" class="restaurantSearch" type="search" placeholder="Restaurant name" autocomplete="off"><p class="edit-status" id="home-restaurant-search-status" role="status" aria-live="polite"></p><div id="home-restaurant-search-results" class="restaurantLookupResults"></div></div><button class="btn" type="button" data-action="refresh-nearby-location">Use my current location</button><p class="edit-status" id="nearby-status" role="status" aria-live="polite">Finding nearby spots…</p><details class="nearbyDisclosure" id="nearby-disclosure" hidden><summary id="nearby-summary">Nearby restaurants</summary><div class="nearbyResults" id="nearby-results"></div></details><details class="nearbyDisclosure" id="home-bars"><summary>Nearby bars</summary><p class="hint" data-bar-status>Finding nearby bars…</p><div class="nearbyResults" data-bar-results></div></details></section>');
   root.querySelector(".homeFeatureButtons")?.insertAdjacentHTML("beforeend", `<button class="homeFeatureButton cocktailButton" data-view="cocktails"><span class="homeFeatureIcon cocktailMark">${COCKTAIL_ICON}</span><span><strong>Cocktails &amp; Bars</strong><small>Good drinks, great places</small></span><span class="homeFeatureArrow">→</span></button>`);
   root.querySelector(".homePrivacyNote")?.insertAdjacentHTML("afterend", renderHomeInsights());
   const dashboard=root.querySelector(".insightsDashboard");if(dashboard){mountDashboard(dashboard);destroyJourney=mountJourney(dashboard.querySelector(".dashboardMap"),homeJournalData(cloudDataset),{embedded:true});}
@@ -1099,6 +1111,12 @@ document.addEventListener("click", async event => {
   }
   const actionButton = event.target.closest("[data-action]");
   if (!actionButton) return;
+  if(actionButton.dataset.action==='refresh-nearby-location'){
+    actionButton.disabled=true;
+    try{await searchNearbyRestaurants({force:true});if(activeView==='home')void searchHomeBars();}
+    finally{if(actionButton.isConnected)actionButton.disabled=false;}
+    return;
+  }
   if(actionButton.dataset.action==='refresh-restaurant-image'){
     const restaurant=cloudDataset.restaurants.find(row=>String(row.id)===String(actionButton.dataset.restaurantId));if(!restaurant?.website)return;
     const feedback=root.querySelector('[data-website-image-status]')||root.querySelector('.edit-status');actionButton.disabled=true;if(feedback)feedback.textContent='Checking '+new URL(restaurant.website).hostname+'…';
@@ -1678,15 +1696,18 @@ document.addEventListener("click", async event => {
       if (create) {
         const shareUrl = new URL("/share-recipe/", location.origin);
         shareUrl.searchParams.set("token", result.token);
-        status.textContent = "Private recipe link created: ";
+        const recipe=cloudDataset.recipes.find(item=>String(item.id)===String(actionButton.dataset.recipeId));
+        const share=recipeShareMessage(recipe,shareUrl.href);
+        status.textContent = "Metro Eats recipe link ready: ";
         const link = document.createElement("a");
         link.href = shareUrl.href;
         link.textContent = "Open shared recipe";
         link.target = "_blank";
         link.rel = "noopener noreferrer";
         status.append(link);
+        if(navigator.share){const send=document.createElement("button");send.className="btn";send.type="button";send.textContent="Share with Metro Eats";send.onclick=async()=>{try{await navigator.share(share);}catch(error){if(error.name!=="AbortError")send.textContent="Sharing unavailable — use the link";}};status.append(" ",send);}
         if (navigator.clipboard?.writeText) {
-          try { await navigator.clipboard.writeText(shareUrl.href); status.textContent += " (copied)"; } catch { /* Keep the visible link usable if clipboard access is unavailable. */ }
+          try { await navigator.clipboard.writeText(share.text+"\n"+share.url); status.append(" (copied)"); } catch { /* Keep the visible link usable if clipboard access is unavailable. */ }
         }
       } else status.textContent = "Any existing link for this recipe has been revoked.";
     } catch (error) { status.textContent = error?.message || "Could not update the share link."; }
@@ -1856,6 +1877,8 @@ async function refreshDataset() {
   document.querySelector(".badgeCelebration")?.remove();
   try {
     cloudReady = false;
+    homeNearbyCache=null;
+    ++nearbySearchSequence;
     updateAccountBadge(document.querySelector("#metroAccountButton"),null);
     cloudDataset = { recipes: [], restaurants: [], pizzas: [], bars: [], drinks: [], cocktailRecipes: [], cats: [] };
     cloudRevision = 0;
